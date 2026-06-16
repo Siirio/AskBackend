@@ -1,0 +1,42 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+auth.json
+*.key
+*.pem
+*.p12
+*.jks
+
+# Local AI/tool state
+.codex/
+.claude/
+.sandbox/
+.sandbox-secrets/
+.sandbox-bin/
+.tmp/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Dependencies and build output
+node_modules/
+target/
+build/
+dist/
+out/
+.next/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# IDE and OS files
+../.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
