@@ -4,6 +4,8 @@ Use for service discovery, schedules, appointments, windows, specialists, branch
 
 Services are not products with a different label.
 
+Service providers need a comfortable management workspace. Assume the service-provider website/cabinet is the preferred surface for maintaining service offerings, schedules, free windows, discounts, conditions, specialists, and branches. Mobile apps may show or request services, but mobile-only administration should not be the default assumption for large service data.
+
 Analyze:
 
 - provider and branch structure;

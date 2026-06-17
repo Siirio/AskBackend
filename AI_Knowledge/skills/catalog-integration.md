@@ -2,9 +2,9 @@
 
 Use for catalog import, normalization, categories, attributes, availability, and catalog-backed search.
 
-Catalog is not simple CRUD. Analyze:
+Catalog is not simple CRUD. Sellers should not recreate existing catalogs manually when they already have files. Analyze:
 
-- source format;
+- source format, with first-class support for Excel and CSV;
 - column mapping;
 - product identity;
 - duplicate handling;
@@ -16,6 +16,8 @@ Catalog is not simple CRUD. Analyze:
 - search behavior;
 - supplier correction workflow.
 
-Likely sources include Excel, MoySklad, POS, e-commerce exports, CRM, and manual entry.
+Likely sources include Excel, CSV, MoySklad, POS, e-commerce exports, CRM, and manual entry.
+
+Catalog import should support upload, preview, column mapping, validation, normalization, correction, import history, and repeated updates.
 
 Manual request routing must work before catalog is mature unless product direction explicitly changes.

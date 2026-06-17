@@ -1,5 +1,15 @@
 # Foundation Changelog
 
+## 2026-06-17 - Goal Actualization
+
+Updated the product architecture idea:
+
+- AskBackend is one backend for Android, iOS, and any future website.
+- Client implementations should use a shared design-independent API/client abstraction instead of duplicating heavy business logic per platform.
+- Product catalogs should support Excel and CSV import workflows so sellers do not recreate existing data manually.
+- Service-provider management should lean toward a web cabinet for larger service datasets, schedules, free windows, discounts, conditions, specialists, and branches.
+- Mobile application direction is customer side plus seller/supplier side; website direction is primarily service-provider administration.
+
 ## 2026-06-17 - Restored Portable Foundation
 
 Restored the foundation document set after an accidental over-revert.

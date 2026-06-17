@@ -16,11 +16,27 @@ That flow is useful because it reduces customer effort and gives suppliers deman
 
 The next technical goal is not merely "add product CRUD." The goal is supplier data ingestion and search quality.
 
+## One Backend, Many Clients
+
+AskBackend must be the single backend for all official clients. Android, iOS, and a future website must use the same backend API. The backend should not fork into separate implementations per client, and business rules must not depend on whether the request came from mobile or web.
+
+The intended client shape is:
+
+```text
+Android UI
+iOS UI
+Web UI
+  -> shared client/API abstraction
+  -> AskBackend API
+```
+
+Each frontend can have platform-specific UI, navigation, and local state, but heavy product logic must stay out of separate UI implementations. The shared client/API abstraction should isolate communication with AskBackend from design and presentation. Backend owns request routing, catalog processing, availability truth, service-provider data, permissions, and integration boundaries.
+
 ## Catalog Is A System, Not A Table
 
-Many suppliers, especially early local suppliers, may have data in Excel, MoySklad, POS systems, e-commerce exports, CRM tools, or custom spreadsheets. The backend must treat catalog work as a data pipeline:
+Many suppliers, especially early local suppliers, may have data in Excel, CSV, MoySklad, POS systems, e-commerce exports, CRM tools, or custom spreadsheets. The backend must treat catalog work as a data pipeline:
 
-- importing raw files or provider data;
+- importing raw files, especially Excel and CSV, or provider data;
 - mapping columns;
 - preserving raw source rows;
 - normalizing names;
@@ -33,6 +49,8 @@ Many suppliers, especially early local suppliers, may have data in Excel, MoySkl
 - searching rough, incomplete, multilingual, or misspelled queries.
 
 Manual request routing must still work before catalog is mature. Catalog should improve routing and availability confidence over time, not block supplier onboarding.
+
+Catalog import must be seller-friendly. Shops should not have to fill the same catalog manually inside Ask if they already maintain Excel or CSV exports. The system should support upload, preview, column mapping, validation, correction, import history, and repeated updates.
 
 ## Smart Search
 
@@ -59,6 +77,8 @@ Products are physical items. Services involve time and capacity. A service model
 - provider integrations.
 
 Services cannot be modeled as products with a different label. Before coding service search or booking, the team should write a system analysis covering source of truth, availability updates, integration options, MVP shortcuts, and scaling risks.
+
+For service providers, a mobile-only management flow is likely too heavy. Managing service offerings, schedules, free windows, discounts, conditions, specialists, and branches is better suited to a web cabinet. The website direction is therefore not a general replacement for mobile apps; it is primarily a provider workspace for establishments that need comfortable service administration.
 
 ## Backend Architecture Direction
 
@@ -96,6 +116,8 @@ Real provider calls require explicit scope, credentials, documentation, and test
 The future product is mobile-first. Native mobile apps may become the primary clients. Browser tools and prototypes can exist, but they should not define backend architecture.
 
 Frontend and backend can be separate repositories owned by different developers. The shared contract is product meaning plus stable APIs, not one old prototype implementation.
+
+The mobile application has two product sides: customer and seller/supplier. The website is planned mainly for service-providing establishments that need to manage larger service data and scheduling. All of these clients still go through the same backend.
 
 ## Scaling Direction
 

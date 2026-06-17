@@ -13,6 +13,7 @@ Use this route for Java, Spring Boot, APIs, persistence, request routing, stores
 Expected direction:
 
 - Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, OpenAPI, JUnit 5.
+- One backend serves Android, iOS, and web clients through stable shared APIs.
 - Core business logic remains provider-agnostic.
 - External systems are adapters.
 - Controllers are thin and return `ResponseEntity`.
@@ -23,6 +24,8 @@ Expected direction:
 
 Before editing, search for existing local patterns and map dependent DTOs, mappers, services, repositories, tests, and config.
 
+Do not design separate backend behavior for Android, iOS, and web. If clients need different presentation, expose stable API data and let client adapters map it to view models.
+
 ## Frontend And Mobile Work
 
 Use this route for UI, client contracts, mobile UX, frontend prototypes, or frontend/backend API alignment.
@@ -31,6 +34,7 @@ Expected direction:
 
 - Ask is mobile-first and product-first.
 - Native mobile clients may become primary; browser prototypes are tools, not product architecture.
+- Android, iOS, and web UI should consume a shared design-independent client/API abstraction where possible.
 - Keep API DTOs separate from UI view models.
 - Do not invent backend data in the UI.
 - Frontend owns normal UI localization; backend returns stable machine-readable statuses and error codes.
@@ -44,7 +48,7 @@ Use this route for product catalog, supplier data import, normalization, attribu
 
 Do not treat catalog as simple product CRUD. First analyze:
 
-- source format, such as Excel, MoySklad, POS, e-commerce export, or manual entry;
+- source format, especially Excel and CSV, plus MoySklad, POS, e-commerce export, or manual entry;
 - column mapping;
 - product identity and duplicate handling;
 - category mapping;
@@ -56,6 +60,8 @@ Do not treat catalog as simple product CRUD. First analyze:
 - supplier correction workflow.
 
 Manual request routing must still work before catalog is mature unless product direction explicitly changes.
+
+Product sellers should not have to recreate existing catalogs manually. Prefer upload, preview, column mapping, validation, correction, and repeated import/update flows for Excel and CSV.
 
 ## Services Work
 
@@ -73,6 +79,8 @@ Services are not products with a different label. Before coding, analyze:
 - what must not be hardcoded for one city or provider type.
 
 If availability is not backed by a reliable source, model it as confirmation-needed instead of a guaranteed slot.
+
+Assume a web cabinet is the likely management surface for service providers. Large service datasets, schedules, discounts, conditions, specialists, and free windows are too cumbersome to manage only inside the mobile app.
 
 ## Integration Work
 

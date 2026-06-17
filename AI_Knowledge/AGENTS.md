@@ -10,6 +10,7 @@ These rules guide AI agents and developers working on Ask.
 - The MVP can be manual: one customer request is routed to relevant suppliers, and suppliers respond manually.
 - Long-term architecture must support catalog import, normalization, search, integrations, automatic availability when justified, and service discovery.
 - Do not invent inventory, logistics, schedule, delivery, or availability facts without explicit supplier input or real integration data.
+- AskBackend is one backend for Android, iOS, and any future website. Never create separate backends per client implementation.
 
 ## Development Rules
 
@@ -27,6 +28,7 @@ These rules guide AI agents and developers working on Ask.
 - Core business logic must stay provider-agnostic.
 - External systems are adapters or providers.
 - Real external calls require explicit scope, credentials, provider docs, and tests.
+- Backend business rules must be client-agnostic. Android, iOS, and web clients consume the same API contracts.
 
 Target chain for non-trivial workflows:
 
@@ -39,8 +41,9 @@ Controllers validate shape, call application boundaries, and return `ResponseEnt
 ## Catalog Rules
 
 - Do not treat catalog as simple CRUD.
-- Supplier data may come from Excel, MoySklad, POS, e-commerce, CRM, messengers, or manual entry.
+- Supplier data may come from Excel, CSV, MoySklad, POS, e-commerce, CRM, messengers, or manual entry.
 - Design import, mapping, normalization, categories, attributes, branches, freshness, source of truth, and search before coding.
+- Product catalog work must support Excel and CSV import because sellers should not recreate existing catalogs manually.
 - Manual request routing must work before catalog is mature unless product direction explicitly changes.
 
 ## Services Rules
@@ -48,6 +51,7 @@ Controllers validate shape, call application boundaries, and return `ResponseEnt
 - Services are not products with a different label.
 - Services need schedules, windows, duration, specialist/provider, branch, confirmation, cancellation, and availability-source logic.
 - Do system analysis before implementing service search or booking.
+- Service-provider management should assume a web cabinet direction for large service datasets, schedules, discounts, and conditions, because mobile-only administration can become overloaded.
 
 ## Frontend And Mobile Rules
 
@@ -56,6 +60,7 @@ Controllers validate shape, call application boundaries, and return `ResponseEnt
 - Frontend and backend may live in separate repositories.
 - API DTOs and UI view models can be different shapes, but contract drift must be explicit.
 - Frontend owns normal UI localization; backend returns stable machine-readable statuses and error codes.
+- Frontend clients should share a design-independent API/client abstraction instead of duplicating heavy business logic separately in Android, iOS, and web.
 
 ## AI Workflow Rules
 
