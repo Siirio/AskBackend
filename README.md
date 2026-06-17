@@ -54,6 +54,14 @@ Web UI
 
 Frontend implementations may have different visual UI and platform behavior, but they should not duplicate heavy business logic. Backend owns request routing, data truth, catalog processing, service-provider data, permissions, and integration boundaries. Client layers adapt backend DTOs into view models and handle platform-specific presentation.
 
+## Backend Architecture Direction
+
+AskBackend should follow a feature-sliced architecture compatible with Feature-Sliced Design principles. In backend terms, this means organizing code around product capabilities and bounded feature areas while preserving clean Spring boundaries inside each area.
+
+The goal is local reasoning and reusability: work on request routing, catalog import, service scheduling, supplier onboarding, response handling, or chat should not require hunting through many unrelated global folders.
+
+Use feature/domain slices for product areas, and keep shared infrastructure truly shared. A slice may contain its API contracts, use cases, domain services, mappers, repositories, tests, and configuration needed for that feature. Cross-feature calls should go through explicit interfaces or application use cases, not direct hidden coupling.
+
 ## Catalog And Services Direction
 
 Product sellers usually already have product data in files or systems. The backend must support practical import paths, especially Excel and CSV, so sellers do not have to manually recreate catalogs from scratch. Catalog work should include file upload, column mapping, validation, normalization, duplicate handling, category/attribute mapping, branch-level data, import history, and data-quality feedback.
