@@ -5,7 +5,7 @@
 Updated the product architecture idea:
 
 - AskBackend is one backend for Android, iOS, and any future website.
-- AskBackend should use a feature-sliced backend architecture inspired by Feature-Sliced Design.
+- AskBackend should not copy frontend FSD literally; it should use package-by-feature, modular monolith/domain modules, and clean/hexagonal boundaries.
 - Client implementations should use a shared design-independent API/client abstraction instead of duplicating heavy business logic per platform.
 - Product catalogs should support Excel and CSV import workflows so sellers do not recreate existing data manually.
 - Service-provider management should lean toward a web cabinet for larger service datasets, schedules, free windows, discounts, conditions, specialists, and branches.

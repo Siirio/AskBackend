@@ -24,7 +24,7 @@ These rules guide AI agents and developers working on Ask.
 ## Backend Direction
 
 - Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, Spring Data JPA, Spring Security, OpenAPI, JUnit 5.
-- Use a feature-sliced backend architecture inspired by Feature-Sliced Design: organize around product capabilities while preserving Spring boundaries inside each slice.
+- Do not copy frontend FSD literally into Spring Boot. Use backend equivalents: package-by-feature, modular monolith, domain modules, DDD-style modules, and clean/hexagonal boundaries.
 - Keep request routing, catalog import, service scheduling, supplier onboarding, responses, and chat locally understandable instead of scattering each feature across unrelated global folders.
 - Do not introduce Gradle, Kotlin, WebFlux, Kafka, RabbitMQ, or microservices without explicit approval and justification.
 - Core business logic must stay provider-agnostic.
@@ -40,7 +40,7 @@ Controller -> Processor or UseCase -> DomainService -> Repository
 
 Controllers validate shape, call application boundaries, and return `ResponseEntity`. Repositories are not called from controllers, mappers, assemblers, or validators. DTOs define API boundaries. JPA entities do not leak from REST controllers.
 
-Feature slices may contain their own API contracts, use cases, services, repositories, mappers, tests, and feature-specific config when that improves local reasoning. Shared infrastructure must stay truly shared, and cross-slice communication must be explicit.
+Backend modules should be organized by product area, for example `request`, `store`, `product`, `shared`, with internal packages such as `api`, `application`, `domain`, and `infrastructure`. Shared infrastructure must stay truly shared, and cross-module communication must be explicit.
 
 ## Catalog Rules
 

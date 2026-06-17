@@ -84,7 +84,9 @@ For service providers, a mobile-only management flow is likely too heavy. Managi
 
 The backend should stay a monolith until there is evidence that splitting services is worth the cost.
 
-AskBackend should use a feature-sliced architecture inspired by Feature-Sliced Design. This does not mean copying frontend folders mechanically into Spring. It means grouping backend code by product capability and bounded feature area while keeping Spring layering clear inside each slice.
+Feature-Sliced Design is a frontend methodology. Do not copy it literally into Spring Boot: frontend layers such as `app`, `pages`, `widgets`, `features`, `entities`, and `shared` are not backend package names.
+
+AskBackend should use the backend equivalent of the same slicing idea: package-by-feature, modular monolith, domain modules, DDD-style modules, and clean/hexagonal architecture boundaries. The system should be grouped by product capability and bounded domain area, not only by technical layer.
 
 Default backend direction:
 
@@ -107,9 +109,38 @@ Controller -> Processor or UseCase -> DomainService -> Repository
 
 Controllers should validate request shape, call application boundaries, and return `ResponseEntity`. Domain services own business logic. Repositories own persistence. DTOs define API contracts. Mappers and assemblers stay pure.
 
-Feature slices should make related code easy to find. Request routing, catalog import, service scheduling, supplier onboarding, response handling, and chat should each have clear local ownership. Avoid a structure where every feature is split across broad global buckets so that one change requires jumping through many unrelated files.
+Feature/domain modules should make related code easy to find. Request routing, catalog import, service scheduling, supplier onboarding, response handling, and chat should each have clear local ownership. Avoid a structure where every feature is split across broad global buckets so that one change requires jumping through many unrelated files.
 
-Backend slices may contain API DTOs/controllers, use cases/processors, domain services, repositories, mappers, tests, and feature-specific configuration when needed. Shared primitives, cross-cutting infrastructure, security, common errors, and integration abstractions belong in shared or infrastructure areas. Cross-slice dependencies must be explicit and interface-based.
+Recommended module shape:
+
+```text
+request/
+  api/
+  application/
+  domain/
+  infrastructure/
+
+store/
+  api/
+  application/
+  domain/
+  infrastructure/
+
+product/
+  api/
+  application/
+  domain/
+  infrastructure/
+
+shared/
+  security/
+  errors/
+  persistence/
+  clock/
+  events/
+```
+
+Backend modules may contain API DTOs/controllers, use cases/processors, domain services, repositories, mappers, tests, and feature-specific configuration when needed. Shared primitives, cross-cutting infrastructure, security, common errors, and integration abstractions belong in shared or infrastructure areas. Cross-module dependencies must be explicit and interface-based.
 
 ## Integration Boundaries
 

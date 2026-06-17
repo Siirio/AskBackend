@@ -14,7 +14,7 @@ Expected direction:
 
 - Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, OpenAPI, JUnit 5.
 - One backend serves Android, iOS, and web clients through stable shared APIs.
-- Use feature-sliced backend organization inspired by Feature-Sliced Design.
+- Do not copy frontend FSD literally. Use backend feature/domain-based packaging with clean/hexagonal boundaries.
 - Keep product capability code locally understandable instead of scattering one feature across many global folders.
 - Core business logic remains provider-agnostic.
 - External systems are adapters.
@@ -24,7 +24,7 @@ Expected direction:
 - Mappers and assemblers are pure.
 - Schema changes use Flyway.
 
-Before editing, search for existing local patterns and map dependent DTOs, mappers, services, repositories, tests, and config. Place new backend code in the closest feature/domain slice while preserving controller/use-case/service/repository boundaries.
+Before editing, search for existing local patterns and map dependent DTOs, mappers, services, repositories, tests, and config. Place new backend code in the closest product/domain module while preserving `api`, `application`, `domain`, and `infrastructure` boundaries.
 
 Do not design separate backend behavior for Android, iOS, and web. If clients need different presentation, expose stable API data and let client adapters map it to view models.
 

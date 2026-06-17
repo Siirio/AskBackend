@@ -7,8 +7,8 @@ Read `AGENTS.md`, `ARCHITECTURE_NARRATIVE.md`, and `CODEX_PLAYBOOK.md` first.
 Rules:
 
 - Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, OpenAPI, JUnit 5.
-- Use feature-sliced backend organization inspired by Feature-Sliced Design.
-- Keep related API contracts, use cases, services, repositories, mappers, tests, and feature config near the product capability when it improves local reasoning.
+- Do not copy frontend FSD literally into Spring Boot. Use backend feature/domain-based packaging with clean/hexagonal boundaries.
+- Keep related API contracts, use cases, domain rules, repositories, mappers, tests, and feature config near the product capability when it improves local reasoning.
 - Keep core provider-agnostic.
 - Treat external systems as adapters.
 - Use DTOs for API boundaries.

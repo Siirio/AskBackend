@@ -56,11 +56,59 @@ Frontend implementations may have different visual UI and platform behavior, but
 
 ## Backend Architecture Direction
 
-AskBackend should follow a feature-sliced architecture compatible with Feature-Sliced Design principles. In backend terms, this means organizing code around product capabilities and bounded feature areas while preserving clean Spring boundaries inside each area.
+Feature-Sliced Design is a frontend methodology. Do not copy it literally into Spring Boot: `pages`, `widgets`, `features`, `entities`, and `shared` are frontend concepts and would look unnatural as backend packages.
 
-The goal is local reasoning and reusability: work on request routing, catalog import, service scheduling, supplier onboarding, response handling, or chat should not require hunting through many unrelated global folders.
+The backend should use the same useful idea of slicing, but in backend terms: package-by-feature, modular monolith, domain modules, DDD-style modules, and clean/hexagonal architecture boundaries.
 
-Use feature/domain slices for product areas, and keep shared infrastructure truly shared. A slice may contain its API contracts, use cases, domain services, mappers, repositories, tests, and configuration needed for that feature. Cross-feature calls should go through explicit interfaces or application use cases, not direct hidden coupling.
+Avoid a structure that grows into broad technical buckets such as one global `controller`, `service`, `repository`, `dto`, `mapper`, and `entity` package for every product area. That shape becomes hard to navigate as Ask grows across customers, sellers, requests, responses, categories, branches, notifications, moderation, integrations, analytics, catalog import, and services.
+
+Prefer feature/domain-based packaging:
+
+```text
+src/main/java/com/ask/
+  request/
+    api/
+      RequestController.java
+      dto/
+    application/
+      CreateRequestService.java
+      RespondToRequestService.java
+    domain/
+      Request.java
+      RequestStatus.java
+      RequestPolicy.java
+    infrastructure/
+      RequestRepository.java
+      JpaRequestRepository.java
+
+  store/
+    api/
+      StoreController.java
+      dto/
+    application/
+      RegisterStoreService.java
+      UpdateStoreAvailabilityService.java
+    domain/
+      Store.java
+      StoreBranch.java
+    infrastructure/
+      StoreRepository.java
+
+  product/
+    api/
+    application/
+    domain/
+    infrastructure/
+
+  shared/
+    security/
+    errors/
+    persistence/
+    clock/
+    events/
+```
+
+Inside each module, keep clean boundaries: `api` receives HTTP/API input, `application` orchestrates use cases, `domain` owns business rules, and `infrastructure` talks to persistence or technical adapters. Shared infrastructure must stay truly shared, and cross-module calls should go through explicit interfaces or application use cases, not hidden direct coupling.
 
 ## Catalog And Services Direction
 
