@@ -8,13 +8,15 @@ This is the first document to read when opening Ask with Codex or onboarding a d
 2. `ARCHITECTURE_NARRATIVE.md`
 3. `AGENTS.md`
 4. `CODEX_PLAYBOOK.md`
-5. `IMPLEMENTATION_PIPELINE.md`
-6. `SELF_AWARE_ORIGIN.md`
-7. `skills/README.md`
-8. `mcp/README.md`
-9. `plugins/README.md`
-10. `DEPRECATED_WEB_STAGING_NOTES.md` only when deciding whether old browser-prototype logic should be kept
-11. `CHANGELOG_FOUNDATION.md`
+5. `CODE_RULES.md`
+6. `IMPLEMENTATION_PIPELINE.md`
+7. `PRODUCT_SERVICE_FOUNDATION_ERD.md`
+8. `SELF_AWARE_ORIGIN.md`
+9. `skills/README.md`
+10. `mcp/README.md`
+11. `plugins/README.md`
+12. `DEPRECATED_WEB_STAGING_NOTES.md` only when deciding whether old browser-prototype logic should be kept
+13. `CHANGELOG_FOUNDATION.md`
 
 ## Immediate Rules
 
@@ -22,7 +24,7 @@ This is the first document to read when opening Ask with Codex or onboarding a d
 - Do not overwrite existing `AGENTS.md`, skill docs, MCP config, plugin config, or workflow files without reading them.
 - Do not copy local Codex configs, auth files, tokens, sqlite state, generated caches, plugin caches, runtime paths, or machine-specific setup into the repo.
 - Do not make old browser-staging behavior a backend requirement.
-- Preserve the product direction: request routing now, catalog and integration depth over time, services later.
+- Preserve the product direction: local search first, known products/services before request creation, request fallback when exact data is missing, and catalog/service depth over time.
 - Use system analysis before coding catalog, services, schedules, integrations, data ownership, scaling, or API contract changes.
 
 ## If The Chat Is Interrupted
@@ -45,4 +47,4 @@ Continue from the last completed stage. Do not restart by overwriting files.
 - Separate product decisions from temporary prototype details.
 - Warn when a request conflicts with vision or architecture.
 - Offer compatible alternatives.
-- Verify work with the right level of tests or checks.
+- Verify work with the right level of compile, migration, contract, review, or no-secret checks.

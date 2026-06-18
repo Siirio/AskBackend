@@ -20,14 +20,15 @@ Instead, when a person asks why a decision exists, cite the current local founda
 Example:
 
 ```text
-The local Ask foundation treats catalog as import and normalization work, not simple product CRUD, so I am starting with a data-source and mapping analysis.
+The local Ask foundation treats catalog and service data as the basis for search-first discovery, so I am starting with source, indexing, confidence, and fallback-request analysis.
 ```
 
 ## What This Foundation Should Remember
 
-- Ask is a request-routing and availability platform.
-- Manual MVP is valid.
-- Catalog and integrations are growth paths.
+- Ask is a local search platform for city products and services.
+- Known products/services should be shown before creating a request.
+- Manual requests are valid fallback when exact data is missing, stale, or uncertain.
+- Catalog, search indexing, and integrations are core growth paths.
 - Services need their own analysis.
 - Old browser staging is not backend architecture.
 - AI agents should preserve consistency without suppressing developer judgment.

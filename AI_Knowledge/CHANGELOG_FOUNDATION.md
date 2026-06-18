@@ -1,5 +1,28 @@
 # Foundation Changelog
 
+## 2026-06-18 - Project Verification Scope Correction
+
+Updated project guidance to stop requiring or creating tests for AskBackend foundation work unless the project rule is explicitly reversed. Verification language now points to compile, migration, OpenAPI contract, review, provider-contract, and no-secret checks.
+
+## 2026-06-18 - Product And Service ERD Strategy
+
+Added `PRODUCT_SERVICE_FOUNDATION_ERD.md` with the MVP entity strategy and ERD. The product model now treats each concrete sellable variation as a `product` with tags for search, defers variant/attribute tables, adds `booking` for confirmed service lifecycle, uses universal `conversation` tables for messaging, and keeps `service_resource` as an optional abstract capacity resource rather than a specialist account.
+
+## 2026-06-18 - Initial Backend Architecture And Entities
+
+Initialized the Spring Boot Maven project skeleton, root `AGENTS.md`, `CODE_RULES.md`, feature package folders, UUIDv7 base entity, Lombok-backed JPA entity classes, and enum foundations. Only entities and architecture scaffolding were added; no controllers, processors, services, repositories, DTOs, migrations, or tests were created.
+
+## 2026-06-18 - Search-First Strategy Actualization
+
+Updated the product strategy:
+
+- Ask is now described as local search for products and services across city businesses.
+- Customers should see known products/services first when Ask has data.
+- If a product or service exists in the database, Ask should show where it is available or which business provides it.
+- ProductRequest/request routing remains as fallback for missing, stale, low-confidence, or confirmation-needed data.
+- Catalog, service data, search indexing, Excel/CSV import, and result confidence are core product architecture, not distant optional additions.
+- Data-truth rules still apply: do not invent stock, slots, logistics, delivery, or guaranteed availability without supplier or integration data.
+
 ## 2026-06-17 - Goal Actualization
 
 Updated the product architecture idea:
@@ -42,7 +65,7 @@ Restored the foundation document set after an accidental over-revert.
 ### Preserved
 
 - Product vision.
-- Manual MVP direction.
+- Manual request fallback direction.
 - Catalog/import/search direction.
 - Services/scheduling analysis direction.
 - Backend architecture rules.

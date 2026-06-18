@@ -59,10 +59,10 @@ If a product decision is missing, ask before implementing.
 Choose verification by risk:
 
 - docs-only: file inventory, content review, no secret/local-state scan;
-- backend code: compile, relevant tests, migrations, OpenAPI contract checks;
-- frontend code: build, lint, tests, browser/mobile verification when visible;
-- integration code: mocked provider tests, config checks, no secret leakage;
-- architecture changes: docs/changelog updates plus tests where behavior changed.
+- backend code: compile, migrations, OpenAPI contract checks, and focused review;
+- frontend code: build, lint, browser/mobile verification when visible;
+- integration code: config checks, provider-contract review, no secret leakage, and no real calls without explicit approval;
+- architecture changes: docs/changelog updates plus reviewed dependency impact.
 
 ## Stage 6 - Record
 

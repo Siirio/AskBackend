@@ -8,12 +8,13 @@ Read `README.md`, `AGENTS.md`, and the relevant section of this playbook before 
 
 ## Backend Work
 
-Use this route for Java, Spring Boot, APIs, persistence, request routing, stores, catalog, services, or integrations.
+Use this route for Java, Spring Boot, APIs, persistence, search, request fallback, stores, catalog, services, or integrations.
 
 Expected direction:
 
-- Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, OpenAPI, JUnit 5.
+- Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, OpenAPI.
 - One backend serves Android, iOS, and web clients through stable shared APIs.
+- Search-first product flow: return known products/services/businesses before creating fallback requests.
 - Do not copy frontend FSD literally. Use backend feature/domain-based packaging with clean/hexagonal boundaries.
 - Keep product capability code locally understandable instead of scattering one feature across many global folders.
 - Core business logic remains provider-agnostic.
@@ -24,17 +25,18 @@ Expected direction:
 - Mappers and assemblers are pure.
 - Schema changes use Flyway.
 
-Before editing, search for existing local patterns and map dependent DTOs, mappers, services, repositories, tests, and config. Place new backend code in the closest product/domain module while preserving `api`, `application`, `domain`, and `infrastructure` boundaries.
+Before editing, search for existing local patterns and map dependent DTOs, mappers, services, repositories, and config. Place new backend code in the closest product/domain module while preserving `api`, `application`, `domain`, and `infrastructure` boundaries.
 
 Do not design separate backend behavior for Android, iOS, and web. If clients need different presentation, expose stable API data and let client adapters map it to view models.
 
 ## Frontend And Mobile Work
 
-Use this route for UI, client contracts, mobile UX, frontend prototypes, or frontend/backend API alignment.
+Use this route for UI, client contracts, mobile UX, frontend prototypes, search UX, request fallback, or frontend/backend API alignment.
 
 Expected direction:
 
 - Ask is mobile-first and product-first.
+- Customer discovery is search-first; request creation is fallback when backend data is insufficient.
 - Native mobile clients may become primary; browser prototypes are tools, not product architecture.
 - Android, iOS, and web UI should consume a shared design-independent client/API abstraction where possible.
 - Keep API DTOs separate from UI view models.
@@ -61,7 +63,7 @@ Do not treat catalog as simple product CRUD. First analyze:
 - search behavior;
 - supplier correction workflow.
 
-Manual request routing must still work before catalog is mature unless product direction explicitly changes.
+Catalog-backed search is a core product path. Manual request routing remains the fallback for missing, stale, or uncertain data.
 
 Product sellers should not have to recreate existing catalogs manually. Prefer upload, preview, column mapping, validation, correction, and repeated import/update flows for Excel and CSV.
 
@@ -100,6 +102,7 @@ Rules:
 Before code, produce a short analysis when the task affects:
 
 - catalog;
+- search indexing;
 - services;
 - schedules;
 - integrations;

@@ -1,6 +1,6 @@
 # Services Search Skill
 
-Use for service discovery, schedules, appointments, windows, specialists, branches, booking, and provider availability.
+Use for service discovery, service search, schedules, appointments, windows, specialists, branches, booking, and provider availability.
 
 Services are not products with a different label.
 
@@ -19,4 +19,4 @@ Analyze:
 - trusted availability source;
 - scaling beyond one city/provider type.
 
-If availability is not backed by a reliable source, model it as confirmation-needed rather than guaranteed.
+If availability is not backed by a reliable source, model it as confirmation-needed or fallback request rather than guaranteed.
