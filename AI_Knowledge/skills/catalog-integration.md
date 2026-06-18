@@ -20,4 +20,4 @@ Likely sources include Excel, CSV, MoySklad, POS, e-commerce exports, CRM, and m
 
 Catalog import should support upload, preview, column mapping, validation, normalization, correction, import history, and repeated updates.
 
-Manual request routing must work before catalog is mature unless product direction explicitly changes.
+Catalog-backed search is now a core product path. Manual request routing remains the fallback for missing, stale, or uncertain data.

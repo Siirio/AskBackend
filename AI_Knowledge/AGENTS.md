@@ -4,11 +4,13 @@ These rules guide AI agents and developers working on Ask.
 
 ## Core Product Rules
 
-- Ask is a request-routing and availability platform.
+- Ask is a local search platform for products and services across city businesses.
 - Ask is not only a Telegram or WhatsApp broadcasting tool.
 - Ask is not sport-nutrition-only.
-- The MVP can be manual: one customer request is routed to relevant suppliers, and suppliers respond manually.
-- Long-term architecture must support catalog import, normalization, search, integrations, automatic availability when justified, and service discovery.
+- The customer should first see found products/services when Ask has enough data.
+- If a product or service is already in the Ask database, the customer should immediately understand where it is available or which business provides it.
+- If exact data is missing, stale, or low-confidence, Ask can send a fallback request to suitable sellers or service providers.
+- Architecture must support catalog import, normalization, search indexing, integrations, automatic availability when justified, service discovery, and request fallback.
 - Do not invent inventory, logistics, schedule, delivery, or availability facts without explicit supplier input or real integration data.
 - AskBackend is one backend for Android, iOS, and any future website. Never create separate backends per client implementation.
 
@@ -19,17 +21,18 @@ These rules guide AI agents and developers working on Ask.
 - Do not run `git commit` or `git push` unless explicitly requested in the current turn.
 - Do not overwrite existing `AGENTS.md`, skill docs, MCP config, plugin config, or workflow files without reading and preserving their logic.
 - Keep changes scoped to the requested work.
+- Do not create or write tests unless the user explicitly reverses this project rule, because AskBackend foundation work should stay focused on schema, contracts, compile checks, and reviewed logic.
 - Do not copy secrets, local Codex configs, auth files, sqlite state, generated caches, plugin caches, or runtime paths into the repo.
 
 ## Backend Direction
 
-- Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, Spring Data JPA, Spring Security, OpenAPI, JUnit 5.
+- Java 21, Maven, Spring Boot, Spring MVC, PostgreSQL, Flyway, Spring Data JPA, Spring Security, OpenAPI.
 - Do not copy frontend FSD literally into Spring Boot. Use backend equivalents: package-by-feature, modular monolith, domain modules, DDD-style modules, and clean/hexagonal boundaries.
-- Keep request routing, catalog import, service scheduling, supplier onboarding, responses, and chat locally understandable instead of scattering each feature across unrelated global folders.
+- Keep search, catalog import, service scheduling, request fallback, supplier onboarding, responses, and chat locally understandable instead of scattering each feature across unrelated global folders.
 - Do not introduce Gradle, Kotlin, WebFlux, Kafka, RabbitMQ, or microservices without explicit approval and justification.
 - Core business logic must stay provider-agnostic.
 - External systems are adapters or providers.
-- Real external calls require explicit scope, credentials, provider docs, and tests.
+- Real external calls require explicit scope, credentials, provider docs, and explicit approval.
 - Backend business rules must be client-agnostic. Android, iOS, and web clients consume the same API contracts.
 
 Target chain for non-trivial workflows:
@@ -48,7 +51,7 @@ Backend modules should be organized by product area, for example `request`, `sto
 - Supplier data may come from Excel, CSV, MoySklad, POS, e-commerce, CRM, messengers, or manual entry.
 - Design import, mapping, normalization, categories, attributes, branches, freshness, source of truth, and search before coding.
 - Product catalog work must support Excel and CSV import because sellers should not recreate existing catalogs manually.
-- Manual request routing must work before catalog is mature unless product direction explicitly changes.
+- Catalog-backed search is a core product path. Manual request routing is a fallback for missing, stale, or uncertain data.
 
 ## Services Rules
 
@@ -80,6 +83,7 @@ Backend modules should be organized by product area, for example `request`, `sto
 Politely flag risk before editing if a request would:
 
 - turn Ask into only a broadcast app;
+- turn search into a secondary feature behind request broadcasting;
 - hardcode one local market;
 - make old browser staging a backend requirement;
 - invent unavailable data truth;

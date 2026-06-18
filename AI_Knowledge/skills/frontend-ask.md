@@ -11,6 +11,6 @@ Rules:
 - Frontend owns normal UI localization.
 - Backend returns stable machine-readable status and error codes.
 - Coordinate API shape changes with backend contracts.
-- Preserve Smart Search, supplier inbox, scalable response feeds, and request/supplier-scoped chat as product concepts.
+- Preserve search-first discovery, Smart Search, supplier inbox, scalable response feeds, request fallback, and request/supplier-scoped chat as product concepts.
 
 Do not copy browser-only prototype mechanics into backend requirements.
