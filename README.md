@@ -68,7 +68,7 @@ Avoid a structure that grows into broad technical buckets such as one global `co
 Prefer feature/domain-based packaging:
 
 ```text
-src/main/java/com/ask/
+src/main/java/kz/ask/
   request/
     api/
       RequestController.java
@@ -131,25 +131,21 @@ Current product surface direction:
 
 ## Current Foundation Scope
 
-This repository is a foundation for future Ask backend and AI-assisted development. It preserves the product vision, architecture rules, workflow rules, and implementation pipeline that new developers and Codex agents should load before coding.
+This repository is a foundation for future Ask backend and AI-assisted development. It preserves the product vision, backend code rules, data architecture, client contract expectations, and first-session Codex setup notes that new developers and Codex agents should load before coding.
 
 It is not an old prototype dump and not a local-machine-specific Codex export.
 
 ## Important Documents
 
-- `FIRST_READ_THIS.md`: start here when a new person or Codex agent opens the repo.
-- `ARCHITECTURE_NARRATIVE.md`: technical story and architecture direction.
-- `AGENTS.md`: rules for AI agents and developers.
-- `CODE_RULES.md`: project-specific code architecture, folder creation, DTO, entity, Lombok, and verification rules.
-- `CODEX_PLAYBOOK.md`: compact task router for backend, frontend, catalog, services, integrations, and MCP usage.
-- `IMPLEMENTATION_PIPELINE.md`: how to keep extending this foundation safely.
-- `PRODUCT_SERVICE_FOUNDATION_ERD.md`: MVP entity strategy, ERD, table connections, booking, messaging, and product/service search boundaries.
-- `SELF_AWARE_ORIGIN.md`: how to reason about foundation decisions without over-citing old context.
-- `FOUNDATION_AUDIT.md`: what kind of material belongs in the foundation and what should be excluded.
-- `skills/`: focused skill docs that can become installable Codex skills if needed.
-- `mcp/README.md` and `plugins/README.md`: tool guidance without secrets or machine-specific config.
-- `DEPRECATED_WEB_STAGING_NOTES.md`: archive-only notes about old browser-staging lessons.
-- `CHANGELOG_FOUNDATION.md`: what changed in this foundation.
+- `AGENTS.md`: short agent workflow, first-session pointer, task routing, and product guardrails.
+- `AI_Knowledge/first_steps/FIRST_READ_THIS.md`: start here when a new person or Codex agent opens the repo.
+- `AI_Knowledge/first_steps/IMPLEMENTATION_PIPELINE.md`: how to keep extending this foundation safely.
+- `AI_Knowledge/CODE_RULES.md`: project-specific backend code architecture, folder creation, DTO, entity, Lombok, and verification rules.
+- `AI_Knowledge/data_architecture/ARCHITECTURE_NARRATIVE.md`: technical story and architecture direction.
+- `AI_Knowledge/data_architecture/PRODUCT_SERVICE_FOUNDATION_ERD.md`: MVP entity strategy, ERD, table connections, booking, messaging, and product/service search boundaries.
+- `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md`: backend-facing contract extracted from the UX/UI flow.
+- `codex/CODEX_INFRASTRUCTURE.md`: expected Codex plugins, MCP servers, and routing behavior without local config.
+- `AI_Knowledge/CHANGELOG_FOUNDATION.md`: what changed in this foundation.
 
 ## Non-Goals
 
