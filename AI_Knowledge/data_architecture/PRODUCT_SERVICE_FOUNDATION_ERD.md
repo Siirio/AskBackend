@@ -7,6 +7,7 @@ This document defines the MVP database foundation for products, services, search
 - Keep `definition vs offer`: searchable real-world results are branch-level offers, not abstract definitions.
 - Keep `business_branch`: customers must see the concrete branch that can provide the product or service.
 - Keep `search_document`: product offers, service branch offers, and businesses are indexed through one searchable surface.
+- Add `search_session`, `search_snapshot`, and `search_result_snapshot`: history must reopen fixed result state instead of re-running search against changed live data.
 - Keep `data_source`, `catalog_import`, and `raw_catalog_row`: imports must preserve raw supplier data and normalize it into searchable offers.
 - Keep `customer_request` as fallback: requests are created when search data is missing, stale, low-confidence, or confirmation-needed.
 - Add `booking`: a confirmed service slot is not the same as a fallback request.
@@ -26,7 +27,7 @@ Current evidence:
 AskBackend foundation states that Ask is search-first, known products and services should appear before fallback requests, services are not products, catalog import is core, and data truth must be explicit.
 
 Proposed model:
-Use shared business and branch ownership, concrete product rows with tags, branch-level product offers, service offerings, branch-level service offers, optional abstract resources for scheduled services, bookings for confirmed service commitments, universal conversations, and search documents over real searchable surfaces.
+Use shared business and branch ownership, concrete product rows with tags, branch-level product offers, service offerings, branch-level service offers, optional abstract resources for scheduled services, bookings for confirmed service commitments, universal conversations, search documents over real searchable surfaces, and user-owned search snapshots for history.
 
 MVP shortcut:
 Treat each product variation as a separate concrete product. Use `tags` and `search_document` text to make queries like `Mammut 5kg Chocolate` exact enough without adding Shopify-style variants.
@@ -75,6 +76,9 @@ Review table ownership, foreign keys, search indexing inputs, state transitions,
 ### Search And Fallback
 
 - `search_document`: normalized searchable surface for product offers, service branch offers, and businesses.
+- `search_session`: user-owned current search lifecycle with preserved raw query.
+- `search_snapshot`: immutable saved search context for history.
+- `search_result_snapshot`: saved product, service, and business result rows for one snapshot.
 - `customer_request`: fallback request created when search cannot confidently answer.
 - `request_target`: branch selected to receive a fallback request.
 - `supplier_response`: branch response to a request target.
@@ -184,6 +188,82 @@ CONFIRMED -> CANCELLED
 
 Bookings must only reserve real time when the branch confirms it or a trusted schedule/integration provides it.
 
+### `search_session`
+
+- `id`
+- `user_id`
+- `city_id`
+- `category_id`
+- `raw_query`
+- `scope`
+- `status`
+- `started_at`
+- `last_active_at`
+- `snapshot_expires_at`
+- `created_at`
+- `updated_at`
+
+`raw_query` is the exact user input. Search processing may normalize tokens internally, but must not replace the preserved query.
+
+`scope` should distinguish:
+
+- `ALL`
+- `PRODUCT_FIRST`
+- `SERVICE_FIRST`
+- `BUSINESS_FIRST`
+
+`status` should distinguish:
+
+- `ACTIVE`
+- `SNAPSHOTTED`
+- `EXPIRED`
+- `CANCELLED`
+- `FAILED`
+
+### `search_snapshot`
+
+- `id`
+- `search_session_id`
+- `user_id`
+- `raw_query`
+- `scope`
+- `city_id`
+- `category_id`
+- `status`
+- `result_count`
+- `product_result_count`
+- `service_result_count`
+- `business_result_count`
+- `request_id`
+- `booking_id`
+- `expires_at`
+- `created_at`
+- `updated_at`
+
+Snapshot rows preserve what the customer saw at the time. They must not imply current stock, current price, current schedule, or current booking truth after creation.
+
+### `search_result_snapshot`
+
+- `id`
+- `search_snapshot_id`
+- `result_type`
+- `result_rank`
+- `product_offer_id`
+- `service_branch_offer_id`
+- `business_id`
+- `branch_id`
+- `title`
+- `summary`
+- `price`
+- `status_label_key`
+- `availability_confidence`
+- `source_type`
+- `distance_meters`
+- `created_at`
+- `updated_at`
+
+Foreign keys to live offers, branches, and businesses are optional so old search history can still render if live data later becomes inactive.
+
 ## ERD
 
 ```mermaid
@@ -224,6 +304,20 @@ erDiagram
     product_offer ||--o| search_document : indexed_as
     service_branch_offer ||--o| search_document : indexed_as
     business ||--o| search_document : indexed_as
+    app_user ||--o{ search_session : owns
+    city ||--o{ search_session : scopes
+    category ||--o{ search_session : scopes
+    search_session ||--o{ search_snapshot : saves
+    app_user ||--o{ search_snapshot : owns
+    city ||--o{ search_snapshot : scopes
+    category ||--o{ search_snapshot : scopes
+    customer_request ||--o{ search_snapshot : may_link
+    booking ||--o{ search_snapshot : may_link
+    search_snapshot ||--o{ search_result_snapshot : contains
+    product_offer ||--o{ search_result_snapshot : may_reference
+    service_branch_offer ||--o{ search_result_snapshot : may_reference
+    business ||--o{ search_result_snapshot : may_reference
+    business_branch ||--o{ search_result_snapshot : may_reference
 
     app_user ||--o{ customer_request : creates
     city ||--o{ customer_request : scopes
@@ -293,6 +387,20 @@ erDiagram
 - `search_document.product_offer_id -> product_offer.id`
 - `search_document.service_branch_offer_id -> service_branch_offer.id`
 - `search_document.business_id -> business.id`
+- `search_session.user_id -> app_user.id`
+- `search_session.city_id -> city.id`
+- `search_session.category_id -> category.id`
+- `search_snapshot.search_session_id -> search_session.id`
+- `search_snapshot.user_id -> app_user.id`
+- `search_snapshot.city_id -> city.id`
+- `search_snapshot.category_id -> category.id`
+- `search_snapshot.request_id -> customer_request.id`
+- `search_snapshot.booking_id -> booking.id`
+- `search_result_snapshot.search_snapshot_id -> search_snapshot.id`
+- `search_result_snapshot.product_offer_id -> product_offer.id`
+- `search_result_snapshot.service_branch_offer_id -> service_branch_offer.id`
+- `search_result_snapshot.business_id -> business.id`
+- `search_result_snapshot.branch_id -> business_branch.id`
 - `customer_request.user_id -> app_user.id`
 - `customer_request.city_id -> city.id`
 - `customer_request.category_id -> category.id`
@@ -354,6 +462,14 @@ Fallback request creation should be allowed when:
 - product stock is unknown;
 - service slot availability is confirmation-needed;
 - customer wants supplier confirmation.
+
+Search snapshot creation should happen when:
+
+- the user starts another current search;
+- the client explicitly saves or closes the current search;
+- a fallback request or booking context should remain visible from history.
+
+Search snapshots should store display-safe result data and optional live references. Reopening a snapshot must not re-run live search as if it were the original result state.
 
 Booking creation should be allowed only when:
 

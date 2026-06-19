@@ -1,5 +1,9 @@
 # Foundation Changelog
 
+## 2026-06-19 - Search Session Snapshot Foundation
+
+Added Task 00 implementation for search history foundation: `SearchSession`, `SearchSnapshot`, `SearchResultSnapshot`, and related search enums. Updated the product/service ERD so customer history reopens fixed saved result state instead of pretending live search documents still represent the original result set.
+
 ## 2026-06-19 - Documentation Structure Cleanup
 
 Moved first-session guidance into `AI_Knowledge/first_steps`, moved large product/service architecture into `AI_Knowledge/data_architecture`, and added `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md` as the backend-facing extraction from the UX/UI flow.
