@@ -1,6 +1,6 @@
 # AskBackend Code Rules
 
-This document keeps project-specific code restrictions and implementation rules for fresh AI sessions and developers.
+This document keeps project-specific code restrictions and implementation rules for fresh AI sessions and developers. Agent workflow rules belong in `AGENTS.md`; Codex infrastructure belongs in `codex/CODEX_INFRASTRUCTURE.md`.
 
 ## Core Boundary
 
