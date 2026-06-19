@@ -7,9 +7,9 @@ Use this pipeline to keep the Ask foundation useful as the project grows.
 Before editing:
 
 1. Check current git status.
-2. Read `FIRST_READ_THIS.md`.
-3. Read the task route in `CODEX_PLAYBOOK.md`.
-4. Read `AGENTS.md` and any closer project-specific instructions.
+2. Read `AI_Knowledge/first_steps/FIRST_READ_THIS.md`.
+3. Read `AGENTS.md` and any closer project-specific instructions.
+4. Read `AI_Knowledge/CODE_RULES.md` before backend code changes.
 5. Search for existing local patterns.
 
 ## Stage 2 - Classify The Task
@@ -75,6 +75,6 @@ Update `CHANGELOG_FOUNDATION.md` or project docs when work changes:
 - services strategy;
 - integration assumptions;
 - AI workflow;
-- MCP/plugin guidance.
+- Codex infrastructure guidance.
 
 Use Dashboard or similar lifecycle tools only for meaningful starts, pivots, and completions.

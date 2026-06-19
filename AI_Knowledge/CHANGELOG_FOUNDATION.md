@@ -1,5 +1,13 @@
 # Foundation Changelog
 
+## 2026-06-19 - Documentation Structure Cleanup
+
+Moved first-session guidance into `AI_Knowledge/first_steps`, moved large product/service architecture into `AI_Knowledge/data_architecture`, and added `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md` as the backend-facing extraction from the UX/UI flow.
+
+Separated agent workflow from backend code rules: `AGENTS.md` is now the short agent entrypoint and task router, while `AI_Knowledge/CODE_RULES.md` remains the code architecture rule file.
+
+Moved Codex plugin and MCP expectations into `codex/CODEX_INFRASTRUCTURE.md` and removed project-local MCP, plugin, old skill, audit, origin, deprecated web-staging, and archive notes that were not useful for new backend programmers.
+
 ## 2026-06-18 - Project Verification Scope Correction
 
 Updated project guidance to stop requiring or creating tests for AskBackend foundation work unless the project rule is explicitly reversed. Verification language now points to compile, migration, OpenAPI contract, review, provider-contract, and no-secret checks.
