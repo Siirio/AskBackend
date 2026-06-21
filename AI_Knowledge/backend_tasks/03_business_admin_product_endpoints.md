@@ -1,228 +1,193 @@
-# Task 03: Business Admin Product Catalog And Offer Endpoints
+# Task 03: Business Cabinet Product Endpoints
 
-## Goal
+|   |   |
+|---|---|
+|**Описание**|Endpoint'ы бизнес-кабинета для реального сохранения товаров конкретного зарегистрированного филиала/магазина.|
+|**Модуль системы**|catalog, business, search|
 
-Create business-admin-facing product endpoints for managing concrete products and branch-level product offers without exposing client search internals as admin write APIs.
+## Зависимости
 
-## Required Foundation
+- `Task 05: Identity Auth And Session Endpoints`
+- `Business`, `BusinessMember`, `BusinessBranch`, `BusinessContact`
+- `Category`, `Product`, `ProductOffer`, `SearchDocument`
 
-This task depends on:
+## Общие правила задачи
 
-- `Business`
-- `BusinessMember`
-- `BusinessBranch`
-- `Category`
-- `DataSource`
-- `Product`
-- `ProductOffer`
-- `CatalogImport`
-- `RawCatalogRow`
-- `SearchDocument`
+- Бизнес onboarding production-facing: добавленные товары сохраняются в реальной базе.
+- Каждая текущая регистрация создает конкретный филиал/магазин, и товары относятся к нему.
+- Товар не имеет отдельного бизнес-статуса вроде `Нужно обновить`.
+- Управление товаром: `Редактировать`, `Выключить`, `Включить`, `Удалить`.
+- Включенный товар попадает в клиентский поиск.
+- Выключенный или удаленный товар не попадает в клиентский live search.
+- Контракт товаров описывает только включение/выключение/удаление, цену, описание, теги и search visibility.
+- Инвентарный учет количества не входит в MVP.
+- Актуальность определяется действием бизнеса: пока товар включен, он актуален для показа.
 
-## Authorization Rules
+## Список товаров филиала - GET /api/v1/business-admin/branches/{branchId}/products
 
-- Caller must be an active `BusinessMember` of the target business.
-- Role must allow product or catalog management.
-- Business and branch must be active.
-- Admin endpoints must never allow managing another business by guessing IDs.
+|   |   |
+|---|---|
+|**Описание**|Возвращает товары конкретного филиала.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/business-admin/branches/{branchId}/products`|
+|**Метод запроса**|GET|
 
-## Endpoints
+### Параметры
 
-### List Business Products
+| № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
+|---|---|---|---|---|---|---|
+|1|ID филиала|`branchId`|uuid path|+|-||
+|2|ID категории|`categoryId`|uuid query|-|-||
+|3|Состояние показа|`enabled`|boolean query|-|-||
+|4|Поиск|`query`|string query|-|-|name, SKU, tags|
+|5|Страница|`page`|integer query|-|0||
+|6|Размер|`size`|integer query|-|20||
 
-`GET /api/v1/business-admin/businesses/{businessId}/products`
+### BusinessProductRowResponse
 
-Query:
+| № | Поле | Тип | Источник | Комментарий |
+|---|---|---|---|---|
+|1|`productId`|uuid|product||
+|2|`productOfferId`|uuid|product offer||
+|3|`branchId`|uuid|branch||
+|4|`categoryId`|uuid|category||
+|5|`name`|string|product||
+|6|`description`|string|product||
+|7|`sku`|string|product|nullable|
+|8|`tags`|array|product||
+|9|`price`|decimal|product offer|nullable|
+|10|`enabled`|boolean|product offer|Controls live search visibility|
+|11|`updatedAt`|datetime|entity audit||
 
-- `categoryId`
-- `status`
-- `query`
-- `page`
-- `size`
+## Создание товара - POST /api/v1/business-admin/branches/{branchId}/products
 
-Response: `BusinessAdminProductListResponse`
+|   |   |
+|---|---|
+|**Описание**|Создает товар и филиальный offer для текущего филиала.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/business-admin/branches/{branchId}/products`|
+|**Метод запроса**|POST|
 
-- `items`
-- `page`
+### Параметры
 
-`BusinessAdminProductRowResponse`:
+| № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
+|---|---|---|---|---|---|---|
+|1|ID филиала|`branchId`|uuid path|+|-||
+|2|ID категории|`categoryId`|uuid body|+|-||
+|3|Название|`name`|string body|+|-||
+|4|Описание|`description`|string body|-|-||
+|5|SKU|`sku`|string body|-|-||
+|6|Теги|`tags`|array body|-|-|Для smart search|
+|7|Цена|`price`|decimal body|-|-||
+|8|Включен|`enabled`|boolean body|-|true||
 
-- `productId`
-- `categoryId`
-- `name`
-- `description`
-- `sku`
-- `tags`
-- `status`
-- `offerCount`
-- `activeOfferCount`
-- `updatedAt`
+### Правила
 
-Rules:
+- Созданный включенный товар сразу становится доступен для клиентского поиска после обновления search document.
+- Search document строится по названию, описанию, тегам, категории, бизнесу, филиалу и цене.
+- Не создавать variant tables.
+- Не запрашивать stock quantity.
 
-- Return products owned by the business only.
-- Search by product name, SKU, and tags.
-- Do not return JPA entities.
+## Обновление товара - PATCH /api/v1/business-admin/branches/{branchId}/products/{productId}
 
-### Create Product
+|   |   |
+|---|---|
+|**Описание**|Обновляет данные товара и цену/показ филиального offer.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/business-admin/branches/{branchId}/products/{productId}`|
+|**Метод запроса**|PATCH|
 
-`POST /api/v1/business-admin/businesses/{businessId}/products`
+### Параметры
 
-Request: `CreateBusinessAdminProductRequest`
+| № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
+|---|---|---|---|---|---|---|
+|1|ID филиала|`branchId`|uuid path|+|-||
+|2|ID товара|`productId`|uuid path|+|-||
+|3|ID категории|`categoryId`|uuid body|-|-||
+|4|Название|`name`|string body|-|-||
+|5|Описание|`description`|string body|-|-||
+|6|SKU|`sku`|string body|-|-||
+|7|Теги|`tags`|array body|-|-||
+|8|Цена|`price`|decimal body|-|-||
+|9|Включен|`enabled`|boolean body|-|-||
 
-- `categoryId`
-- `name`
-- `description`
-- `sku`
-- `tags`
-- `status`
+### Правила
 
-Response: `BusinessAdminProductResponse`
+- Изменение названия, описания, тегов, категории или цены обновляет search document.
+- `enabled=false` выключает товар из live client search.
+- `enabled=true` возвращает товар в live client search.
 
-- `productId`
-- `businessId`
-- `categoryId`
-- `name`
-- `description`
-- `sku`
-- `tags`
-- `status`
-- `createdAt`
-- `updatedAt`
+## Удаление товара - DELETE /api/v1/business-admin/branches/{branchId}/products/{productId}
 
-Rules:
+|   |   |
+|---|---|
+|**Описание**|Мягко удаляет товар/offer из филиала и убирает из live search.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/business-admin/branches/{branchId}/products/{productId}`|
+|**Метод запроса**|DELETE|
 
-- One concrete sellable variation is one `Product`.
-- Do not create product variant tables.
-- `tags` support grouping and search language.
-- `sku` is optional unless the business uses it.
+### Правила
 
-### Update Product
+- Не физически удалять историю, если товар участвовал в запросах или ответах.
+- Live search больше не должен возвращать удаленный товар.
+- Исторические snapshots продолжают показывать зафиксированные данные с маркировкой historical.
 
-`PATCH /api/v1/business-admin/businesses/{businessId}/products/{productId}`
+## Пример создания товара
 
-Request: `UpdateBusinessAdminProductRequest`
+```http
+POST /api/v1/business-admin/branches/branch-uuid-001/products
+Authorization: Bearer <token>
+Content-Type: application/json
 
-- `categoryId`
-- `name`
-- `description`
-- `sku`
-- `tags`
-- `status`
+{
+  "categoryId": "cat-uuid-pos",
+  "name": "Mercury MPRINT G80",
+  "description": "Чековый принтер для кассы",
+  "sku": "MPRINT-G80",
+  "tags": ["чековый принтер", "касса", "pos"],
+  "price": 99000,
+  "enabled": true
+}
+```
 
-Response: `BusinessAdminProductResponse`
+## Пример ответа создания товара
 
-Rules:
+```json
+{
+  "productId": "prod-uuid-001",
+  "productOfferId": "po-uuid-001",
+  "branchId": "branch-uuid-001",
+  "categoryId": "cat-uuid-pos",
+  "name": "Mercury MPRINT G80",
+  "description": "Чековый принтер для кассы",
+  "sku": "MPRINT-G80",
+  "tags": ["чековый принтер", "касса", "pos"],
+  "price": 99000,
+  "enabled": true,
+  "updatedAt": "2026-06-21T10:00:00Z"
+}
+```
 
-- Updating product search fields must trigger search document refresh for related active offers.
-- Deactivating a product must remove or deactivate related search documents.
-- Do not delete product rows for normal admin archive behavior.
+## Пример выключения товара
 
-### List Product Offers
+```http
+PATCH /api/v1/business-admin/branches/branch-uuid-001/products/prod-uuid-001
+Authorization: Bearer <token>
+Content-Type: application/json
 
-`GET /api/v1/business-admin/businesses/{businessId}/product-offers`
+{
+  "enabled": false
+}
+```
 
-Query:
+## Пример ответа выключения товара
 
-- `branchId`
-- `productId`
-- `status`
-- `stockStatus`
-- `page`
-- `size`
-
-Response: `BusinessAdminProductOfferListResponse`
-
-- `items`
-- `page`
-
-`BusinessAdminProductOfferRowResponse`:
-
-- `productOfferId`
-- `productId`
-- `productName`
-- `branchId`
-- `branchName`
-- `price`
-- `stockStatus`
-- `stockQuantity`
-- `availabilityConfidence`
-- `freshnessAt`
-- `status`
-- `updatedAt`
-
-### Create Product Offer
-
-`POST /api/v1/business-admin/businesses/{businessId}/product-offers`
-
-Request: `CreateBusinessAdminProductOfferRequest`
-
-- `productId`
-- `branchId`
-- `dataSourceId`
-- `price`
-- `stockStatus`
-- `stockQuantity`
-- `availabilityConfidence`
-- `freshnessAt`
-- `status`
-
-Response: `BusinessAdminProductOfferResponse`
-
-- `productOfferId`
-- `productId`
-- `branchId`
-- `dataSourceId`
-- `price`
-- `stockStatus`
-- `stockQuantity`
-- `availabilityConfidence`
-- `freshnessAt`
-- `status`
-- `createdAt`
-- `updatedAt`
-
-Rules:
-
-- `productId` must belong to the same business.
-- `branchId` must belong to the same business.
-- `dataSourceId` must belong to the same business when provided.
-- `stockQuantity` is nullable.
-- Exact stock can be exposed to clients only when `stockQuantity` was supplied by manual or integration data.
-- Creating or activating an offer must create or refresh its `SearchDocument`.
-
-### Update Product Offer
-
-`PATCH /api/v1/business-admin/businesses/{businessId}/product-offers/{productOfferId}`
-
-Request: `UpdateBusinessAdminProductOfferRequest`
-
-- `price`
-- `stockStatus`
-- `stockQuantity`
-- `availabilityConfidence`
-- `freshnessAt`
-- `status`
-
-Response: `BusinessAdminProductOfferResponse`
-
-Rules:
-
-- Updating offer availability fields must refresh search document confidence and summary.
-- Deactivating an offer must deactivate its search document.
-- Do not create stock history snapshots in MVP.
-
-## Clarifying Logic
-
-- If a business wants one parent product with flavors or sizes, model each sellable concrete variation as a separate `Product`.
-- If stock is unknown, use unknown stock status and lower or confirmation-needed confidence.
-- If price is unknown, keep price null and avoid client promises.
-- If admin updates only branch-level availability, update `ProductOffer`, not `Product`.
-
-## Implementation Boundaries
-
-- Use `kz.ask.catalog` for products and offers.
-- Use `kz.ask.search` only through an indexing processor or search document refresh service.
-- Do not expose import internals as the only way to create products.
-- Keep catalog import endpoints separate from manual admin endpoints.
-- Do not create tests or run Maven unless explicitly requested.
+```json
+{
+  "productId": "prod-uuid-001",
+  "productOfferId": "po-uuid-001",
+  "branchId": "branch-uuid-001",
+  "enabled": false,
+  "updatedAt": "2026-06-21T11:00:00Z"
+}
+```

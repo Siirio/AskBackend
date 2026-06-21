@@ -1,77 +1,159 @@
 # UX/UI Backend Contract
 
-This is the backend-facing extraction from the Ask UX/UI flow. The full frontend blueprint can live in the frontend repository; AskBackend only needs the product flow, statuses, and API contract expectations.
+This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_UI_FLOW.md`. Keep this file synchronized before generating backend tasks.
 
 ## Product Flow
 
-- Ask is mobile-first and search-first.
-- The customer writes a natural-language query and may scope it with a category.
-- Category selection scopes Smart Search; it is not the main product picker.
-- The customer must not be forced to manually choose one concrete SKU from a marketplace-style list in the primary flow.
-- Backend should return known products, services, and businesses when confidence is good enough.
-- Backend should create or support fallback requests when known data is missing, stale, low-confidence, or confirmation-needed.
-- Manual supplier replies must not invent stock quantity, courier availability, delivery SLA, service slots, or booking certainty.
+- Ask is search-first.
+- The client searches either products or services. There is no separate business search flow in MVP.
+- Business pages can open from product cards, service cards, responses, history, chat, or recommendations, but not as a standalone primary search type.
+- The customer writes a natural-language query and may narrow it with product or service categories.
+- Categories scope search. They are not a marketplace-style catalog picker.
+- Raw query must be preserved.
+- Dynamic filters are built from actual found product or service attributes.
+- Fallback request exists when search results are missing, too weak, or the customer wants to ask businesses directly.
+- Backend must not invent delivery, courier availability, guaranteed stock count, exact service slots, or automatic booking truth.
 
-## Customer Request Statuses
+## Search Result Rules
 
-Backend should expose stable machine-readable statuses. Frontend owns normal localization.
+### Products
 
-- `DRAFT`: request is not ready for dispatch.
-- `CREATED`: request exists but is not being dispatched yet.
-- `DISPATCHING`: request is being sent to eligible suppliers.
-- `SENT`: request was sent and is waiting for replies.
-- `PARTIALLY_RESPONDED`: at least one supplier response exists.
-- `COMPLETED`: request lifecycle is complete.
-- `EXPIRED`: request TTL ended.
-- `CANCELLED`: request was cancelled.
-- `FAILED`: dispatch or lifecycle failed.
+Product search returns enabled products/offers from enabled branches.
 
-## Supplier Response Statuses
+Product result cards need:
 
-- `AVAILABLE`: supplier says they can offer the requested item or service.
-- `UNAVAILABLE`: supplier explicitly says they cannot.
-- `NEED_CLARIFICATION`: supplier needs size, model, flavor, year, article, time, or other details.
-- `ALTERNATIVE_OFFERED`: exact match is unavailable, but a similar option exists.
+- product image or category placeholder;
+- product name;
+- short known characteristics;
+- price when known;
+- business and branch;
+- city or distance;
+- product display state;
+- actions: open, clarify, write, create request.
 
-## Request And Response Rules
+Product result DTOs use the current MVP model only: business/branch context, product display data, price when known, display state, calculated distance when possible, and contact actions.
 
-- ProductRequest or equivalent request aggregate must preserve the raw customer query.
-- Request dispatch must be idempotent.
-- Dispatch should target active eligible suppliers only.
-- The same supplier/channel must not receive duplicate request messages for the same request.
-- Supplier response should be upsert/update based on request and supplier identity.
-- A supplier may answer once and retry/update only within the approved product rule.
-- Updating one supplier response keeps that supplier row as the same response in client feeds.
-- New supplier responses appear chronologically after earlier responses.
-- Feed data must support dozens or 100+ responses through compact rows, filters, counts, and progressive reveal.
+Product visibility is controlled by enabled/disabled/deleted business actions. If a business keeps a product enabled, it is treated as current for search display. If the customer needs confirmation, use clarify/request/chat flow.
 
-## Client Data Needs
+### Services
 
-API responses should support:
+Service search returns enabled services from enabled branches.
 
-- customer request history;
-- active request status and progress;
-- recipient count and response count;
-- response feed filters with counts;
-- compact response rows with supplier, status, price, distance, and product hint;
-- expanded response details with product image, supplier, product/service, price, comment, address, map action, and contacts;
-- supplier inbox sorted by unanswered or new requests;
-- supplier reply attempts and limit state;
-- per-request and per-supplier chat messages;
-- notification counts and read states.
+Service result cards need:
+
+- service image or business image;
+- service name;
+- business and branch;
+- approximate price or price-from;
+- approximate duration when known;
+- district or distance;
+- desired-time request action;
+- actions: request booking, write.
+
+Services on MVP are request-to-book, not guaranteed slot booking. The customer chooses desired time, Ask sends a structured service request, and the business confirms, declines, or proposes another time.
+
+Service result DTOs use the current MVP model only: business/branch context, service display data, price when known, approximate duration, display state, calculated distance when possible, and contact actions.
+
+Service visibility is controlled by active/inactive service toggles and branch ownership.
+
+## Distance Logic
+
+`distanceMeters` is allowed only when it is calculated from real coordinates.
+
+Backend calculation:
+
+- client sends current geolocation as `customerLatitude` and `customerLongitude`;
+- branch has stored `latitude` and `longitude`;
+- backend calculates straight-line distance between customer and branch coordinates using a geodesic formula such as Haversine;
+- backend returns `distanceMeters` as nullable integer;
+- if customer coordinates or branch coordinates are missing, return `distanceMeters=null`;
+- do not calculate distance from city name, district text, address text, or mocked coordinates;
+- sorting by distance is allowed only for rows where distance is known; unknown distance must not be presented as nearby.
+
+Frontend wording can show city, district, address, or distance depending on available data.
+
+## Auth And Onboarding Flow
+
+Backend auth must follow `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md`.
+
+- Auth is required before entering customer app or business cabinet.
+- Customer and business registration/login can use phone or email.
+- If phone is used, verification can be SMS first; WhatsApp and Telegram can be added later as delivery channels.
+- If email is used, verification must work by real email code for the production-facing MVP.
+- At least one real verification channel must work before real onboarding. Do not design business onboarding as mock-only.
+- Successful customer auth routes to Search.
+- Successful business auth routes to Activity.
+- Business onboarding creates a real branch/store profile whose data persists.
+- The registration contact is also the initial public contact for that branch unless the business later edits branch contacts.
+
+## Business Cabinet Flow
+
+Business cabinet MVP sections:
+
+- Activity;
+- Products;
+- Services;
+- Company or branch profile.
+
+The cabinet is production-facing onboarding, not a throwaway mock:
+
+- registered businesses must persist;
+- products added by businesses must persist;
+- services added by businesses must persist;
+- enabled products and services become searchable for customers;
+- disabled or deleted products and services must not appear in live client search.
+
+Each registration currently creates one concrete branch/store profile. A higher-level multi-branch business management model can be added later, but current registration must be treated as onboarding a specific establishment/branch.
+
+Branch contacts are managed by the branch. A future business account may manage several branches, each with its own contacts.
+
+## Product Management Rules
+
+- Products do not have a separate business status like active/needs update/completed.
+- Products have actions: edit, enable, disable, delete.
+- Enabled products can appear in client product search.
+- Disabled or deleted products must not appear in live client product search.
+- Inventory counting is not part of the MVP.
+- Data freshness is not tracked in MVP.
+- If the customer needs confirmation, use chat, clarify action, or fallback request.
+
+## Service Management Rules
+
+- Services can be active or inactive.
+- Active services can appear in client service search.
+- Inactive services must not appear in live client service search.
+- Services may have price, approximate duration, description, availability schedule text or pattern, and branch.
+- MVP service requests are not guaranteed bookings.
+- Business confirms final date/time/conditions.
+
+## Request And Response Statuses
+
+Product request business responses:
+
+- `HAS_ITEM`: business has the requested product or a sufficiently matching product.
+- `NO_ITEM`: business says it does not have it.
+- `NEED_CLARIFICATION`: business needs details.
+- `HAS_ANALOG`: business offers an analog.
+
+Service request business responses:
+
+- `CAN_PROVIDE`: business can provide the service.
+- `CANNOT_PROVIDE`: business cannot provide it.
+- `NEED_CLARIFICATION`: business needs date, time, address, service type, or other details.
+- `SUGGEST_OTHER_TIME`: business proposes another time.
+
+Updating a business response updates the same row. It must not create duplicates.
 
 ## Chat And Contact Actions
 
-- Ask chat is scoped to one request and one supplier.
-- Customer chat must have a back path to the supplier response feed.
-- Supplier chat opens as its own sub-view, not buried below the reply form.
-- WhatsApp, Telegram, map links, and Ask chat are separate per-response contact actions.
-- Map action should not appear when branch address is unknown.
-- Browser prototypes may use web URLs; native clients may use deep links.
+- Ask chat is always available from concrete context.
+- Chat is not a standalone bottom navigation tab.
+- Chat is scoped to product, service, request, booking request, business page, or response context.
+- If the entity is visible and the user is authenticated, chat can be opened from the concrete context.
+- WhatsApp, Telegram, phone, email, map action, and Ask chat are separate contact actions.
 
-## Integration Behavior
+## Retention
 
-- Telegram and WhatsApp are delivery/contact adapters, not core business logic.
-- Paloma, 1C, re:Kassa, Shopify, POS, CRM, and e-commerce systems are inventory, POS, catalog, or scheduling providers.
-- Automatic replies are valid only when provider data supports the fact and the source is explicit.
-- Integration-backed facts should remain distinguishable from manual supplier replies.
+- Customer search history and snapshots live for a limited time, for example 10 days.
+- Business operational history is separate and longer-lived.
+- Business data must not be wiped after testing or demo usage once real onboarding starts.
