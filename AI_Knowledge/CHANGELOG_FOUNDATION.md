@@ -1,5 +1,49 @@
 # Foundation Changelog
 
+## 2026-06-21 - Staff Management Implementation
+
+Added branch-level staff management with temporary password activation, invite codes, and granular authority.
+
+### Membership Model
+
+- `business_member` now represents business-level OWNER role only.
+- New `branch_member` table for branch-level MANAGER and OPERATOR roles.
+- New `branch_invite` table for invite code-based staff onboarding.
+- Authority stored as `String authority` in `auth_session` (replaces `AppRole role` enum): ROLE_BUSINESS_OWNER, ROLE_BUSINESS_MANAGER, ROLE_BUSINESS_OPERATOR, ROLE_CUSTOMER.
+
+### Staff Activation Flow
+
+- Owner creates staff via `POST /staff` — system generates temporary BCrypt-hashed password.
+- Temp password plain text is AES-encrypted for owner visibility until activation.
+- Staff logs in via unified `POST /auth/login` — system returns `activationRequired: true`.
+- Staff changes password via `POST /auth/change-temporary-password` — account becomes ACTIVE.
+- Staff statuses: PENDING_ACTIVATION, ACTIVE, PASSWORD_RESET_REQUIRED, DISABLED.
+
+### Schema Changes
+
+- `auth_session`: added `authority VARCHAR(50)`, `activation_required BOOLEAN DEFAULT FALSE`; dropped `role`.
+- `app_user`: added `must_change_password`, `temp_password_encrypted`, `activated_at`.
+- Created `branch_member` table with UNIQUE(branch_id, user_id).
+- Created `branch_invite` table with UNIQUE code and expiry fields.
+- Indexes on branch_member branch/user, branch_invite branch/code, app_user role.
+
+### Service Naming Convention
+
+- `IdentityDomainService` → `IdentityService` (interface) + `IdentityServiceImpl`.
+- `BusinessDomainService` → `BusinessService` (interface) + `BusinessServiceImpl`.
+
+### Endpoints Added
+
+- `POST /api/v1/auth/login` — unified password login for all roles.
+- `POST /api/v1/auth/change-temporary-password` — first-login password change.
+- `POST /api/v1/businesses/{bId}/branches/{brId}/staff` — create staff.
+- `GET /api/v1/businesses/{bId}/branches/{brId}/staff` — list staff.
+- `POST /api/v1/businesses/{bId}/branches/{brId}/staff/{id}/update` — update staff (role, disable).
+- `POST /api/v1/businesses/{bId}/branches/{brId}/staff/{id}/reset-password` — reset staff password.
+- `POST /api/v1/businesses/{bId}/branches/{brId}/invites` — create invite.
+- `GET /api/v1/businesses/{bId}/branches/{brId}/invites` — list invites.
+- `DELETE /api/v1/businesses/{bId}/branches/{brId}/invites/{id}` — revoke invite.
+
 ## 2026-06-21 - Data Model Normalization After Task 05
 
 Synchronized the implemented entities, `V1__init.sql`, and first-read documentation with the current frontend-backed UX direction.

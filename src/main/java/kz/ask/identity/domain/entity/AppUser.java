@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import kz.ask.identity.domain.enums.AppRole;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
@@ -35,4 +36,11 @@ public class AppUser extends BaseUuidV7Entity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserStatus status;
+
+    @Column(nullable = false)
+    private Boolean mustChangePassword;
+
+    private String tempPasswordEncrypted;
+
+    private Instant activatedAt;
 }

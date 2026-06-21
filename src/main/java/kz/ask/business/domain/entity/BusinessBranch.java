@@ -39,7 +39,7 @@ public class BusinessBranch extends BaseUuidV7Entity {
     private BigDecimal longitude;
 
     @Column(nullable = false)
-    private boolean onlineOnly;
+    private Boolean onlineOnly;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

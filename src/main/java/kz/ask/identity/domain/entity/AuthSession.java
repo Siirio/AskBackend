@@ -5,15 +5,12 @@ import lombok.Setter;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
-import kz.ask.identity.domain.enums.AppRole;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 
 @Entity
@@ -30,11 +27,13 @@ public class AuthSession extends BaseUuidV7Entity {
     private String tokenHash;
 
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AppRole role;
+    private String authority;
 
     @Column(nullable = false)
-    private boolean remembered;
+    private Boolean remembered;
+
+    @Column(nullable = false)
+    private Boolean activationRequired;
 
     @Column(nullable = false)
     private Instant expiresAt;

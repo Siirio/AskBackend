@@ -160,6 +160,80 @@ Updating a business response updates the same row. It must not create duplicates
 - If the entity is visible and the user is authenticated, chat can be opened from the concrete context.
 - WhatsApp, Telegram, phone, email, map action, and Ask chat are separate contact actions.
 
+## Staff Management Flow
+
+Business owners and managers manage branch-level staff through staff and invite endpoints. Staff are `AppRole.BUSINESS` users whose role is determined by their `BranchMember` record, not by a separate app role.
+
+### Staff Roles
+
+- MANAGER: full branch management access (staff, products, services).
+- OPERATOR: limited branch access.
+
+Staff endpoints require OWNER or MANAGER authority on the target branch.
+
+### Staff Creation And Activation
+
+Owner or manager creates staff through `POST /staff`:
+
+- Backend creates `AppUser` with `role=BUSINESS`, `status=PENDING_ACTIVATION`, `mustChangePassword=true`.
+- System generates a temporary password, BCrypt-hashes it for login, and AES-encrypts the plain text for owner visibility.
+- Backend creates `BranchMember` with the requested role (MANAGER or OPERATOR).
+- Response includes `tempPassword` (plain text, one-time visibility).
+
+Owner sees temp password in the staff card while `status = PENDING_ACTIVATION`. After activation the password is hidden and only a "Reset password" button is available.
+
+### Staff Statuses
+
+- `PENDING_ACTIVATION`: created by owner, not yet activated.
+- `ACTIVE`: activated and working.
+- `PASSWORD_RESET_REQUIRED`: owner reset password, staff must change at next login.
+- `DISABLED`: access revoked.
+
+### Staff Password Reset
+
+`POST /staff/{id}/reset-password` (OWNER or MANAGER):
+
+- Generates new temporary password.
+- Sets status to `PASSWORD_RESET_REQUIRED`, `mustChangePassword=true`.
+- Returns new `tempPassword` in response.
+
+## Unified Login Flow
+
+`POST /api/v1/auth/login` accepts `{ email, password }` and works for all roles (CUSTOMER, BUSINESS owner, BUSINESS manager, BUSINESS operator).
+
+Login logic:
+
+1. Find user by email.
+2. Verify BCrypt password.
+3. If `mustChangePassword` is false → create normal session with appropriate TTL, return.
+4. If `mustChangePassword` is true (status PENDING_ACTIVATION or PASSWORD_RESET_REQUIRED) → create short-TTL activation session (5 minutes) with `activationRequired: true`. Frontend detects this flag and navigates to the password change screen.
+
+`POST /api/v1/auth/change-temporary-password` (authenticated with activation session):
+
+1. Accepts `{ newPassword, passwordConfirmation }`.
+2. Validates password confirmation matches.
+3. Hashes and stores new password, clears temp password encrypted value.
+4. Sets `status=ACTIVE`, `activatedAt=now()`, `mustChangePassword=false`.
+5. Creates new full session, revokes activation session.
+6. Returns normal session response.
+
+### Temporary Password Rules
+
+- Temp password is BCrypt-hashed in `passwordHash` for login verification.
+- Plain temp password is AES-encrypted in `tempPasswordEncrypted` for owner visibility.
+- `tempPasswordEncrypted` is set to NULL on activation.
+- Activation session TTL is 5 minutes. Staff must complete password change within this window.
+- `POST /auth/change-temporary-password` requires an activation session (not a normal session).
+
+## Invite Code Flow
+
+`POST /staff` is the direct creation path. Invite codes provide an alternative self-service path:
+
+- Owner or manager creates invite with role and optional maxUses.
+- Invite code is a random opaque string with expiry.
+- Invite can be revoked before use.
+- Invite list shows code, role, usage count, expiry, and revocation status.
+
 ## Retention
 
 - Customer search history and snapshots live for a limited time, for example 10 days.
