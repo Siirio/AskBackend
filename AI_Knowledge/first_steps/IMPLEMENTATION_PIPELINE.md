@@ -66,7 +66,7 @@ Choose verification by risk:
 
 ## Stage 6 - Record
 
-Update `CHANGELOG_FOUNDATION.md` or project docs when work changes:
+Update `CHANGELOG_FOUNDATION.md` and the relevant project docs when work changes:
 
 - product vision;
 - architecture;
@@ -76,5 +76,7 @@ Update `CHANGELOG_FOUNDATION.md` or project docs when work changes:
 - integration assumptions;
 - AI workflow;
 - Codex infrastructure guidance.
+
+For entity, migration, DTO, or UX-contract changes, update the matching data architecture and client contract documents in the same work session. Do not leave code ahead of `PRODUCT_SERVICE_FOUNDATION_ERD.md`, `ARCHITECTURE_NARRATIVE.md`, `UX_UI_BACKEND_CONTRACT.md`, `AUTH_BACKEND_CONTRACT.md`, or `CHANGELOG_FOUNDATION.md`.
 
 Use Dashboard or similar lifecycle tools only for meaningful starts, pivots, and completions.

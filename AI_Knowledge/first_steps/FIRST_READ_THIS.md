@@ -15,6 +15,8 @@ Read this first when opening AskBackend in a fresh Codex session or onboarding a
 9. `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md`
 10. `AI_Knowledge/CHANGELOG_FOUNDATION.md`
 
+When backend product behavior, DTOs, entities, or task contracts depend on UX, refresh the backend contract from the sibling frontend document `AskFrontend/AI_Knowledge/product_ux/EXPECTED_UX_UI_FLOW.md` before editing backend tasks or schema.
+
 ## What Belongs Here
 
 This repository should give a new programmer enough context to work on the backend without importing old project history.

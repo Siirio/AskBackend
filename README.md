@@ -2,9 +2,9 @@
 
 Ask is a local search platform for products and services across city businesses.
 
-The primary user flow is search-first: a customer searches for a product or service, Ask shows matching catalog/service results when the data exists, and the customer immediately understands which business can help. If exact data is missing or confidence is too low, Ask can send a fallback request to suitable sellers or service providers for confirmation.
+The primary user flow is search-first: a customer searches for a product or service, Ask shows matching catalog/service results when the data exists, and the customer immediately understands which business can help. If exact product/service data is missing or the customer wants confirmation, Ask can send a fallback request to suitable sellers or service providers.
 
-The product is broader than request routing. Ask should become a reliable local business search and availability layer between customers and stores or service providers. That requires business onboarding, product/service catalogs, Excel/CSV import, data normalization, Smart Search, search indexing, clear response rules, provider outreach, and integration boundaries for systems that suppliers already use.
+The product is broader than request routing. Ask should become a reliable local product and service search layer between customers and stores or service providers. That requires business onboarding, product/service catalogs, Excel/CSV import, data normalization, Smart Search, search indexing, clear response rules, provider outreach, and integration boundaries for systems that suppliers already use.
 
 ## The Problem
 
@@ -16,13 +16,13 @@ Ask should connect those two sides without pretending that perfect data exists o
 
 ## Why Ask Is Not Just Another Marketplace
 
-A classic marketplace usually starts with a tightly controlled catalog. Ask starts from local business search and availability:
+A classic marketplace usually starts with a tightly controlled catalog. Ask starts from local product/service search:
 
 - the customer searches in natural language;
-- Ask finds products, services, and businesses from known data first;
+- Ask finds products and services from known business data first;
 - if data is insufficient, Ask routes a confirmation request to suitable suppliers;
 - catalog and integration quality improves over time;
-- automatic availability becomes valid only when real data supports it.
+- automatic availability, stock, delivery, and slot truth become valid only when real integration or supplier data supports them.
 
 Ask should not force every supplier into perfect catalog migration before the product is useful. It should still build toward catalog/search as the core product and keep manual requests as a fallback for missing, stale, or uncertain data.
 
@@ -34,11 +34,11 @@ Ask grows in layers:
 2. Product and service domain models.
 3. Product/service CRUD for businesses.
 4. Product catalog import from Excel, CSV, MoySklad, POS, e-commerce, or other sources.
-5. Searchable entity contracts, search indexing, and Smart Search over rough customer queries, categories, attributes, aliases, and availability signals.
+5. Searchable entity contracts, search indexing, and Smart Search over rough customer queries, categories, attributes, and aliases.
 6. Search results that show where a known product or service is available when data supports it.
 7. Product request fallback when exact data is missing, stale, or requires supplier confirmation.
 8. Supplier replies, request-scoped chat, and contact actions.
-9. Integration-backed automatic availability where real provider data exists.
+9. Integration-backed stock, delivery, schedule, or availability truth only where real provider data exists.
 10. Service discovery for appointments, schedules, free windows, specialists, branches, confirmations, and cancellations.
 
 ## Target Product Architecture
@@ -119,7 +119,7 @@ Product sellers usually already have product data in files or systems. The backe
 
 Catalog is now part of the core search strategy, not a distant optional add-on. If a product or service already exists in Ask data, the backend should be able to return it through search before creating a manual request.
 
-Services have a different operational shape. Service providers need to manage offerings, schedules, free windows, discounts, conditions, specialists, branches, confirmations, and cancellations. Doing that only inside a mobile app can become overloaded and inconvenient. The planned direction is a web cabinet for service providers, so they can manage larger service datasets and availability more comfortably.
+Services have a different operational shape. Service providers need to manage offerings, approximate duration, schedule text or future schedule patterns, conditions, branches, confirmations, and cancellations. Doing that only inside a mobile app can become overloaded and inconvenient. The planned direction is a web cabinet for service providers, so they can manage larger service datasets more comfortably.
 
 Current product surface direction:
 

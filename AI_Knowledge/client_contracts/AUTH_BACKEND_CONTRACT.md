@@ -21,7 +21,7 @@ This document defines the desired production-facing auth and onboarding logic fo
 | AUTH-002 | Business can register and login by phone or email. | Required | Product correction | Same identifier rules as customer. |
 | AUTH-003 | Every auth flow verifies the selected contact with a 6-digit code. | Required | Frontend UX | Verification truth belongs to backend. |
 | AUTH-004 | Email verification must be real for production-facing MVP. | Required | Product correction | Mock-only onboarding is not acceptable. |
-| AUTH-005 | SMS verification can be the first phone channel; WhatsApp and Telegram can be later channels. | Required | Product correction | They can exist in DTO enum but not pretend to work until adapter exists. |
+| AUTH-005 | SMS verification can be the first phone channel; WhatsApp and Telegram can be later channels. | Required | Product correction | They must not pretend to work until a real provider adapter exists. Current backend default keeps SMS disabled. |
 | AUTH-006 | Remember-me creates a longer-lived session by backend config. | Required | Frontend UX | Client storage is not auth truth. |
 | AUTH-007 | Business registration creates a real branch/store profile. | Required | Product correction | Current registration is for one concrete establishment/branch. |
 | AUTH-008 | Registration contact is the initial public branch contact. | Required | Product correction | It can later be edited in branch profile. |
@@ -76,6 +76,12 @@ A later multi-branch cabinet can allow one business account to manage several br
 | Business remembered session TTL | `auth.business.remembered-session.ttl` | duration |
 | Email verification enabled | `auth.verification.email.enabled` | boolean |
 | SMS verification enabled | `auth.verification.sms.enabled` | boolean |
+
+Current MVP defaults:
+
+- email verification is enabled and must use SMTP-backed real delivery;
+- SMS verification is disabled by default until a real SMS provider adapter is connected;
+- logging/noop sender implementations are development aids only and must not be described as production verification.
 
 ## 5. API Methods
 

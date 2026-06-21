@@ -13,6 +13,7 @@ This document defines the current MVP database foundation for products, services
 - MVP product visibility is driven by business enable/disable/delete actions, and service visibility is driven by active/inactive actions.
 - MVP service flow is request-to-book, not automatic calendar slot reservation.
 - Search snapshots preserve what the user saw, without pretending historical rows are live truth.
+- The implemented schema uses `ProductOffer.enabled`, `ServiceBranchOffer.active`, and `ServiceBranchOffer.scheduleText`; it does not use stock quantity, availability confidence, or freshness columns.
 
 ## Entity Groups
 
@@ -31,6 +32,7 @@ This document defines the current MVP database foundation for products, services
 
 - `product`: one concrete sellable item.
 - `product_offer`: branch-level visibility and price for a product.
+- `product_offer.enabled`: branch-level live-search toggle for a product.
 - `catalog_import`: future import run.
 - `raw_catalog_row`: future preserved source row.
 
@@ -38,6 +40,7 @@ This document defines the current MVP database foundation for products, services
 
 - `service_offering`: service definition owned by a business.
 - `service_branch_offer`: branch-level service visibility, price, duration, and display schedule text.
+- `service_branch_offer.active`: branch-level live-search toggle for a service.
 - `customer_request`: fallback product or service request.
 - `request_target`: branch selected to receive a fallback request.
 - `supplier_response`: branch response to a request.
@@ -106,6 +109,7 @@ This document defines the current MVP database foundation for products, services
 | `branch_id` | Concrete branch. |
 | `price` | Nullable price. |
 | `enabled` | Whether product appears in live client search. |
+| `status` | Offer record lifecycle. |
 | `created_at` | Created time. |
 | `updated_at` | Updated time. |
 
@@ -133,6 +137,7 @@ Current MVP task contracts keep product offer data to price, branch ownership, a
 | `duration_minutes` | Approximate duration, nullable. |
 | `schedule_text` | Display schedule/conditions text, not slot blocking. |
 | `active` | Whether service appears in live client search. |
+| `status` | Offer record lifecycle. |
 | `created_at` | Created time. |
 | `updated_at` | Updated time. |
 
@@ -173,6 +178,20 @@ Current MVP task contracts keep service branch offer data to price, approximate 
 | `distance_meters` | Calculated historical distance, nullable. |
 
 Do not add business result rows as standalone search results. `business_id` and `branch_id` are context for product/service rows.
+
+### `search_document`
+
+| Column | Meaning |
+|---|---|
+| `id` | Search document id. |
+| `document_type` | PRODUCT or SERVICE. |
+| `product_offer_id` | Product offer context, nullable. |
+| `service_branch_offer_id` | Service branch offer context, nullable. |
+| `title` | Search/display title. |
+| `summary` | Search/display summary. |
+| `status` | Document lifecycle. |
+
+`search_document` must not contain `business_id` as a standalone indexed business document and must not contain availability confidence fields.
 
 ## ERD
 

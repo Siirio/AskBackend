@@ -12,12 +12,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.Instant;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.business.domain.entity.DataSource;
-import kz.ask.catalog.domain.enums.StockStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.AvailabilityConfidence;
 import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
@@ -41,16 +38,7 @@ public class ProductOffer extends BaseUuidV7Entity {
     private BigDecimal price;
 
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private StockStatus stockStatus;
-
-    private Integer stockQuantity;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AvailabilityConfidence availabilityConfidence;
-
-    private Instant freshnessAt;
+    private boolean enabled;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

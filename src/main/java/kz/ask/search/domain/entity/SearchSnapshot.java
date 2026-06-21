@@ -63,9 +63,6 @@ public class SearchSnapshot extends BaseUuidV7Entity {
     @Column(nullable = false)
     private Integer serviceResultCount;
 
-    @Column(nullable = false)
-    private Integer businessResultCount;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id")
     private CustomerRequest request;

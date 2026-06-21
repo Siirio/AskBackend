@@ -13,10 +13,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.service.domain.enums.ConfirmationPolicy;
 import kz.ask.service.domain.enums.ServiceMode;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.AvailabilityConfidence;
 import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
@@ -41,13 +39,10 @@ public class ServiceBranchOffer extends BaseUuidV7Entity {
 
     private Integer durationMinutes;
 
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AvailabilityConfidence availabilityConfidence;
+    private String scheduleText;
 
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private ConfirmationPolicy confirmationPolicy;
+    private boolean active;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

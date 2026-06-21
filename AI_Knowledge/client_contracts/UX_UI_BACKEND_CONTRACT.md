@@ -1,6 +1,6 @@
 # UX/UI Backend Contract
 
-This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_UI_FLOW.md`. Keep this file synchronized before generating backend tasks.
+This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_UI_FLOW.md`. Keep this file synchronized before generating backend tasks. When frontend UX and backend docs differ, refresh this backend contract from the frontend flow before changing backend tasks or entities.
 
 ## Product Flow
 
@@ -35,9 +35,11 @@ Product result DTOs use the current MVP model only: business/branch context, pro
 
 Product visibility is controlled by enabled/disabled/deleted business actions. If a business keeps a product enabled, it is treated as current for search display. If the customer needs confirmation, use clarify/request/chat flow.
 
+Backend model: `ProductOffer.enabled` is the live-search toggle. Do not add stock status, stock quantity, availability confidence, or freshness fields for MVP product visibility.
+
 ### Services
 
-Service search returns enabled services from enabled branches.
+Service search returns active services from enabled branches.
 
 Service result cards need:
 
@@ -55,6 +57,8 @@ Services on MVP are request-to-book, not guaranteed slot booking. The customer c
 Service result DTOs use the current MVP model only: business/branch context, service display data, price when known, approximate duration, display state, calculated distance when possible, and contact actions.
 
 Service visibility is controlled by active/inactive service toggles and branch ownership.
+
+Backend model: `ServiceBranchOffer.active` is the live-search toggle. `ServiceBranchOffer.scheduleText` is display text or conditions, not guaranteed slot truth.
 
 ## Distance Logic
 
@@ -78,7 +82,8 @@ Backend auth must follow `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md
 
 - Auth is required before entering customer app or business cabinet.
 - Customer and business registration/login can use phone or email.
-- If phone is used, verification can be SMS first; WhatsApp and Telegram can be added later as delivery channels.
+- If phone is used, SMS must not pretend to work until a real provider adapter is connected.
+- WhatsApp and Telegram can be added later as delivery channels.
 - If email is used, verification must work by real email code for the production-facing MVP.
 - At least one real verification channel must work before real onboarding. Do not design business onboarding as mock-only.
 - Successful customer auth routes to Search.
@@ -115,6 +120,7 @@ Branch contacts are managed by the branch. A future business account may manage 
 - Disabled or deleted products must not appear in live client product search.
 - Inventory counting is not part of the MVP.
 - Data freshness is not tracked in MVP.
+- Availability confidence is not tracked in MVP.
 - If the customer needs confirmation, use chat, clarify action, or fallback request.
 
 ## Service Management Rules
@@ -122,7 +128,7 @@ Branch contacts are managed by the branch. A future business account may manage 
 - Services can be active or inactive.
 - Active services can appear in client service search.
 - Inactive services must not appear in live client service search.
-- Services may have price, approximate duration, description, availability schedule text or pattern, and branch.
+- Services may have price, approximate duration, description, schedule text or future schedule pattern, and branch.
 - MVP service requests are not guaranteed bookings.
 - Business confirms final date/time/conditions.
 
@@ -143,6 +149,8 @@ Service request business responses:
 - `SUGGEST_OTHER_TIME`: business proposes another time.
 
 Updating a business response updates the same row. It must not create duplicates.
+
+`SupplierResponseStatus` uses these exact enum values in the current backend model. Do not use old generic `AVAILABLE`, `UNAVAILABLE`, `NEEDS_CONFIRMATION`, or `ALTERNATIVE_OFFERED` statuses.
 
 ## Chat And Contact Actions
 
