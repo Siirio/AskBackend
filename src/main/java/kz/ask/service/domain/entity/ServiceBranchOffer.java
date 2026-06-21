@@ -42,7 +42,7 @@ public class ServiceBranchOffer extends BaseUuidV7Entity {
     private String scheduleText;
 
     @Column(nullable = false)
-    private boolean active;
+    private Boolean active;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

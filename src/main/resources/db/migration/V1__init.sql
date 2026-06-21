@@ -15,7 +15,10 @@ CREATE TABLE app_user (
     display_name  VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role          VARCHAR(50)  NOT NULL,
-    status        VARCHAR(50)  NOT NULL
+    status        VARCHAR(50)  NOT NULL,
+    must_change_password       BOOLEAN     NOT NULL DEFAULT FALSE,
+    temp_password_encrypted    VARCHAR(255),
+    activated_at               TIMESTAMPTZ
 );
 
 CREATE TABLE auth_challenge (
@@ -42,8 +45,9 @@ CREATE TABLE auth_session (
     updated_at  TIMESTAMPTZ NOT NULL,
     user_id     UUID        NOT NULL REFERENCES app_user(id),
     token_hash  VARCHAR(255) NOT NULL UNIQUE,
-    role        VARCHAR(50)  NOT NULL,
+    authority   VARCHAR(50)  NOT NULL,
     remembered  BOOLEAN     NOT NULL DEFAULT FALSE,
+    activation_required BOOLEAN NOT NULL DEFAULT FALSE,
     expires_at  TIMESTAMPTZ NOT NULL,
     revoked_at  TIMESTAMPTZ
 );
@@ -112,6 +116,31 @@ CREATE TABLE business_member (
     user_id     UUID        NOT NULL REFERENCES app_user(id),
     role        VARCHAR(50)  NOT NULL,
     status      VARCHAR(50)  NOT NULL
+);
+
+CREATE TABLE branch_member (
+    id          UUID        NOT NULL PRIMARY KEY,
+    created_at  TIMESTAMPTZ NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL,
+    branch_id   UUID        NOT NULL REFERENCES business_branch(id),
+    user_id     UUID        NOT NULL REFERENCES app_user(id),
+    role        VARCHAR(50)  NOT NULL,
+    status      VARCHAR(50)  NOT NULL,
+    UNIQUE (branch_id, user_id)
+);
+
+CREATE TABLE branch_invite (
+    id          UUID        NOT NULL PRIMARY KEY,
+    created_at  TIMESTAMPTZ NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL,
+    branch_id   UUID        NOT NULL REFERENCES business_branch(id),
+    code        VARCHAR(255) NOT NULL UNIQUE,
+    role        VARCHAR(50)  NOT NULL,
+    max_uses    INTEGER     NOT NULL DEFAULT 1,
+    use_count   INTEGER     NOT NULL DEFAULT 0,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    created_by  UUID        NOT NULL REFERENCES app_user(id),
+    revoked_at  TIMESTAMPTZ
 );
 
 CREATE TABLE business_contact (
@@ -456,7 +485,8 @@ CREATE TABLE search_document_token (
 
 CREATE INDEX idx_app_user_email   ON app_user (email);
 CREATE INDEX idx_app_user_phone   ON app_user (phone);
-CREATE INDEX idx_app_user_status  ON app_user (status);
+CREATE INDEX idx_app_user_status ON app_user (status);
+CREATE INDEX idx_app_user_role   ON app_user (role);
 
 CREATE INDEX idx_auth_challenge_user   ON auth_challenge (user_id);
 CREATE INDEX idx_auth_challenge_status ON auth_challenge (status);
@@ -469,6 +499,12 @@ CREATE INDEX idx_business_branch_city     ON business_branch (city_id);
 
 CREATE INDEX idx_business_member_user     ON business_member (user_id);
 CREATE INDEX idx_business_member_business ON business_member (business_id);
+
+CREATE INDEX idx_branch_member_branch ON branch_member (branch_id);
+CREATE INDEX idx_branch_member_user   ON branch_member (user_id);
+
+CREATE INDEX idx_branch_invite_branch ON branch_invite (branch_id);
+CREATE INDEX idx_branch_invite_code   ON branch_invite (code);
 
 CREATE INDEX idx_business_contact_business ON business_contact (business_id);
 CREATE INDEX idx_business_contact_branch   ON business_contact (branch_id);

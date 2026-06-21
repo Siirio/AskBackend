@@ -28,12 +28,14 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
+                    "/api/v1/auth/login",
                     "/api/v1/auth/customer/login/start",
                     "/api/v1/auth/customer/register",
                     "/api/v1/auth/business/login/start",
                     "/api/v1/auth/business/register",
                     "/api/v1/auth/verify"
                 ).permitAll()
+                .requestMatchers("/api/v1/auth/change-temporary-password").authenticated()
                 .requestMatchers("/api/v1/auth/session").authenticated()
                 .requestMatchers("/api/v1/auth/logout").authenticated()
                 .requestMatchers("/api/v1/**").authenticated()

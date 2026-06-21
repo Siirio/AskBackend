@@ -80,6 +80,40 @@ Current MVP rules:
 - business confirms final time, declines, or proposes another time;
 - MVP does not model full staff/calendar slot blocking.
 
+## Membership And Authority Model
+
+Business membership has two levels: business-level ownership and branch-level staff roles.
+
+### Business-Level Membership
+
+`BusinessMember` links an `AppUser` to a `Business` with the OWNER role. The user who registers the business becomes its owner. There is exactly one owner per business in MVP.
+
+### Branch-Level Membership
+
+`BranchMember` links an `AppUser` to a `BusinessBranch` with MANAGER or OPERATOR role. These are staff accounts created by the owner or manager.
+
+- MANAGER: can manage staff, products, services, and invites for the branch.
+- OPERATOR: limited branch access for day-to-day operations.
+
+### Authority Resolution
+
+Authority is computed at session creation and stored as a string in `auth_session.authority`:
+
+| Condition | Authority |
+|---|---|
+| `AppRole.CUSTOMER` | `ROLE_CUSTOMER` |
+| `AppRole.BUSINESS` + `BusinessMember(OWNER)` | `ROLE_BUSINESS_OWNER` |
+| `AppRole.BUSINESS` + `BranchMember(MANAGER)` | `ROLE_BUSINESS_MANAGER` |
+| `AppRole.BUSINESS` + `BranchMember(OPERATOR)` | `ROLE_BUSINESS_OPERATOR` |
+
+Authority already includes the `ROLE_` prefix for Spring Security. No separate `AppRole.STAFF` exists — all staff are `AppRole.BUSINESS` users distinguished by their membership records.
+
+### Branch Access Rules
+
+- Business owner has access to all branches of their business (no BranchMember record needed).
+- Branch manager has access to their specific branch through BranchMember.
+- Branch operator has limited access to their specific branch.
+
 ## Current Data Model Alignment
 
 The current code and `V1__init.sql` intentionally do not contain:
