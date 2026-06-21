@@ -33,7 +33,7 @@ public class StaffManagementProcessor {
     public StaffResponse createStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       CreateStaffRequest req) {
         verifyBranchAccess(principal.getUserId(), branchId);
-        BusinessBranch branch = requireBranch(branchId);
+        BusinessBranch branch = requireBranch(businessId, branchId);
 
         if (identityService.findByEmail(req.getEmail()) != null) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_EXISTS);
@@ -48,6 +48,7 @@ public class StaffManagementProcessor {
 
     public List<StaffResponse> listStaff(AskPrincipal principal, UUID businessId, UUID branchId) {
         verifyBranchAccess(principal.getUserId(), branchId);
+        requireBranchExists(businessId, branchId);
         return businessMapper.toStaffResponseList(businessService.findBranchMembers(branchId));
     }
 
@@ -55,6 +56,7 @@ public class StaffManagementProcessor {
     public StaffResponse updateStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       UUID staffId, UpdateStaffRequest req) {
         verifyBranchAccess(principal.getUserId(), branchId);
+        requireBranchExists(businessId, branchId);
         BranchMember member = requireBranchMember(staffId, branchId);
 
         if (req.getRole() != null) {
@@ -71,6 +73,7 @@ public class StaffManagementProcessor {
     @Transactional
     public StaffResponse resetPassword(AskPrincipal principal, UUID businessId, UUID branchId, UUID staffId) {
         verifyBranchAccess(principal.getUserId(), branchId);
+        requireBranchExists(businessId, branchId);
         BranchMember member = requireBranchMember(staffId, branchId);
 
         String newTempPassword = generateTempPassword();
@@ -85,12 +88,18 @@ public class StaffManagementProcessor {
         }
     }
 
-    private BusinessBranch requireBranch(UUID branchId) {
-        BusinessBranch branch = businessService.findBranchById(branchId);
+    private BusinessBranch requireBranch(UUID businessId, UUID branchId) {
+        BusinessBranch branch = businessService.findBranchByBusinessAndId(businessId, branchId);
         if (branch == null) {
             throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
         return branch;
+    }
+
+    private void requireBranchExists(UUID businessId, UUID branchId) {
+        if (businessService.findBranchByBusinessAndId(businessId, branchId) == null) {
+            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
+        }
     }
 
     private BranchMember requireBranchMember(UUID staffId, UUID branchId) {

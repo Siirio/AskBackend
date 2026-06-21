@@ -30,10 +30,7 @@ public class InviteProcessor {
     public InviteResponse createInvite(AskPrincipal principal, UUID businessId, UUID branchId,
                                         CreateInviteRequest req) {
         verifyBranchAccess(principal.getUserId(), branchId);
-        BusinessBranch branch = businessService.findBranchById(branchId);
-        if (branch == null) {
-            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
-        }
+        BusinessBranch branch = requireBranch(businessId, branchId);
 
         AppUser createdBy = identityService.findById(principal.getUserId());
         BranchMemberRole role = BranchMemberRole.valueOf(req.getRole());
@@ -46,18 +43,34 @@ public class InviteProcessor {
 
     public List<InviteResponse> listInvites(AskPrincipal principal, UUID businessId, UUID branchId) {
         verifyBranchAccess(principal.getUserId(), branchId);
+        requireBranchExists(businessId, branchId);
         return businessMapper.toInviteResponseList(businessService.findBranchInvites(branchId));
     }
 
     @Transactional
     public void revokeInvite(AskPrincipal principal, UUID businessId, UUID branchId, UUID inviteId) {
         verifyBranchAccess(principal.getUserId(), branchId);
+        requireBranchExists(businessId, branchId);
         businessService.revokeInvite(inviteId);
     }
 
     private void verifyBranchAccess(UUID userId, UUID branchId) {
         if (!businessService.isOwnerOrManagerOfBranch(branchId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private BusinessBranch requireBranch(UUID businessId, UUID branchId) {
+        BusinessBranch branch = businessService.findBranchByBusinessAndId(businessId, branchId);
+        if (branch == null) {
+            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
+        }
+        return branch;
+    }
+
+    private void requireBranchExists(UUID businessId, UUID branchId) {
+        if (businessService.findBranchByBusinessAndId(businessId, branchId) == null) {
+            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
     }
 }

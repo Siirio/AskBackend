@@ -129,6 +129,15 @@ public class BusinessServiceImpl implements BusinessService {
     }
 
     @Override
+    public BusinessBranch findBranchByBusinessAndId(UUID businessId, UUID branchId) {
+        BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
+        if (branch == null || !branch.getBusiness().getId().equals(businessId)) {
+            return null;
+        }
+        return branch;
+    }
+
+    @Override
     @Transactional
     public BranchInvite createInvite(BusinessBranch branch, BranchMemberRole role, Integer maxUses,
                                       Long ttlSeconds, AppUser createdBy) {
