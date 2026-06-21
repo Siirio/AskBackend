@@ -63,10 +63,9 @@ Controller -> Processor -> DomainService -> Repository
 
 - Controller validates transport shape and returns response DTOs.
 - Processor orchestrates use cases and cross-domain flow.
-- DomainService owns business logic and entity persistence.
+- DomainService owns business logic and entity persistence. Use interface + impl naming: `IdentityService` (interface) + `IdentityServiceImpl`, both in the same domain package. Callers depend on the interface.
 - Repository owns persistence only.
 - Mapper converts Entity and Dto only.
-- Assembler converts Dto to Response only.
 - Client packages talk to external systems only when explicitly approved.
 
 Forbidden:
@@ -77,6 +76,48 @@ Forbidden:
 - DomainService returning Entity to another layer.
 - Service-to-service cycles.
 - Real external calls without explicit scope, credentials, provider docs, and approval.
+- Assembler classes — use Mapper, Processor, or @Builder on Response instead.
+
+## Service Rules
+
+- ServiceImpl must not use other domain repositories. Only `getReferenceById()` is allowed on foreign repositories — never `findById`, `save`, or query methods.
+- Services never set entity fields manually (except `entity.setId(uuidV7Generator.generate())`). Entity creation and field mapping lives in Mappers.
+- Services validate the request, get references via `getReferenceById()`, call `mapper.toEntity(...)`, set the ID, call `mapper.enrichCreated(entity)`, save, and return `mapper.toDto(saved)`.
+- Use `@RequiredArgsConstructor` instead of manual constructors.
+- Never use primitive types (`int`, `boolean`) — use wrappers (`Integer`, `Boolean`).
+- `void` return type is allowed for methods that perform side effects (e.g., `logout`, `revokeInvite`).
+
+### Service Flow
+
+```
+Service                              Mapper
+------                              ------
+validate(request)
+refs = repo.getReferenceById()
+entity = mapper.toEntity(...)  →    Entity e = new Entity();
+                                     e.setField1(ref1);
+                                     e.setField2(request.getX());
+                                     return e;
+entity.setId(uuidGenerator())        ← only non-mapper field set
+mapper.enrichCreated(entity)     →    sets createdBy, audit fields
+saved = repo.save(entity)
+return mapper.toDto(saved)       →    Dto dto = new Dto();
+                                     dto.setId(saved.getId());
+                                     return dto;
+```
+
+Concrete example from `registerBusiness()` — the forbidden anti-pattern:
+
+```java
+// WRONG: manual entity building inside service
+Business business = new Business();
+business.setName(businessName);
+business.setStatus(RecordStatus.ACTIVE);
+business = businessRepository.save(business);
+// ... repeats for branch, member, contact
+```
+
+Correct pattern: delegate to `BusinessMapper.toEntity(request, refs)`.
 
 ## DTO Types
 
@@ -86,7 +127,37 @@ Use only these DTO families by default:
 - `*Response` for outgoing API payload.
 - `*Dto` for internal feature transfer.
 
+Use `@Builder` on all Requests and Responses. Use `@Getter` and `@Setter` instead of hand-written accessors. Never use `@Data`.
+
 No nested DTO classes. Create standalone DTO files when DTOs exist.
+
+## Mapper Rules
+
+- Mappers own Entity ↔ Dto mapping. They do `new Entity()` + `.setX().setX().setX()`. No business logic, just field copying.
+- Mappers live in `infrastructure/mapper/` per feature.
+- Hand-written only — no MapStruct.
+- Mappers never call Service, Repository, Processor, Client, or Validator.
+- ID assignment lives in Services (not Mappers), always via `uuidV7Generator.generate()`.
+
+## Error Handling Rules
+
+All exceptions use a unified hierarchy in `kz.ask.shared.error`:
+
+- `BusinessException` — abstract base with `ErrorCode`, `HttpStatus`, `Object[] args`.
+- `NotFoundException` (404), `ValidationException` (400), `ConflictException` (409), `ForbiddenException` (403), `UnauthorizedException` (401), `AuthException` (401), `InternalServerException` (500), `ExternalServiceException` (502).
+
+Error codes live in `ErrorCode` enum with Russian message templates and `format(Object... args)` method.
+
+One handler: `kz.ask.shared.api.GlobalExceptionHandler` replaces feature-specific handlers.
+
+Error response: `ErrorResponse` (timestamp, errorCode, message, errors). Validation details go into `ErrorDetail` (field, message).
+
+Rules:
+
+- Never catch and rewrap — let exceptions propagate to the handler.
+- Never create feature-specific exception classes — use the shared hierarchy with the right `ErrorCode`.
+- Always pass format args to `ErrorCode` when the template contains `%s`.
+- Never throw generic `RuntimeException` — use the appropriate subclass from `kz.ask.shared.error`.
 
 ## Product MVP Rule
 

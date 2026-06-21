@@ -44,10 +44,10 @@ public class AuthChallenge extends BaseUuidV7Entity {
     private String codeHash;
 
     @Column(nullable = false)
-    private int attempts;
+    private Integer attempts;
 
     @Column(nullable = false)
-    private int maxAttempts;
+    private Integer maxAttempts;
 
     @Column(nullable = false)
     private Instant expiresAt;
@@ -56,7 +56,7 @@ public class AuthChallenge extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private AuthChallengeStatus status;
 
-    private boolean rememberMe;
+    private Boolean rememberMe;
 
     private String registrationData;
 

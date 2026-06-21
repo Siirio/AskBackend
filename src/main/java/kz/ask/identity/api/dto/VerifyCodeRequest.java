@@ -5,7 +5,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class VerifyCodeRequest {
 
     @NotNull
@@ -14,9 +24,4 @@ public class VerifyCodeRequest {
     @Size(min = 6, max = 6)
     @Pattern(regexp = "\\d{6}")
     private String code;
-
-    public UUID getAuthChallengeId() { return authChallengeId; }
-    public void setAuthChallengeId(UUID authChallengeId) { this.authChallengeId = authChallengeId; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
 }

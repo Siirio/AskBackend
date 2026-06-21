@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
-import kz.ask.identity.domain.IdentityDomainService;
+import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.entity.AuthSession;
 import kz.ask.identity.domain.entity.AppUser;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,10 +19,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final IdentityDomainService identityDomainService;
+    private final IdentityService identityService;
 
-    public JwtAuthFilter(IdentityDomainService identityDomainService) {
-        this.identityDomainService = identityDomainService;
+    public JwtAuthFilter(IdentityService identityService) {
+        this.identityService = identityService;
     }
 
     @Override
@@ -35,16 +35,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         String token = header.substring(7);
-        AuthSession session = identityDomainService.findSessionByToken(token);
+        AuthSession session = identityService.findSessionByToken(token);
         if (session == null) {
             filterChain.doFilter(request, response);
             return;
         }
         AppUser user = session.getUser();
-        String role = "ROLE_" + session.getRole().name();
-        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
+        String authority = session.getAuthority();
+        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(authority));
 
-        AskPrincipal principal = new AskPrincipal(user.getId(), session.getId(), user.getDisplayName(), session.getRole());
+        AskPrincipal principal = new AskPrincipal(user.getId(), session.getId(), user.getDisplayName(), authority);
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(principal, null, authorities);
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

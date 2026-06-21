@@ -1,6 +1,7 @@
 package kz.ask.identity.infrastructure.sms;
 
-import kz.ask.identity.domain.VerificationDeliveryException;
+import kz.ask.shared.error.ErrorCode;
+import kz.ask.shared.error.ExternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -15,6 +16,6 @@ public class LoggingSmsCodeSender implements SmsCodeSender {
     @Override
     public void sendCode(String phone, String code) {
         log.info("SMS verification code for {}: {}", phone, code);
-        throw new VerificationDeliveryException("SMS verification is not connected yet.");
+        throw new ExternalServiceException(ErrorCode.DELIVERY_FAILED);
     }
 }

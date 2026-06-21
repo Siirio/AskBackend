@@ -45,6 +45,14 @@ auth:
       ttl: ${AUTH_BUSINESS_SESSION_TTL:86400}
     remembered-session:
       ttl: ${AUTH_BUSINESS_REMEMBERED_SESSION_TTL:2592000}
+  staff:
+    session:
+      ttl: ${AUTH_STAFF_SESSION_TTL:86400}
+    remembered-session:
+      ttl: ${AUTH_STAFF_REMEMBERED_SESSION_TTL:2592000}
+    activation-session:
+      ttl: ${AUTH_STAFF_ACTIVATION_SESSION_TTL:300}
+    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
   verification:
     email:
       enabled: ${AUTH_VERIFICATION_EMAIL_ENABLED:true}

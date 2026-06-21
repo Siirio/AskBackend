@@ -5,7 +5,17 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BusinessRegisterRequest {
 
     @Email
@@ -22,32 +32,9 @@ public class BusinessRegisterRequest {
     private String branchName;
     private UUID branchCityId;
     private String branchAddress;
-    private boolean onlineOnly;
-    private boolean acceptedBusinessRules;
-    private boolean rememberMe;
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-    public String getPasswordConfirmation() { return passwordConfirmation; }
-    public void setPasswordConfirmation(String passwordConfirmation) { this.passwordConfirmation = passwordConfirmation; }
-    public String getBusinessName() { return businessName; }
-    public void setBusinessName(String businessName) { this.businessName = businessName; }
-    public String getBranchName() { return branchName; }
-    public void setBranchName(String branchName) { this.branchName = branchName; }
-    public UUID getBranchCityId() { return branchCityId; }
-    public void setBranchCityId(UUID branchCityId) { this.branchCityId = branchCityId; }
-    public String getBranchAddress() { return branchAddress; }
-    public void setBranchAddress(String branchAddress) { this.branchAddress = branchAddress; }
-    public boolean isOnlineOnly() { return onlineOnly; }
-    public void setOnlineOnly(boolean onlineOnly) { this.onlineOnly = onlineOnly; }
-    public boolean isAcceptedBusinessRules() { return acceptedBusinessRules; }
-    public void setAcceptedBusinessRules(boolean acceptedBusinessRules) { this.acceptedBusinessRules = acceptedBusinessRules; }
-    public boolean isRememberMe() { return rememberMe; }
-    public void setRememberMe(boolean rememberMe) { this.rememberMe = rememberMe; }
+    private Boolean onlineOnly;
+    private Boolean acceptedBusinessRules;
+    private Boolean rememberMe;
 
     @AssertTrue(message = "Exactly one of email or phone must be provided")
     public boolean hasSingleContact() {
@@ -61,11 +48,11 @@ public class BusinessRegisterRequest {
 
     @AssertTrue(message = "Business rules must be accepted")
     public boolean rulesAccepted() {
-        return acceptedBusinessRules;
+        return acceptedBusinessRules != null && acceptedBusinessRules;
     }
 
     @AssertTrue(message = "Branch city and address must be provided for offline branch")
     public boolean hasOfflineBranchLocation() {
-        return onlineOnly || (branchCityId != null && branchAddress != null && !branchAddress.isBlank());
+        return onlineOnly != null && onlineOnly || (branchCityId != null && branchAddress != null && !branchAddress.isBlank());
     }
 }

@@ -1,6 +1,7 @@
 package kz.ask.identity.infrastructure.mail;
 
-import kz.ask.identity.domain.VerificationDeliveryException;
+import kz.ask.shared.error.ErrorCode;
+import kz.ask.shared.error.ExternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,7 +37,7 @@ public class SmtpEmailCodeSender implements EmailCodeSender {
             log.info("Verification code sent to {}", email);
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", email, e.getMessage());
-            throw new VerificationDeliveryException("Email verification code was not sent.");
+            throw new ExternalServiceException(ErrorCode.DELIVERY_FAILED);
         }
     }
 }

@@ -38,7 +38,7 @@ public class ProductOffer extends BaseUuidV7Entity {
     private BigDecimal price;
 
     @Column(nullable = false)
-    private boolean enabled;
+    private Boolean enabled;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

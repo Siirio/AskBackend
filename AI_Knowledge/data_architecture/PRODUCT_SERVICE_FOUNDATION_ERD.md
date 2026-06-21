@@ -22,7 +22,9 @@ This document defines the current MVP database foundation for products, services
 - `app_user`: authentication identity for customers and business owners/members.
 - `customer_profile`: customer-facing profile for an app user.
 - `business`: owning business/container.
-- `business_member`: user membership and role inside a business.
+- `business_member`: business-level ownership (OWNER role).
+- `branch_member`: branch-level staff membership (MANAGER, OPERATOR roles).
+- `branch_invite`: invite code for staff self-service onboarding with role and expiry.
 - `business_branch`: concrete registered store, branch, or establishment.
 - `business_contact`: contact channel for one branch or business context.
 - `city`: city scope for branches and search.
@@ -115,6 +117,30 @@ This document defines the current MVP database foundation for products, services
 
 Current MVP task contracts keep product offer data to price, branch ownership, and visibility state.
 
+### `branch_member`
+
+| Column | Meaning |
+|---|---|
+| `id` | Membership id. |
+| `branch_id` | Branch the staff member belongs to. |
+| `user_id` | AppUser account. |
+| `role` | MANAGER or OPERATOR. |
+| `status` | Record lifecycle (ACTIVE, DISABLED). |
+
+### `branch_invite`
+
+| Column | Meaning |
+|---|---|
+| `id` | Invite id. |
+| `branch_id` | Target branch. |
+| `code` | Unique random invite code string. |
+| `role` | Intended BranchMemberRole for accepted invite. |
+| `max_uses` | Maximum times this invite can be used. |
+| `use_count` | Current usage count. |
+| `expires_at` | Invite expiry timestamp. |
+| `created_by` | AppUser who created the invite. |
+| `revoked_at` | Revocation timestamp, NULL if active. |
+
 ### `service_offering`
 
 | Column | Meaning |
@@ -198,10 +224,14 @@ Do not add business result rows as standalone search results. `business_id` and 
 ```mermaid
 erDiagram
     app_user ||--o| customer_profile : owns
-    app_user ||--o{ business_member : joins
-    business ||--o{ business_member : has
+    app_user ||--o{ business_member : joins_as_owner
+    app_user ||--o{ branch_member : joins_as_staff
+    business ||--o{ business_member : has_owner
     business ||--o{ business_branch : has
+    business_branch ||--o{ branch_member : staffed_by
+    business_branch ||--o{ branch_invite : has_invite
     business_branch ||--o{ business_contact : exposes
+    app_user ||--o{ branch_invite : creates_invite
     city ||--o{ business_branch : contains
     category ||--o{ product : classifies
     category ||--o{ service_offering : classifies
