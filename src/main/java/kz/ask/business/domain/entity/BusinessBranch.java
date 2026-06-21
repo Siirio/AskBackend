@@ -25,8 +25,8 @@ public class BusinessBranch extends BaseUuidV7Entity {
     @JoinColumn(name = "business_id", nullable = false)
     private Business business;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "city_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id")
     private City city;
 
     @Column(nullable = false)
@@ -37,6 +37,9 @@ public class BusinessBranch extends BaseUuidV7Entity {
     private BigDecimal latitude;
 
     private BigDecimal longitude;
+
+    @Column(nullable = false)
+    private boolean onlineOnly;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

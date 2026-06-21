@@ -1,5 +1,66 @@
 # Foundation Changelog
 
+## 2026-06-21 - Data Model Normalization After Task 05
+
+Synchronized the implemented entities, `V1__init.sql`, and first-read documentation with the current frontend-backed UX direction.
+
+### Removed Old Model Fields
+
+- Removed product stock tracking from MVP schema and entities: no `stockStatus`, `stockQuantity`, `stock_status`, or `stock_quantity`.
+- Removed availability scoring from MVP schema and entities: no `AvailabilityConfidence`, `availabilityConfidence`, or `availability_confidence`.
+- Removed freshness tracking from MVP schema and entities: no `freshnessAt` or `freshness_at`.
+- Removed standalone business search indexing fields from search documents and counters from snapshots.
+- Removed service `ConfirmationPolicy`; MVP services are request-to-book and business-confirmed, not automatic booking truth.
+
+### Current Implemented Model
+
+- `ProductOffer.enabled` controls whether a branch-level product offer appears in live product search.
+- `ServiceBranchOffer.active` controls whether a branch-level service offer appears in live service search.
+- `ServiceBranchOffer.scheduleText` stores display schedule/conditions text only.
+- `SearchDocument` indexes product offers and service branch offers only.
+- `SearchResultSnapshot.business` and `SearchResultSnapshot.branch` are context for product/service rows, not standalone business results.
+- `BusinessContact` now uses `contactValue` and `primaryContact`, mapped to `contact_value` and `is_primary`.
+- `SupplierResponseStatus` now uses product/service-specific values: `HAS_ITEM`, `NO_ITEM`, `NEED_CLARIFICATION`, `HAS_ANALOG`, `CAN_PROVIDE`, `CANNOT_PROVIDE`, `SUGGEST_OTHER_TIME`.
+
+### Documentation Updated
+
+- Updated `README.md` to remove old "business search and availability layer" wording and replace it with product/service search wording.
+- Updated `ARCHITECTURE_NARRATIVE.md` with the current data model alignment and explicit removed-field list.
+- Updated `PRODUCT_SERVICE_FOUNDATION_ERD.md` with `enabled`, `active`, `schedule_text`, `contact_value`, `is_primary`, and current search document shape.
+- Updated `UX_UI_BACKEND_CONTRACT.md` to make the frontend flow the source to refresh from before backend task/entity changes.
+- Updated `AUTH_BACKEND_CONTRACT.md` to state that email is the real MVP verification channel and SMS is disabled until a real provider is connected.
+
+## 2026-06-21 - Identity Auth Implementation (Task 05)
+
+Implemented identity authentication and business branch onboarding endpoints for Ask: customer login/register, business login/register, code verification, current session, and logout.
+
+### Auth Model
+- Email-or-phone login/registration: exactly one primary identifier is used for the auth challenge.
+- Verification codes are 6 digits and stored hashed in the database.
+- Passwords are stored through Spring Security `PasswordEncoder` with BCrypt.
+- Bearer session tokens are random opaque tokens; only token hashes are stored.
+- Remember-me extends session TTL through backend config.
+- Business registration data is persisted only after successful contact verification.
+
+### Business Onboarding
+- Business registration creates `Business`, `BusinessBranch`, `BusinessMember`, and initial `BusinessContact` records.
+- Registration contact becomes the first public branch contact.
+- Online-only branches may omit physical address fields.
+
+### Email and SMS
+- Email verification is the real MVP channel and uses `SmtpEmailCodeSender` with JavaMailSender.
+- Email delivery failure stops the auth challenge instead of pretending success.
+- SMS interfaces exist for future provider integration, but SMS is disabled by default and current logging/noop implementations return delivery-unavailable errors.
+
+### Security And Configuration
+- `SecurityConfig` uses stateless sessions and permits only auth start/register/verify endpoints without authentication.
+- `JwtAuthFilter` validates Bearer tokens through `IdentityDomainService.findSessionByToken`.
+- Auth settings live under `auth.*`; SMTP settings use `spring.mail.*` and environment overrides.
+
+### Schema
+- `V1__init.sql` creates the initial schema for identity, business, catalog, service, request, messaging, booking, and search domains.
+- The schema is production-facing for persistent business onboarding data, not throwaway mock data.
+
 ## 2026-06-21 - Auth, UX Contract, And Backend Task Actualization
 
 Added `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md` as the backend-facing source for customer and business auth: email-or-phone login and registration, real email verification, optional SMS verification, 6-digit confirmation, remember-me sessions, current session restore, logout, and branch/store onboarding.

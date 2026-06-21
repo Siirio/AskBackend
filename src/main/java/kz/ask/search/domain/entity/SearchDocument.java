@@ -15,12 +15,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
-import kz.ask.business.domain.entity.Business;
 import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.AvailabilityConfidence;
 import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
@@ -41,10 +39,6 @@ public class SearchDocument extends BaseUuidV7Entity {
     @JoinColumn(name = "service_branch_offer_id")
     private ServiceBranchOffer serviceBranchOffer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "business_id")
-    private Business business;
-
     @Column(nullable = false)
     private String title;
 
@@ -54,10 +48,6 @@ public class SearchDocument extends BaseUuidV7Entity {
     @CollectionTable(name = "search_document_token", joinColumns = @JoinColumn(name = "search_document_id"))
     @Column(name = "token", nullable = false)
     private List<String> tokens = new ArrayList<>();
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AvailabilityConfidence availabilityConfidence;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

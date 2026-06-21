@@ -59,7 +59,8 @@ Current MVP rules:
 
 - one concrete sellable item is one `Product`;
 - a product belongs to a business and is offered by a concrete branch through `ProductOffer`;
-- product visibility is controlled by enabled/disabled/deleted behavior;
+- `ProductOffer.enabled` controls live search visibility for a branch-level product offer;
+- `Product.status` remains the product record lifecycle;
 - inventory counting is outside the MVP;
 - separate data-freshness tracking is outside the MVP;
 - product visibility is driven by business enable/disable/delete actions;
@@ -72,11 +73,24 @@ Services are separate from products.
 Current MVP rules:
 
 - a service belongs to a business and is offered by a concrete branch;
-- service visibility is controlled by active/inactive behavior;
+- `ServiceBranchOffer.active` controls live search visibility for a branch-level service offer;
+- `ServiceBranchOffer.scheduleText` is display/conditions text, not guaranteed slot truth;
 - service requests are request-to-book, not guaranteed slot reservations;
 - the customer can choose desired time;
 - business confirms final time, declines, or proposes another time;
 - MVP does not model full staff/calendar slot blocking.
+
+## Current Data Model Alignment
+
+The current code and `V1__init.sql` intentionally do not contain:
+
+- product stock status or stock quantity fields;
+- availability confidence fields;
+- data freshness timestamps;
+- standalone business search documents or business result counts;
+- service confirmation policy fields that imply automatic booking truth.
+
+Search documents index only product offers and service branch offers. Search result snapshots may store `business_id` and `branch_id` only as context for a product/service row.
 
 ## Search And Distance
 

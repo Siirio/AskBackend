@@ -34,7 +34,10 @@ public class BusinessContact extends BaseUuidV7Entity {
     private ContactType contactType;
 
     @Column(nullable = false)
-    private String value;
+    private String contactValue;
+
+    @Column(name = "is_primary", nullable = false)
+    private boolean primaryContact;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

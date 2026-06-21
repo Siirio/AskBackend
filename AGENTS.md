@@ -18,6 +18,8 @@ For later sessions, read only the documents relevant to the task, plus any file 
 - Read `AI_Knowledge/CODE_RULES.md` before backend code changes.
 - Read `AI_Knowledge/data_architecture/PRODUCT_SERVICE_FOUNDATION_ERD.md` before changing entities, migrations, repositories, catalog, services, booking, messaging, search, or fallback request behavior.
 - Read `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md` before changing request/response statuses, customer request flow, supplier response flow, chat, contact actions, or API DTOs used by clients.
+- If changing entities, migrations, DTO contracts, auth flow, search flow, product/service visibility, request statuses, or onboarding rules, update `AI_Knowledge/CHANGELOG_FOUNDATION.md` and the matching architecture/client-contract docs in the same turn.
+- If backend behavior depends on UX and docs disagree, refresh backend docs from `AskFrontend/AI_Knowledge/product_ux/EXPECTED_UX_UI_FLOW.md` before generating or changing backend tasks.
 - Keep changes scoped to the current task.
 - Do not run `git commit` or `git push` unless the user explicitly asks in the current turn.
 - Do not create or write tests unless the user explicitly reverses this project rule.

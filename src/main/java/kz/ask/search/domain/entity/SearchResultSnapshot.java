@@ -19,7 +19,6 @@ import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.search.domain.enums.SearchResultSnapshotType;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.AvailabilityConfidence;
 
 @Entity
 @Getter
@@ -62,10 +61,6 @@ public class SearchResultSnapshot extends BaseUuidV7Entity {
     private BigDecimal price;
 
     private String statusLabelKey;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AvailabilityConfidence availabilityConfidence;
 
     @Enumerated(EnumType.STRING)
     private DataSourceType sourceType;
