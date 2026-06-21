@@ -76,6 +76,18 @@ Backend calculation:
 
 Frontend wording can show city, district, address, or distance depending on available data.
 
+## Entry Point Model
+
+There are three distinct entry paths into the system. They are not three equal "registrations":
+
+| Path | Who | How | Endpoint |
+|------|-----|-----|----------|
+| Customer registration | End-user searching for products/services | Self-registers | `POST /auth/customer/register` |
+| Business owner registration | Person creating a business on Ask | Self-registers | `POST /auth/business/register` |
+| Staff activation | Manager or operator added by owner | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
+
+Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners/managers inside the business cabinet. The staff member then activates their account through the normal login flow.
+
 ## Auth And Onboarding Flow
 
 Backend auth must follow `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md`.
@@ -162,77 +174,178 @@ Updating a business response updates the same row. It must not create duplicates
 
 ## Staff Management Flow
 
-Business owners and managers manage branch-level staff through staff and invite endpoints. Staff are `AppRole.BUSINESS` users whose role is determined by their `BranchMember` record, not by a separate app role.
+### Core Principle
+
+Staff do not register themselves. There is no public registration form for manager or operator roles. Staff accounts are created inside the business cabinet by owners or managers, then activated by the staff member through the standard login form with a temporary password.
 
 ### Staff Roles
 
-- MANAGER: full branch management access (staff, products, services).
-- OPERATOR: limited branch access.
+- `MANAGER`: full branch management access (staff, products, services).
+- `OPERATOR`: limited branch access.
 
-Staff endpoints require OWNER or MANAGER authority on the target branch.
+Staff endpoints require `OWNER` or `MANAGER` authority on the target branch.
 
-### Staff Creation And Activation
+### Staff Status Lifecycle
 
-Owner or manager creates staff through `POST /staff`:
+```
+                   owner creates staff
+                   ┌──────────────────┐
+                   │ PENDING_ACTIVATION│
+                   └────────┬─────────┘
+                            │ staff logs in + changes password
+                   ┌────────▼─────────┐
+                   │     ACTIVE       │
+                   └────────┬─────────┘
+                            │ owner resets password
+                   ┌────────▼──────────┐
+                   │ PASSWORD_RESET_   │
+                   │ REQUIRED          │─── staff logs in + changes password ──→ ACTIVE
+                   └───────────────────┘
+                            │ owner disables access
+                   ┌────────▼─────────┐
+                   │    DISABLED      │
+                   └──────────────────┘
+```
 
-- Backend creates `AppUser` with `role=BUSINESS`, `status=PENDING_ACTIVATION`, `mustChangePassword=true`.
-- System generates a temporary password, BCrypt-hashes it for login, and AES-encrypts the plain text for owner visibility.
-- Backend creates `BranchMember` with the requested role (MANAGER or OPERATOR).
-- Response includes `tempPassword` (plain text, one-time visibility).
+- `PENDING_ACTIVATION`: owner created the staff member. Staff has not yet logged in. Temporary password is visible to owner.
+- `ACTIVE`: staff has activated their account by setting a personal password. Temporary password is destroyed and no longer visible to owner.
+- `PASSWORD_RESET_REQUIRED`: owner reset the staff password. Staff must change password at next login. New temporary password is visible to owner until activation.
+- `DISABLED`: access revoked. Staff cannot log in.
 
-Owner sees temp password in the staff card while `status = PENDING_ACTIVATION`. After activation the password is hidden and only a "Reset password" button is available.
+### Staff Creation (Owner Side)
 
-### Staff Statuses
+`POST /api/v1/businesses/{businessId}/branches/{branchId}/staff`
 
-- `PENDING_ACTIVATION`: created by owner, not yet activated.
-- `ACTIVE`: activated and working.
-- `PASSWORD_RESET_REQUIRED`: owner reset password, staff must change at next login.
-- `DISABLED`: access revoked.
+Owner or manager fills in:
+
+- Staff name
+- Role: Manager / Operator
+- Login: email (phone in future)
+
+Backend:
+
+1. Verifies caller is OWNER or MANAGER of the branch.
+2. Creates `AppUser` with `role=BUSINESS`, `status=PENDING_ACTIVATION`, `mustChangePassword=true`.
+3. Generates temporary password, BCrypt-hashes it for login verification, AES-encrypts the plain text for owner visibility.
+4. Creates `BranchMember` with the requested role.
+5. Returns `StaffResponse` with `tempPassword` in plain text (one-time visibility at creation, plus visible in staff card while pending).
+
+After creation, owner sees a confirmation screen with copy actions:
+
+```
+Сотрудник создан
+Имя: Манас
+Роль: Manager
+Филиал: Mega Silk Way
+Логин: manager@example.com
+Временный пароль: Q7K9-M2PA
+
+[Скопировать логин]
+[Скопировать временный пароль]
+[Скопировать всё сообщение]
+[Скопировать сообщение для WhatsApp]
+[Готово]
+```
+
+### Staff Card — Before Activation
+
+In the staff list, a pending staff member shows:
+
+- Name, role, branch
+- Status: "Ожидает активации"
+- Login visible
+- Temporary password visible
+- Actions: copy credentials, generate new temporary password, delete invitation
+
+Temporary password is displayed only while `status = PENDING_ACTIVATION`.
+
+### Staff Card — After Activation
+
+After the staff member logs in and sets their own password:
+
+- Name, role, branch
+- Status: "Активен"
+- Activated at: timestamp
+- Login visible
+- Password: hidden — "Сотрудник уже активировал аккаунт. Временный пароль больше недоступен."
+- Actions: change role, reset password, disable access
 
 ### Staff Password Reset
 
-`POST /staff/{id}/reset-password` (OWNER or MANAGER):
+`POST /api/v1/businesses/{businessId}/branches/{branchId}/staff/{id}/reset-password`
 
-- Generates new temporary password.
-- Sets status to `PASSWORD_RESET_REQUIRED`, `mustChangePassword=true`.
-- Returns new `tempPassword` in response.
+Owner or manager resets a staff password:
+
+1. Generates new temporary password.
+2. Sets status to `PASSWORD_RESET_REQUIRED`, `mustChangePassword=true`.
+3. Returns `StaffResponse` with new `tempPassword` in plain text.
+
+After reset, the temporary password is visible again until the staff member activates.
+
+### Staff Self-View
+
+A staff member logged in with `PASSWORD_RESET_REQUIRED` sees the same password change screen as a new staff member. After setting a new password, they become `ACTIVE` again.
 
 ## Unified Login Flow
 
-`POST /api/v1/auth/login` accepts `{ email, password }` and works for all roles (CUSTOMER, BUSINESS owner, BUSINESS manager, BUSINESS operator).
+`POST /api/v1/auth/login` accepts `{ email, password }` and works for ALL roles:
+
+- Customer
+- Business owner
+- Business manager
+- Business operator
 
 Login logic:
 
 1. Find user by email.
 2. Verify BCrypt password.
-3. If `mustChangePassword` is false → create normal session with appropriate TTL, return.
-4. If `mustChangePassword` is true (status PENDING_ACTIVATION or PASSWORD_RESET_REQUIRED) → create short-TTL activation session (5 minutes) with `activationRequired: true`. Frontend detects this flag and navigates to the password change screen.
+3. If `mustChangePassword` is `false` → create normal session, return `AuthSessionResponse` with `activationRequired: false`.
+4. If `mustChangePassword` is `true` (status `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`) → create short-TTL activation session (5 minutes) with `activationRequired: true`. Frontend detects this and navigates to the password change screen.
+
+### Password Change Screen
 
 `POST /api/v1/auth/change-temporary-password` (authenticated with activation session):
 
 1. Accepts `{ newPassword, passwordConfirmation }`.
-2. Validates password confirmation matches.
-3. Hashes and stores new password, clears temp password encrypted value.
-4. Sets `status=ACTIVE`, `activatedAt=now()`, `mustChangePassword=false`.
-5. Creates new full session, revokes activation session.
-6. Returns normal session response.
+2. Validates passwords match.
+3. Hashes and stores new password.
+4. Clears `tempPasswordEncrypted` (owner can no longer see it).
+5. Sets `status=ACTIVE`, `activatedAt=now()`, `mustChangePassword=false`.
+6. Creates new full session, revokes activation session.
+7. Returns `AuthSessionResponse` with `activationRequired: false`.
+
+Frontend password change screen:
+
+```
+Создайте новый пароль
+
+Вы входите впервые. Для безопасности задайте свой постоянный пароль.
+
+Новый пароль
+Повторите пароль
+
+[Сохранить и продолжить]
+```
 
 ### Temporary Password Rules
 
 - Temp password is BCrypt-hashed in `passwordHash` for login verification.
 - Plain temp password is AES-encrypted in `tempPasswordEncrypted` for owner visibility.
 - `tempPasswordEncrypted` is set to NULL on activation.
+- Never store plain temporary password in the database.
 - Activation session TTL is 5 minutes. Staff must complete password change within this window.
-- `POST /auth/change-temporary-password` requires an activation session (not a normal session).
+- `POST /auth/change-temporary-password` requires an activation session, not a normal session.
 
 ## Invite Code Flow
 
-`POST /staff` is the direct creation path. Invite codes provide an alternative self-service path:
+`POST /api/v1/businesses/{businessId}/branches/{branchId}/invites` creates shareable invite codes. This is an alternative self-service path:
 
-- Owner or manager creates invite with role and optional maxUses.
-- Invite code is a random opaque string with expiry.
+- Owner or manager creates invite with role and optional `maxUses`.
+- Invite code is a random opaque string with configurable expiry.
 - Invite can be revoked before use.
 - Invite list shows code, role, usage count, expiry, and revocation status.
+
+Note: for MVP, direct staff creation (`POST /staff`) is the primary path. Invite codes are secondary.
 
 ## Retention
 
