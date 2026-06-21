@@ -36,11 +36,15 @@ For later sessions, read only the documents relevant to the task, plus any file 
 ## Product Guardrails
 
 - AskBackend is one backend for Android, iOS, and future web clients.
-- Ask is search-first: return known products, services, and businesses before creating fallback requests.
-- Fallback requests exist only when data is missing, stale, low-confidence, or confirmation-needed.
+- Ask is search-first: return known products and services from businesses before creating fallback requests.
+- Fallback requests exist only when product/service results are missing or the customer wants business confirmation.
 - Do not invent stock, delivery, logistics, schedules, slots, booking, or availability facts without supplier input or trusted integration data.
 - Services are not products. Scheduled service logic, booking, and on-demand service logic must stay explicit.
 - Concrete product variations are separate `Product` entities in MVP. Do not add product variant tables unless a real business case requires them.
+- Current MVP search has only product search and service search. Do not create a separate business search flow unless the product direction changes.
+- New task contracts describe product visibility through enabled/disabled/deleted actions and service visibility through active/inactive actions. Do not model separate availability scoring, inventory-count tracking, or freshness tracking in MVP docs.
+- Chat is always available from product, service, request, booking, and business-context screens through contextual contact actions.
+- Business onboarding is production-facing: registration creates a real branch/store profile and its real products/services must persist in the real database. Do not design it as mock-only onboarding.
 
 ## When To Challenge
 

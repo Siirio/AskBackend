@@ -12,7 +12,8 @@ Read this first when opening AskBackend in a fresh Codex session or onboarding a
 6. `AI_Knowledge/data_architecture/ARCHITECTURE_NARRATIVE.md`
 7. `AI_Knowledge/data_architecture/PRODUCT_SERVICE_FOUNDATION_ERD.md`
 8. `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md`
-9. `AI_Knowledge/CHANGELOG_FOUNDATION.md`
+9. `AI_Knowledge/client_contracts/AUTH_BACKEND_CONTRACT.md`
+10. `AI_Knowledge/CHANGELOG_FOUNDATION.md`
 
 ## What Belongs Here
 

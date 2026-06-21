@@ -1,180 +1,124 @@
 # Architecture Narrative
 
-Ask began as a practical request-routing idea, but the current product strategy is search-first. Ask is a local search platform where a customer first sees found products or services across city businesses.
+Ask is a search-first product for finding products and services from real local businesses. The current MVP is not a broad business search engine and not a request-only broadcast app.
 
-The deeper product insight is that request broadcasting alone is not enough. If Ask never learns how to work with supplier data, it stays a messenger-like tool. The stronger product is a local search and availability platform: a system that understands businesses, products, services, catalogs, branches, attributes, schedules, and integrations, while using manual requests as confirmation fallback when data is missing or uncertain.
-
-## From Request Routing To Search-First Platform
-
-The target flow is:
+The target customer flow is:
 
 ```text
-Customer search -> product/service/business results -> clear source and availability confidence
-  -> fallback request to suitable suppliers when exact data is missing
+Customer chooses product or service search
+  -> enters raw query
+  -> sees enabled products or enabled services from registered branches
+  -> opens product/service/business context, chat, or creates fallback request
 ```
 
-Manual request routing remains useful because it handles missing catalogs, stale availability, uncertain services, and supplier confirmation. But it is no longer the only core flow. Suppliers should not manually answer every obvious availability question forever if they already have data somewhere else.
+## Current Product Direction
 
-The next technical goal is not merely "add product CRUD." The goal is business data ingestion, search quality, and a fallback request path that activates only when known data is insufficient.
+- Customer search has two primary scopes: products and services.
+- Business pages open from context, not from a separate business search.
+- Categories narrow product/service search.
+- Raw query is preserved everywhere.
+- Dynamic filters are based on actual result attributes.
+- Fallback requests exist when no suitable result exists or when the customer wants businesses to confirm manually.
+
+## Business Onboarding Direction
+
+Business onboarding is production-facing. It is not a mock-only flow.
+
+The immediate goal is to register real stores/branches before the client app launch so customer search has real data to show. A business registration currently means one concrete branch/store/establishment joins Ask.
+
+After registration:
+
+- the branch profile persists in the real database;
+- the branch can add products;
+- the branch can add services;
+- enabled products and services appear in customer search;
+- disabled or deleted products and services stop appearing in live search.
+
+A future account can manage multiple branches, but each branch must have its own contacts and its own products/services. Do not collapse all future branch contacts into one company-wide registration contact.
 
 ## One Backend, Many Clients
 
-AskBackend must be the single backend for all official clients. Android, iOS, and a future website must use the same backend API. The backend should not fork into separate implementations per client, and business rules must not depend on whether the request came from mobile or web.
+AskBackend is the single backend for Android, iOS, web, and desktop/PWA clients.
 
-The intended client shape is:
+Frontend owns presentation, navigation, and local UI state. Backend owns:
 
-```text
-Android UI
-iOS UI
-Web UI
-  -> shared client/API abstraction
-  -> AskBackend API
-```
+- identity and real contact verification;
+- persisted business onboarding data;
+- product and service records;
+- search indexing;
+- branch ownership and contacts;
+- request routing;
+- chat context;
+- data retention policy.
 
-Each frontend can have platform-specific UI, navigation, and local state, but heavy product logic must stay out of separate UI implementations. The shared client/API abstraction should isolate communication with AskBackend from design and presentation. Backend owns search data truth, catalog processing, availability confidence, request fallback, service-provider data, permissions, and integration boundaries.
+## Product Catalog MVP
 
-## Catalog Is A System, Not A Table
+Products are real business-entered or imported items.
 
-Many suppliers, especially early local suppliers, may have data in Excel, CSV, MoySklad, POS systems, e-commerce exports, CRM tools, or custom spreadsheets. The backend must treat catalog work as a data pipeline:
+Current MVP rules:
 
-- importing raw files, especially Excel and CSV, or provider data;
-- mapping columns;
-- preserving raw source rows;
-- normalizing names;
-- detecting duplicates;
-- mapping categories;
-- storing flexible attributes;
-- tracking branch-level price or availability;
-- measuring freshness;
-- allowing supplier corrections;
-- searching rough, incomplete, multilingual, or misspelled queries.
+- one concrete sellable item is one `Product`;
+- a product belongs to a business and is offered by a concrete branch through `ProductOffer`;
+- product visibility is controlled by enabled/disabled/deleted behavior;
+- inventory counting is outside the MVP;
+- separate data-freshness tracking is outside the MVP;
+- product visibility is driven by business enable/disable/delete actions;
+- if the customer needs confirmation, use clarify action, Ask chat, or fallback request.
 
-Catalog-backed search is a core product path. Manual request routing must still work for missing, stale, or uncertain data, but catalog should not be treated as a distant optional improvement.
+## Services MVP
 
-Catalog import must be seller-friendly. Shops should not have to fill the same catalog manually inside Ask if they already maintain Excel or CSV exports. The system should support upload, preview, column mapping, validation, correction, import history, and repeated updates.
+Services are separate from products.
 
-## Smart Search
+Current MVP rules:
 
-Smart Search is the primary customer discovery path. It should not collapse into a rigid product picker. A customer may describe a need imprecisely. The system should connect the search intent with categories, products, services, attributes, aliases, supplier catalogs, and fallback manual outreach.
+- a service belongs to a business and is offered by a concrete branch;
+- service visibility is controlled by active/inactive behavior;
+- service requests are request-to-book, not guaranteed slot reservations;
+- the customer can choose desired time;
+- business confirms final time, declines, or proposes another time;
+- MVP does not model full staff/calendar slot blocking.
 
-When catalog confidence is low, Ask should route the request for confirmation rather than invent availability.
+## Search And Distance
 
-## Services Are A Separate Direction
+Search ranking should be smart and practical. It can use query matching, category, result attributes, enabled state, price, and distance when distance is known. The public contract should stay focused on the visible product/service result and its branch context.
 
-Ask should support services in the future. A user may choose whether they are looking for a product or a service.
+`distanceMeters` is calculated only when:
 
-Products are physical items. Services involve time and capacity. A service model may need:
+- customer geolocation is provided;
+- branch coordinates exist;
+- backend calculates distance from customer coordinates to branch coordinates.
 
-- service providers;
-- branches;
-- specialists or resources;
-- schedules;
-- free windows;
-- durations;
-- price rules;
-- confirmation;
-- cancellation;
-- source of availability;
-- provider integrations.
-
-Services cannot be modeled as products with a different label. Before coding service search or booking, the team should write a system analysis covering source of truth, availability updates, integration options, MVP shortcuts, and scaling risks.
-
-For service providers, a mobile-only management flow is likely too heavy. Managing service offerings, schedules, free windows, discounts, conditions, specialists, and branches is better suited to a web cabinet. The website direction is therefore not a general replacement for mobile apps; it is primarily a provider workspace for establishments that need comfortable service administration.
-
-## Backend Architecture Direction
-
-The backend should stay a monolith until there is evidence that splitting services is worth the cost.
-
-Feature-Sliced Design is a frontend methodology. Do not copy it literally into Spring Boot: frontend layers such as `app`, `pages`, `widgets`, `features`, `entities`, and `shared` are not backend package names.
-
-AskBackend should use the backend equivalent of the same slicing idea: package-by-feature, modular monolith, domain modules, DDD-style modules, and clean/hexagonal architecture boundaries. The system should be grouped by product capability and bounded domain area, not only by technical layer.
-
-Default backend direction:
-
-- Java 21;
-- Maven;
-- Spring Boot;
-- Spring MVC;
-- PostgreSQL;
-- Flyway;
-- Spring Data JPA;
-- Spring Security;
-- OpenAPI.
-
-Non-trivial workflows should move toward:
-
-```text
-Controller -> Processor or UseCase -> DomainService -> Repository
-```
-
-Controllers should validate request shape, call application boundaries, and return `ResponseEntity`. Domain services own business logic. Repositories own persistence. DTOs define API contracts. Mappers and assemblers stay pure.
-
-Feature/domain modules should make related code easy to find. Search, catalog import, service scheduling, request fallback, supplier onboarding, response handling, and chat should each have clear local ownership. Avoid a structure where every feature is split across broad global buckets so that one change requires jumping through many unrelated files.
-
-Recommended module shape:
-
-```text
-request/
-  api/
-  application/
-  domain/
-  infrastructure/
-
-store/
-  api/
-  application/
-  domain/
-  infrastructure/
-
-product/
-  api/
-  application/
-  domain/
-  infrastructure/
-
-shared/
-  security/
-  errors/
-  persistence/
-  clock/
-  events/
-```
-
-Backend modules may contain API DTOs/controllers, use cases/processors, domain services, repositories, mappers, and feature-specific configuration when needed. Shared primitives, cross-cutting infrastructure, security, common errors, and integration abstractions belong in shared or infrastructure areas. Cross-module dependencies must be explicit and interface-based.
-
-## Integration Boundaries
-
-Core business logic must not depend directly on Telegram, WhatsApp, Paloma, 1C, re:Kassa, Shopify, MoySklad, POS, CRM, fiscal systems, e-commerce systems, or scheduling systems. These are adapters or providers.
-
-Real provider calls require explicit scope, credentials, documentation, and explicit approval. Placeholders may exist, but they must not pretend to have real provider behavior.
-
-## Mobile And Frontend Direction
-
-The future product is mobile-first. Native mobile apps may become the primary clients. Browser tools and prototypes can exist, but they should not define backend architecture.
-
-Frontend and backend can be separate repositories owned by different developers. The shared contract is product meaning plus stable APIs, not one old prototype implementation.
-
-The mobile application has two product sides: customer and seller/supplier. The website is planned mainly for service-providing establishments that need to manage larger service data and scheduling. All of these clients still go through the same backend.
-
-## Scaling Direction
-
-Ask may start in one city and expand to more cities, Kazakhstan, CIS, or other markets. Avoid hardcoding:
-
-- one city;
-- one language;
-- one category;
-- one supplier type;
-- one spreadsheet shape;
-- one provider;
-- one frontend;
-- one deployment vendor.
-
-The architecture should be practical, not enterprise theater. But it must avoid decisions that make growth impossible.
+If coordinates are missing, return `distanceMeters=null`.
 
 ## Data Truth
 
 Ask must not invent facts.
 
-Search results can show known products, services, businesses, prices, branches, and availability confidence only when the backend has a trustworthy source. Manual replies can contain status, price, comment, branch address, contact actions, and explicit supplier notes. Exact stock quantity, delivery SLA, courier availability, automatic availability, service slots, and booking promises require supplier input or real integration data.
+Allowed MVP facts:
 
-If the source is weak, Ask should say confirmation is needed.
+- enabled product exists in branch catalog;
+- active service exists in branch service list;
+- business-provided price when present;
+- business-provided branch address and contacts;
+- calculated distance when coordinates exist;
+- business response status when business answered.
+
+Not tracked in MVP:
+
+- inventory counting;
+- separate data-freshness tracking;
+- separate scoring fields for availability;
+- automatic delivery SLA;
+- courier availability;
+- guaranteed service slot availability.
+
+## Persistence And Deployment Direction
+
+Once the site is given to real businesses for onboarding:
+
+- database must be persistent;
+- data must not be dropped casually;
+- frontend, backend, and database should be deployable together;
+- seed/demo data must not replace real business registrations.
+
+Render or another deployment target can host the app, but provider-specific setup belongs to deployment tasks, not product task DTOs.

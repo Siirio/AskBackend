@@ -1,245 +1,245 @@
-# Task 02: Client Service Search, Booking, And Request Endpoints
+# Task 02: Client Service Search And Request Endpoints
 
-## Goal
+|   |   |
+|---|---|
+|**Описание**|Клиентские endpoint'ы для поиска услуг, просмотра услуги, отправки заявки на желаемое время, бизнес-подтверждения через активность и чат.|
+|**Модуль системы**|service, search, request, messaging|
 
-Create client-facing service endpoints that support search-first service discovery, service details, booking when truth exists, and fallback service requests when availability is unknown or confirmation-needed.
+## Зависимости
 
-## Required Foundation
+- `Task 00: Search Session And Snapshot Foundation`
+- `Task 05: Identity Auth And Session Endpoints`
+- `ServiceOffering`, `ServiceBranchOffer`, `Business`, `BusinessBranch`, `BusinessContact`
+- `SearchDocument`, `SearchSession`, `SearchSnapshot`, `SearchResultSnapshot`
+- `CustomerRequest`, `RequestTarget`, `SupplierResponse`, `ConversationLink`
 
-This task depends on:
+## Общие правила задачи
 
-- `ServiceOffering`
-- `ServiceBranchOffer`
-- `ServiceResource`
-- `ServiceSchedule`
-- `ServiceWindow`
-- `Booking`
-- `Business`
-- `BusinessBranch`
-- `BusinessContact`
-- `SearchDocument`
-- `SearchSession`
-- `SearchSnapshot`
-- `SearchResultSnapshot`
-- `CustomerRequest`
-- `RequestTarget`
-- `SupplierResponse`
-- `ConversationLink`
+- Услуги ищутся отдельно от товаров.
+- Отдельного поиска по бизнесам нет.
+- MVP услуга работает как заявка на запись, не как гарантированная бронь слота.
+- DTO описывает только актуальную MVP-модель: данные услуги, бизнес/филиал, price, duration, displayState, рассчитанную дистанцию и contactActions.
+- Чат доступен всегда из конкретного контекста.
+- Активная услуга показывается клиентам, неактивная не показывается.
+- `distanceMeters` возвращается только при реальных координатах клиента и филиала.
 
-Do not implement search history behavior until Task 00 is complete.
+## Поиск услуг - POST /api/v1/client/services/search
 
-## Endpoints
+|   |   |
+|---|---|
+|**Описание**|Ищет активные услуги по raw query, категории, желаемому времени и динамическим фильтрам.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/client/services/search`|
+|**Метод запроса**|POST|
 
-### Search Services
+### 1. Функциональные требования
 
-`POST /api/v1/client/services/search`
+| Номер | Требование | Статус | Источник | Комментарий |
+|---|---|---|---|---|
+| SSEARCH-001 | Raw query сохраняется. | Required | Frontend UX | |
+| SSEARCH-002 | Услуга не обещает гарантированное бронирование. | Required | Frontend UX | |
+| SSEARCH-003 | Клиент выбирает желаемое время, бизнес подтверждает финальное. | Required | Frontend UX | |
+| SSEARCH-004 | Динамические фильтры строятся из найденных услуг. | Required | Frontend UX | |
 
-Request: `ClientServiceSearchRequest`
+### 2. Параметры
 
-- `searchSessionId`
-- `rawQuery`
-- `cityId`
-- `categoryId`
-- `latitude`
-- `longitude`
-- `desiredStartAt`
-- `filters`
-- `page`
-- `size`
+| № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
+|---|---|---|---|---|---|---|
+|1|ID поисковой сессии|`searchSessionId`|uuid|+|-||
+|2|Сырой запрос|`rawQuery`|string|+|-||
+|3|ID города|`cityId`|uuid|-|-||
+|4|ID категории|`categoryId`|uuid|-|-||
+|5|Желаемое начало|`desiredStartAt`|datetime|-|-|Не гарантированный слот|
+|6|Широта клиента|`customerLatitude`|decimal|-|-|Для distanceMeters|
+|7|Долгота клиента|`customerLongitude`|decimal|-|-|Для distanceMeters|
+|8|Фильтры|`filters`|object|-|-||
+|9|Страница|`page`|integer|-|0||
+|10|Размер|`size`|integer|-|20||
 
-Response: `ClientServiceSearchResponse`
+### 3. Возвращаемые данные
 
-- `searchSessionId`
-- `rawQuery`
-- `results`
-- `resultCount`
-- `fallbackAvailable`
-- `fallbackReason`
-- `snapshotRequired`
+| № | Поле | Тип | Источник | Комментарий |
+|---|---|---|---|---|
+|1|`searchSessionId`|uuid|search session||
+|2|`rawQuery`|string|search session||
+|3|`results`|array|`ClientServiceResultResponse[]`||
+|4|`resultCount`|integer|query result||
+|5|`fallbackAvailable`|boolean|search logic||
+|6|`fallbackReason`|string|-|Например `NO_MATCH`|
+|7|`dynamicFilters`|array|result aggregation||
 
-`ClientServiceResultResponse`:
+### ClientServiceResultResponse
 
-- `serviceBranchOfferId`
-- `serviceOfferingId`
-- `businessId`
-- `branchId`
-- `businessName`
-- `branchName`
-- `serviceName`
-- `description`
-- `basePrice`
-- `durationMinutes`
-- `serviceMode`
-- `availabilityConfidence`
-- `confirmationPolicy`
-- `bookingAvailable`
-- `distanceMeters`
-- `address`
-- `mapAvailable`
-- `contactActions`
+| № | Поле | Тип | Источник | Комментарий |
+|---|---|---|---|---|
+|1|`serviceBranchOfferId`|uuid|service branch offer||
+|2|`serviceOfferingId`|uuid|service offering||
+|3|`businessId`|uuid|business||
+|4|`branchId`|uuid|branch||
+|5|`businessName`|string|business||
+|6|`branchName`|string|branch||
+|7|`serviceName`|string|service offering||
+|8|`description`|string|service offering||
+|9|`imageUrl`|string|service/business||
+|10|`basePrice`|decimal|service branch offer|nullable|
+|11|`durationMinutes`|integer|service branch offer|nullable|
+|12|`serviceMode`|string|service branch offer||
+|13|`displayState`|string|derived|`ACTIVE`, `REQUEST_CONFIRMATION`|
+|14|`distanceMeters`|integer|calculated|nullable|
+|15|`address`|string|branch|nullable|
+|16|`contactActions`|array|branch contacts + Ask chat||
 
-Rules:
+## Детали услуги - GET /api/v1/client/service-offers/{serviceBranchOfferId}
 
-- Return only active services, active branch offers, active businesses, and active branches.
-- `bookingAvailable` is true only when the service branch offer supports booking and real schedule or manual confirmation flow exists.
-- Do not promise exact slots unless `ServiceWindow` or trusted integration data supports it.
-- `ON_DEMAND` service offers must work without resources, schedules, or windows.
+|   |   |
+|---|---|
+|**Описание**|Возвращает услугу и филиал для карточки detail.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/client/service-offers/{serviceBranchOfferId}`|
+|**Метод запроса**|GET|
 
-### Service Offer Details
+### Правила
 
-`GET /api/v1/client/service-offers/{serviceBranchOfferId}`
+- Возвращать только активную услугу активного филиала.
+- Возвращать только поля актуальной MVP-модели: услуга, бизнес/филиал, price, duration, displayState, address, contactActions.
+- Ask chat всегда доступен через contact actions.
+- Услуга может предлагать желаемое время, но не гарантирует бронь.
 
-Response: `ClientServiceOfferDetailsResponse`
+## Создание заявки на услугу - POST /api/v1/client/service-requests
 
-- `serviceBranchOfferId`
-- `service`
-- `business`
-- `branch`
-- `basePrice`
-- `durationMinutes`
-- `serviceMode`
-- `availabilityConfidence`
-- `confirmationPolicy`
-- `bookingAvailable`
-- `nextWindows`
-- `contactActions`
-- `chatAvailable`
-- `fallbackRequestAvailable`
+|   |   |
+|---|---|
+|**Описание**|Создает заявку на услугу с желаемым временем. Бизнес подтверждает, отклоняет или предлагает другое время.|
+|**Доступ только авторизованным пользователям**|+|
+|**Endpoint URL**|`/api/v1/client/service-requests`|
+|**Метод запроса**|POST|
 
-Rules:
+### Параметры
 
-- `nextWindows` can be empty.
-- Empty windows do not mean the service is unavailable unless the data source says so.
-- If schedule truth is missing, show confirmation-needed behavior.
+| № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
+|---|---|---|---|---|---|---|
+|1|ID поисковой сессии|`searchSessionId`|uuid|+|-||
+|2|Сырой запрос|`rawQuery`|string|+|-||
+|3|Контекст услуги|`serviceBranchOfferId`|uuid|-|-||
+|4|Желаемое начало|`desiredStartAt`|datetime|-|-|Не гарантированный слот|
+|5|Комментарий клиента|`customerNote`|string|-|-||
+|6|Целевые филиалы|`targetBranchIds`|array|-|-||
+|7|Ключ идемпотентности|`idempotencyKey`|string|+|-||
 
-### Create Service Booking
+### Возвращаемые данные
 
-`POST /api/v1/client/service-bookings`
+| № | Поле | Тип | Источник | Комментарий |
+|---|---|---|---|---|
+|1|`requestId`|uuid|customer request||
+|2|`searchSessionId`|uuid|search session||
+|3|`status`|string|customer request||
+|4|`desiredStartAt`|datetime|customer request|nullable|
+|5|`recipientCount`|integer|request targets||
+|6|`responseCount`|integer|supplier responses||
+|7|`conversationId`|uuid|conversation|nullable until created|
 
-Request: `CreateClientServiceBookingRequest`
+## Ответы бизнеса по услуге
 
-- `searchSessionId`
-- `serviceBranchOfferId`
-- `requestedStartAt`
-- `customerNote`
-- `idempotencyKey`
+| Статус | Смысл |
+|---|---|
+|`CAN_PROVIDE`|Бизнес может оказать услугу.|
+|`CANNOT_PROVIDE`|Бизнес не может оказать услугу.|
+|`NEED_CLARIFICATION`|Нужны детали.|
+|`SUGGEST_OTHER_TIME`|Бизнес предлагает другое время.|
 
-Response: `ClientServiceBookingResponse`
+## Подтверждение услуги бизнесом
 
-- `bookingId`
-- `searchSessionId`
-- `serviceBranchOfferId`
-- `branchId`
-- `status`
-- `requestedStartAt`
-- `confirmedStartAt`
-- `confirmedEndAt`
-- `conversationId`
+- Бизнес видит заявку во вкладке Activity.
+- Бизнес подтверждает финальную дату и время.
+- Если договорились в чате о другом времени, бизнес указывает другое финальное время.
+- Клиент видит подтвержденное время как результат бизнес-действия, не как автоматическую бронь.
 
-Rules:
+## Пример запроса поиска
 
-- Booking is separate from `CustomerRequest`.
-- Booking starts as pending unless trusted schedule/integration confirms the time.
-- Booking must not reserve time without branch confirmation or trusted schedule/integration data.
-- Idempotency is required by user, service offer, requested time, and `idempotencyKey`.
+```http
+POST /api/v1/client/services/search
+Authorization: Bearer <token>
+Content-Type: application/json
 
-### Create Service Fallback Request
+{
+  "searchSessionId": "ss-uuid-002",
+  "rawQuery": "ремонт кассового принтера сегодня",
+  "cityId": "city-uuid-astana",
+  "categoryId": "cat-uuid-repair",
+  "desiredStartAt": "2026-06-21T15:00:00Z",
+  "customerLatitude": 51.1282,
+  "customerLongitude": 71.4304,
+  "filters": {
+    "maxPrice": 20000
+  },
+  "page": 0,
+  "size": 20
+}
+```
 
-`POST /api/v1/client/service-requests`
+## Пример ответа поиска
 
-Request: `CreateClientServiceRequestRequest`
+```json
+{
+  "searchSessionId": "ss-uuid-002",
+  "rawQuery": "ремонт кассового принтера сегодня",
+  "resultCount": 1,
+  "fallbackAvailable": true,
+  "fallbackReason": null,
+  "dynamicFilters": [
+    { "code": "price", "title": "Цена", "values": ["до 20000"] }
+  ],
+  "results": [
+    {
+      "serviceBranchOfferId": "sbo-uuid-001",
+      "serviceOfferingId": "svc-uuid-001",
+      "businessId": "biz-uuid-001",
+      "branchId": "branch-uuid-001",
+      "businessName": "Kaspi POS Store",
+      "branchName": "Kaspi POS Store Абая",
+      "serviceName": "Ремонт кассового принтера",
+      "description": "Диагностика и ремонт POS-принтеров",
+      "imageUrl": null,
+      "basePrice": 15000,
+      "durationMinutes": 60,
+      "serviceMode": "REQUEST_TO_BOOK",
+      "displayState": "ACTIVE",
+      "distanceMeters": 500,
+      "address": "ул. Абая 45",
+      "contactActions": ["ASK_CHAT", "PHONE", "MAP"]
+    }
+  ]
+}
+```
 
-- `searchSessionId`
-- `rawQuery`
-- `cityId`
-- `categoryId`
-- `serviceBranchOfferId`
-- `desiredStartAt`
-- `customerNote`
-- `targetBranchIds`
-- `idempotencyKey`
+## Пример запроса на услугу
 
-Response: `ClientServiceRequestResponse`
+```http
+POST /api/v1/client/service-requests
+Authorization: Bearer <token>
+Content-Type: application/json
 
-- `requestId`
-- `searchSessionId`
-- `rawQuery`
-- `status`
-- `recipientCount`
-- `responseCount`
-- `expiresAt`
-- `progress`
+{
+  "searchSessionId": "ss-uuid-002",
+  "rawQuery": "ремонт кассового принтера сегодня",
+  "serviceBranchOfferId": "sbo-uuid-001",
+  "desiredStartAt": "2026-06-21T15:00:00Z",
+  "customerNote": "Принтер не печатает чек",
+  "targetBranchIds": ["branch-uuid-001"],
+  "idempotencyKey": "service-key-001"
+}
+```
 
-Rules:
+## Пример ответа на заявку
 
-- Preserve `rawQuery`.
-- `serviceBranchOfferId` is optional context.
-- Use fallback request when the user needs human confirmation, search confidence is low, or slot truth is missing.
-- Do not turn service request into booking unless the business confirms.
-
-### Service Request Response Feed
-
-`GET /api/v1/client/service-requests/{requestId}/responses`
-
-Query:
-
-- `status`
-- `page`
-- `size`
-
-Response: `ClientServiceResponseFeedResponse`
-
-- `requestId`
-- `filters`
-- `items`
-- `page`
-
-`ClientServiceResponseRowResponse`:
-
-- `supplierResponseId`
-- `businessId`
-- `branchId`
-- `businessName`
-- `status`
-- `price`
-- `serviceHint`
-- `distanceMeters`
-- `messageCount`
-- `updatedAt`
-- `details`
-
-Expanded `details`:
-
-- `comment`
-- `address`
-- `mapAvailable`
-- `contactActions`
-- `chatThreadId`
-
-Rules:
-
-- Updating one supplier response keeps the same response row.
-- Do not duplicate rows for the same request target.
-- Chat is scoped to request and branch.
-
-## Clarifying Logic
-
-- `AVAILABLE`: business can provide the requested service or a sufficiently exact match.
-- `UNAVAILABLE`: business explicitly cannot provide it.
-- `NEED_CLARIFICATION`: business needs date, time, service type, address, specialist preference, or other details.
-- `ALTERNATIVE_OFFERED`: exact service/time is unavailable but another option exists.
-
-If clarification is needed:
-
-- keep the request active;
-- link chat to the request and branch;
-- do not create booking automatically.
-
-## Implementation Boundaries
-
-- Keep service logic explicit and separate from product logic.
-- Do not add specialist user accounts.
-- Do not add specialist-facing UI assumptions.
-- Do not force schedules for `ON_DEMAND` services.
-- Do not expose entities.
-- Do not create tests or run Maven unless explicitly requested.
+```json
+{
+  "requestId": "req-uuid-service-001",
+  "searchSessionId": "ss-uuid-002",
+  "status": "SENT",
+  "desiredStartAt": "2026-06-21T15:00:00Z",
+  "recipientCount": 1,
+  "responseCount": 0,
+  "conversationId": null
+}
+```
