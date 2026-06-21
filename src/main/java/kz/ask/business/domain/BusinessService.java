@@ -31,6 +31,8 @@ public interface BusinessService {
 
     BusinessBranch findBranchById(UUID branchId);
 
+    BusinessBranch findBranchByBusinessAndId(UUID businessId, UUID branchId);
+
     BranchInvite createInvite(BusinessBranch branch, BranchMemberRole role, Integer maxUses, Long ttlSeconds, AppUser createdBy);
 
     List<BranchInvite> findBranchInvites(UUID branchId);
