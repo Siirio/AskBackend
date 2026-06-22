@@ -22,6 +22,8 @@
 - Отдельного business search нет.
 - Business page может открываться из product/service result, request, response, chat или history context.
 - Scope хранит только `PRODUCT` или `SERVICE`.
+- После submit search session scope считается locked. Изменение `PRODUCT` на `SERVICE` внутри той же submitted session запрещено; для другого scope создается новая search session.
+- Auto supplier check/request может быть связан с search session, если backend нашел подходящих поставщиков для raw query.
 - Search snapshot хранит только актуальную MVP-модель product/service rows: display data, context ids, price, displayState, sourceType and calculated distance.
 - `distanceMeters` хранится в snapshot только если был реально рассчитан из координат клиента и филиала на момент поиска.
 - Snapshot не доказывает live наличие, live цену или live доступность услуги.
@@ -43,6 +45,7 @@
 |4|`category_id`|uuid|-|Категория поиска|
 |5|`raw_query`|varchar|+|Точный ввод пользователя|
 |6|`scope`|varchar|+|`PRODUCT` или `SERVICE`|
+|6.1|`scope_locked`|boolean|+|После submit всегда true для active submitted search|
 |7|`status`|varchar|+|`ACTIVE`, `SNAPSHOTTED`, `EXPIRED`, `CANCELLED`, `FAILED`|
 |8|`started_at`|timestamp|+|Начало|
 |9|`last_active_at`|timestamp|+|Последняя активность|
@@ -55,6 +58,8 @@
 - `raw_query` не переписывается нормализованным названием.
 - Новый current search закрывает или snapshot'ит предыдущий active search пользователя.
 - Scope определяет продуктовый или сервисный поиск.
+- Scope можно менять до submit на стартовом Search UI, но нельзя менять внутри уже созданной submitted search session.
+- Auto supplier check не меняет scope search session. Для product query он остается `PRODUCT`, для service query — `SERVICE`.
 
 ## Сущность search_snapshot
 

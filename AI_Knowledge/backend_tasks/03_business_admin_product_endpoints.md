@@ -19,7 +19,9 @@
 - Управление товаром: `Редактировать`, `Выключить`, `Включить`, `Удалить`.
 - Включенный товар попадает в клиентский поиск.
 - Выключенный или удаленный товар не попадает в клиентский live search.
-- Контракт товаров описывает только включение/выключение/удаление, цену, описание, теги и search visibility.
+- Product management is a branch workspace action.
+- Both Owner, after selecting a branch, and Staff assigned to that branch can manage products according to current branch workspace permissions.
+- There is no Manager/Operator permission split for product management.
 - Инвентарный учет количества не входит в MVP.
 - Актуальность определяется действием бизнеса: пока товар включен, он актуален для показа.
 

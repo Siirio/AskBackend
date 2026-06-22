@@ -232,8 +232,8 @@ Auth: none
 | `expiresAt` | `datetime` | Session expiry (ISO 8601). |
 | `remembered` | `boolean` | Whether remember-me was selected. |
 | `activationRequired` | `boolean` | `true` when user must change temporary password. Frontend must navigate to password change screen. |
-| `role` | `string` | `"ROLE_CUSTOMER"`, `"ROLE_BUSINESS_OWNER"`, `"ROLE_BUSINESS_MANAGER"`, or `"ROLE_BUSINESS_OPERATOR"`. |
-| `startRoute` | `string` | `"CLIENT_SEARCH"` for customers, `"BUSINESS_ACTIVITY"` for business roles. |
+| `role` | `string` | `"ROLE_CUSTOMER"`, `"ROLE_BUSINESS_OWNER"`, or `"ROLE_BUSINESS_STAFF"`. |
+| `startRoute` | `string` | `"CLIENT_SEARCH"` for customers, `"OWNER_BRANCHES"` for owners, `"BRANCH_WORKSPACE"` for staff. |
 | `user` | `object` | `AuthUserResponse` (see below). |
 | `business` | `object` | `AuthBusinessContextResponse`. Present for business roles, `null` for customers. |
 
@@ -256,7 +256,9 @@ Auth: none
 | `branchId` | `uuid` | Branch ID. |
 | `branchName` | `string` | Branch name. |
 | `membershipId` | `uuid` | Membership record ID. |
-| `memberRole` | `string` | `"OWNER"`, `"MANAGER"`, or `"OPERATOR"`. |
+| `memberRole` | `string` | `"OWNER"` or `"STAFF"`. |
+| `startRoute` | `string` | `OWNER_BRANCHES` for owner, `BRANCH_WORKSPACE` for staff. |
+| `selectedBranchId` | `uuid` | Present for Staff. Nullable for Owner before branch selection. |
 
 **Error responses**
 
@@ -284,7 +286,7 @@ POST /api/v1/auth/login
 Auth: none
 ```
 
-Used by ALL roles: customer, business owner, business manager, business operator.
+Used by ALL roles: customer, business owner, business staff.
 
 **Request: `LoginRequest`**
 
@@ -331,7 +333,7 @@ Used by staff on first login or after password reset by owner.
 
 **Response `200`: `AuthSessionResponse`**
 
-Full session with `activationRequired: false`. `startRoute` will be `"BUSINESS_ACTIVITY"`. `user.status` will be `"ACTIVE"`.
+Full session with `activationRequired: false`. `startRoute` will be `"BRANCH_WORKSPACE"`. `user.status` will be `"ACTIVE"`.
 
 **Error responses**
 
@@ -412,7 +414,7 @@ Auth: Bearer token
 
 Base path: `/api/v1/businesses/{businessId}/branches/{branchId}/staff`
 
-All endpoints require `ROLE_BUSINESS_OWNER` or `ROLE_BUSINESS_MANAGER` authority.
+All endpoints require `ROLE_BUSINESS_OWNER` authority.
 
 ---
 
@@ -420,10 +422,10 @@ All endpoints require `ROLE_BUSINESS_OWNER` or `ROLE_BUSINESS_MANAGER` authority
 
 ```
 POST /api/v1/businesses/{businessId}/branches/{branchId}/staff
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
-Owner or manager creates a staff member (manager or operator).
+Owner creates a staff member.
 
 **Request: `CreateStaffRequest`**
 
@@ -431,7 +433,7 @@ Owner or manager creates a staff member (manager or operator).
 |-------|------|----------|-------|
 | `email` | `string` | yes | Staff login email. |
 | `displayName` | `string` | yes | Staff display name. |
-| `role` | `string` | no | `"MANAGER"` or `"OPERATOR"`. Default to `"OPERATOR"` if missing. |
+| `role` | `string` | - | Must be omitted or fixed as `"STAFF"`. Frontend should not show role picker. |
 
 **Response `201`: `StaffResponse`**
 
@@ -440,7 +442,7 @@ Owner or manager creates a staff member (manager or operator).
 | `id` | `uuid` | Staff user ID. |
 | `email` | `string` | Staff email. |
 | `displayName` | `string` | Staff name. |
-| `role` | `string` | `"MANAGER"` or `"OPERATOR"`. |
+| `role` | `string` | `"STAFF"`. |
 | `status` | `string` | `"PENDING_ACTIVATION"` (initial state). |
 | `tempPassword` | `string` | One-time temporary password. Visible ONLY in this response and in staff list while status is `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`. |
 | `activatedAt` | `datetime` | `null` until staff activates. |
@@ -450,7 +452,7 @@ Owner or manager creates a staff member (manager or operator).
 | Status | ErrorCode | When |
 |--------|-----------|------|
 | `400` | `REGISTRATION_PAYLOAD_ERROR` | Validation failed (missing fields). |
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager of this branch. |
+| `403` | `ACCESS_DENIED` | Caller is not owner of this branch. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `409` | `EMAIL_ALREADY_EXISTS` | A user with this email already exists (any role). |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
@@ -458,12 +460,12 @@ Owner or manager creates a staff member (manager or operator).
 **Frontend behavior**
 - After `201`: show confirmation screen with copy actions:
   - "Сотрудник создан"
-  - Show: name, role, branch, login email, temporary password
+  - Show: name, branch, login email, temporary password
   - Buttons: copy login, copy password, copy all, copy for WhatsApp, done
 - Share temporary password via WhatsApp format:
   ```
-  Вас пригласили в Ask как Manager филиала "Mega Silk Way"
-  Логин: manager@example.com
+  Вас пригласили в Ask как сотрудник филиала "Mega Silk Way"
+  Логин: staff@example.com
   Временный пароль: Q7K9-M2PA
   Скачайте Ask: [link]
   ```
@@ -497,12 +499,12 @@ Key frontend logic for each staff card:
 
 | Status | ErrorCode | When |
 |--------|-----------|------|
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
 
 **Frontend behavior**
-- Show staff list with role badges (Менеджер / Оператор).
+- Show staff list with role badge (Сотрудник).
 - Show status chip with color: yellow for pending, green for active, orange for reset required, red for disabled.
 - Show temp password inline only for `PENDING_ACTIVATION` and `PASSWORD_RESET_REQUIRED`.
 - For `ACTIVE`: show "Сотрудник уже активировал аккаунт. Временный пароль больше недоступен."
@@ -522,7 +524,7 @@ Update staff role or status (disable/enable).
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `role` | `string` | no | `"MANAGER"` or `"OPERATOR"`. Change role. |
+| `role` | `string` | - | Removed — no role picker. Staff has only one role. |
 | `status` | `string` | no | `"DISABLED"` to disable. May support `"ACTIVE"` for re-enable. |
 
 At least one field must be provided.
@@ -536,13 +538,13 @@ Updated staff record. Same shape as create response.
 | Status | ErrorCode | When |
 |--------|-----------|------|
 | `400` | `REGISTRATION_PAYLOAD_ERROR` | No fields provided or invalid values. |
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `404` | `STAFF_NOT_FOUND` | Staff member doesn't exist. |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
 
 **Frontend behavior**
-- Role change: show dropdown or inline edit on staff card.
+- Staff role is always STAFF — no role change action needed.
 - Disable: show confirmation dialog "Заблокировать сотрудника? Он не сможет войти в аккаунт."
 - After update: refresh staff list.
 
@@ -570,7 +572,7 @@ Staff record with:
 
 | Status | ErrorCode | When |
 |--------|-----------|------|
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `404` | `STAFF_NOT_FOUND` | Staff member doesn't exist. |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
@@ -586,7 +588,7 @@ Staff record with:
 
 Base path: `/api/v1/businesses/{businessId}/branches/{branchId}/invites`
 
-All endpoints require `ROLE_BUSINESS_OWNER` or `ROLE_BUSINESS_MANAGER` authority.
+All endpoints require `ROLE_BUSINESS_OWNER` authority.
 
 Note: for MVP, direct staff creation (section 2) is the primary path. Invite codes are secondary.
 
@@ -605,7 +607,7 @@ Create a shareable invite code.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `role` | `string` | yes | `"MANAGER"` or `"OPERATOR"`. |
+| `role` | `string` | yes | Always `"STAFF"`. |
 | `maxUses` | `integer` | no | Max activations before code expires. Unlimited if `null`. |
 
 **Response `201`: `InviteResponse`**
@@ -614,7 +616,7 @@ Create a shareable invite code.
 |-------|------|-------|
 | `id` | `uuid` | Invite ID. |
 | `code` | `string` | Opaque invite code string. |
-| `role` | `string` | `"MANAGER"` or `"OPERATOR"`. |
+| `role` | `string` | `"STAFF"`. |
 | `maxUses` | `integer` | Max uses (`null` = unlimited). |
 | `useCount` | `integer` | How many times used so far. |
 | `expiresAt` | `datetime` | Expiry timestamp. |
@@ -624,8 +626,8 @@ Create a shareable invite code.
 
 | Status | ErrorCode | When |
 |--------|-----------|------|
-| `400` | `REGISTRATION_PAYLOAD_ERROR` | Invalid role. |
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `400` | `REGISTRATION_PAYLOAD_ERROR` | Invalid request. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
 
@@ -633,7 +635,7 @@ Create a shareable invite code.
 - After create: show invite code with copy action.
 - Share format similar to staff creation but with invite code:
   ```
-  Приглашение в Ask как Operator филиала "Mega Silk Way"
+  Приглашение в Ask как сотрудник филиала "Mega Silk Way"
   Код приглашения: ABC123XYZ
   Скачайте Ask: [link]
   ```
@@ -657,12 +659,12 @@ Array of invite objects. See fields in 3.1.
 
 | Status | ErrorCode | When |
 |--------|-----------|------|
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
 
 **Frontend behavior**
-- Show invite list with: code, role badge, usage (e.g. "2/5"), expiry, status chip (active/revoked/expired).
+- Show invite list with: code, usage (e.g. "2/5"), expiry, status chip (active/revoked/expired).
 - Active codes show "Revoke" action.
 - Revoked codes: strikethrough, no actions.
 
@@ -687,7 +689,7 @@ Empty body. Frontend removes the invite from the list.
 
 | Status | ErrorCode | When |
 |--------|-----------|------|
-| `403` | `ACCESS_DENIED` | Caller is not owner or manager. |
+| `403` | `ACCESS_DENIED` | Caller is not owner. |
 | `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
 | `404` | `STAFF_NOT_FOUND` | Invite doesn't exist (reuses error — invite not found). |
 | `500` | `INTERNAL_ERROR` | Unexpected server error. |
@@ -789,9 +791,10 @@ All error responses follow this structure:
 | Role | Authority string | Notes |
 |------|-----------------|-------|
 | Customer | `ROLE_CUSTOMER` | End-user searching. |
-| Business owner | `ROLE_BUSINESS_OWNER` | Full business access. |
-| Business manager | `ROLE_BUSINESS_MANAGER` | Staff/products/services management. |
-| Business operator | `ROLE_BUSINESS_OPERATOR` | Limited access. |
+| Business owner | `ROLE_BUSINESS_OWNER` | Owns business, manages branches and Staff, can enter branch workspace. |
+| Business staff | `ROLE_BUSINESS_STAFF` | Works inside assigned branch workspace only. |
+
+`ROLE_BUSINESS_MANAGER` and `ROLE_BUSINESS_OPERATOR` are removed and must not be used.
 
 ### 5.3. User Statuses
 
@@ -820,9 +823,8 @@ DISABLED ──(owner re-enables)──→ ACTIVE (or PASSWORD_RESET_REQUIRED)
 | Role | `startRoute` |
 |------|-------------|
 | `ROLE_CUSTOMER` | `CLIENT_SEARCH` |
-| `ROLE_BUSINESS_OWNER` | `BUSINESS_ACTIVITY` |
-| `ROLE_BUSINESS_MANAGER` | `BUSINESS_ACTIVITY` |
-| `ROLE_BUSINESS_OPERATOR` | `BUSINESS_ACTIVITY` |
+| `ROLE_BUSINESS_OWNER` | `OWNER_BRANCHES` |
+| `ROLE_BUSINESS_STAFF` | `BRANCH_WORKSPACE` |
 
 ### 5.6. Challenge Config
 
@@ -847,12 +849,13 @@ DISABLED ──(owner re-enables)──→ ACTIVE (or PASSWORD_RESET_REQUIRED)
 | `/auth/login` | Unified password login | No | Email + password. Fallback/legacy login. |
 | `/change-password` | Set permanent password | Activation session | Shown when `activationRequired: true`. |
 | `/search` | Customer search | Customer | `CLIENT_SEARCH` |
-| `/business/activity` | Business activity feed | Business roles | `BUSINESS_ACTIVITY` |
-| `/business/products` | Product management | Owner, Manager | |
-| `/business/services` | Service management | Owner, Manager | |
-| `/business/staff` | Staff list | Owner, Manager | |
-| `/business/invites` | Invite codes | Owner, Manager | |
-| `/business/profile` | Branch profile | Owner, Manager | |
+| `/business/branches` | Branch management | Owner | `OWNER_BRANCHES` |
+| `/business/activity` | Branch workspace activity | Owner, Staff | `BRANCH_WORKSPACE` |
+| `/business/products` | Product management | Owner, Staff | |
+| `/business/services` | Service management | Owner, Staff | |
+| `/business/staff` | Staff list | Owner | |
+| `/business/invites` | Invite codes | Owner | |
+| `/business/profile` | Branch profile | Owner, Staff | |
 
 ---
 

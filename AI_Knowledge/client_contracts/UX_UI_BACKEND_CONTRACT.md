@@ -6,12 +6,17 @@ This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_
 
 - Ask is search-first.
 - The client searches either products or services. There is no separate business search flow in MVP.
+- Submitted search scope is strict and locked. Product search returns only product-context results/checks. Service search returns only service-context results/checks.
+- Backend must not return services in product search or products in service search.
 - Business pages can open from product cards, service cards, responses, history, chat, or recommendations, but not as a standalone primary search type.
 - The customer writes a natural-language query and may narrow it with product or service categories.
 - Categories scope search. They are not a marketplace-style catalog picker.
 - Raw query must be preserved.
+- One submitted search session has one locked scope: `PRODUCT` or `SERVICE`. Scope can be changed before submit, but not inside an already submitted search session.
 - Dynamic filters are built from actual found product or service attributes.
-- Fallback request exists when search results are missing, too weak, or the customer wants to ask businesses directly.
+- Auto supplier check exists when exact/strong catalog results are insufficient or when relevant business/branch candidates should be asked automatically.
+- The customer does not manually create the main fallback request after search. Search submit can automatically create the supplier check/request.
+- Auto supplier check is not standalone business search. It is attached to the current product/service search session and raw query.
 - Backend must not invent delivery, courier availability, guaranteed stock count, exact service slots, or automatic booking truth.
 
 ## Search Result Rules
@@ -19,6 +24,10 @@ This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_
 ### Products
 
 Product search returns enabled products/offers from enabled branches.
+
+Product search also may create an automatic supplier check for suitable business/branch candidates. Supplier candidates are selected from branch/business category, product tags, branch profile, city, and other safe search evidence.
+
+Supplier candidates are not proof of product availability. They are recipients of an automatic check. Their responses become supplier response rows inside the current search session.
 
 Product result cards need:
 
@@ -30,6 +39,14 @@ Product result cards need:
 - city or distance;
 - product display state;
 - actions: open, clarify, write, create request.
+
+The customer-facing result screen is split into:
+
+- `FOUND`: exact/similar catalog results;
+- `SUPPLIER_CHECK`: automatically selected suppliers and their response status;
+- `CHATS`: only real conversations.
+
+Backend must support the frontend distinction between an auto supplier check and a customer-visible chat. Sending an auto supplier check must not create a customer-visible outgoing chat message or customer unread chat notification.
 
 Product result DTOs use the current MVP model only: business/branch context, product display data, price when known, display state, calculated distance when possible, and contact actions.
 
@@ -84,9 +101,12 @@ There are three distinct entry paths into the system. They are not three equal "
 |------|-----|-----|----------|
 | Customer registration | End-user searching for products/services | Self-registers | `POST /auth/customer/register` |
 | Business owner registration | Person creating a business on Ask | Self-registers | `POST /auth/business/register` |
-| Staff activation | Manager or operator added by owner | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
+| Staff activation | Staff added by owner | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
 
-Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners/managers inside the business cabinet. The staff member then activates their account through the normal login flow.
+Staff members do NOT self-register. There is no `/auth/staff/register`, `/auth/manager/register`, or `/auth/operator/register`.
+
+Business roles are only `OWNER` and `STAFF`.
+`MANAGER` and `OPERATOR` must not appear in backend contracts, DTOs, enums, authorities, or frontend behavior.
 
 ## Auth And Onboarding Flow
 
@@ -180,10 +200,9 @@ Staff do not register themselves. There is no public registration form for manag
 
 ### Staff Roles
 
-- `MANAGER`: full branch management access (staff, products, services).
-- `OPERATOR`: limited branch access.
+Business-facing roles are only `OWNER` and `STAFF`.
 
-Staff endpoints require `OWNER` or `MANAGER` authority on the target branch.
+Staff endpoints require `OWNER` authority on the target branch. Staff cannot manage other accounts or access branches where they are not assigned.
 
 ### Staff Status Lifecycle
 
@@ -224,7 +243,7 @@ Owner or manager fills in:
 
 Backend:
 
-1. Verifies caller is OWNER or MANAGER of the branch.
+1. Verifies caller is OWNER of the business/branch.
 2. Creates `AppUser` with `role=BUSINESS`, `status=PENDING_ACTIVATION`, `mustChangePassword=true`.
 3. Generates temporary password, BCrypt-hashes it for login verification, AES-encrypts the plain text for owner visibility.
 4. Creates `BranchMember` with the requested role.

@@ -9,7 +9,8 @@ This document defines the desired production-facing auth and onboarding logic fo
 | Description | Login, registration, contact verification, session restore, logout, and business branch onboarding. |
 | Auth required | No for auth start/register/verify. Yes for current session, logout, client APIs, and business cabinet APIs. |
 | System module | identity |
-| Roles | `CUSTOMER`, `BUSINESS` |
+| App roles | `CUSTOMER`, `BUSINESS` |
+| Business authorities | `ROLE_BUSINESS_OWNER`, `ROLE_BUSINESS_STAFF` |
 | Verification code | 6 digits |
 | Real channel requirement | At least email verification must work for production-facing onboarding; phone/SMS can be added next. |
 
@@ -202,7 +203,7 @@ Response: `LogoutResponse`.
 | 5 | `role` | string | + | `CUSTOMER` or `BUSINESS`. |
 | 6 | `user` | object | + | `AuthUserResponse`. |
 | 7 | `business` | object | - | Present for business sessions. |
-| 8 | `startRoute` | string | + | `CLIENT_SEARCH` or `BUSINESS_ACTIVITY`. |
+| 8 | `startRoute` | string | + | `CLIENT_SEARCH`, `OWNER_BRANCHES`, or `BRANCH_WORKSPACE`. |
 
 ### AuthUserResponse
 

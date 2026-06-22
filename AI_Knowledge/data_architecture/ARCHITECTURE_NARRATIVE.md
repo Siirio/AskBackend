@@ -18,7 +18,9 @@ Customer chooses product or service search
 - Categories narrow product/service search.
 - Raw query is preserved everywhere.
 - Dynamic filters are based on actual result attributes.
-- Fallback requests exist when no suitable result exists or when the customer wants businesses to confirm manually.
+- Automatic supplier check exists when no suitable result exists, when catalog results are weak, or when suitable suppliers should confirm manually.
+- The customer does not manually create the main fallback request after product search. Search submit can automatically trigger supplier check for suitable branches.
+- Supplier check is attached to the search session and does not create a standalone business search scope.
 
 ## Business Onboarding Direction
 
@@ -65,6 +67,8 @@ Current MVP rules:
 - separate data-freshness tracking is outside the MVP;
 - product visibility is driven by business enable/disable/delete actions;
 - if the customer needs confirmation, use clarify action, Ask chat, or fallback request.
+- if exact/strong catalog results are insufficient, Ask can automatically check suitable suppliers selected by category, tags, branch profile, city, and similar enabled product offers.
+- automatic supplier check does not prove availability; only supplier response can confirm availability, analog, rejection, or clarification need.
 
 ## Services MVP
 
@@ -90,10 +94,9 @@ Business membership has two levels: business-level ownership and branch-level st
 
 ### Branch-Level Membership
 
-`BranchMember` links an `AppUser` to a `BusinessBranch` with MANAGER or OPERATOR role. These are staff accounts created by the owner or manager.
+`BranchMember` links an `AppUser` to a `BusinessBranch` with STAFF role. These are staff accounts created by the owner.
 
-- MANAGER: can manage staff, products, services, and invites for the branch.
-- OPERATOR: limited branch access for day-to-day operations.
+- STAFF: works inside the assigned branch. Cannot manage other staff, branches, or business settings.
 
 ### Authority Resolution
 
@@ -103,16 +106,14 @@ Authority is computed at session creation and stored as a string in `auth_sessio
 |---|---|
 | `AppRole.CUSTOMER` | `ROLE_CUSTOMER` |
 | `AppRole.BUSINESS` + `BusinessMember(OWNER)` | `ROLE_BUSINESS_OWNER` |
-| `AppRole.BUSINESS` + `BranchMember(MANAGER)` | `ROLE_BUSINESS_MANAGER` |
-| `AppRole.BUSINESS` + `BranchMember(OPERATOR)` | `ROLE_BUSINESS_OPERATOR` |
+| `AppRole.BUSINESS` + `BranchMember(STAFF)` | `ROLE_BUSINESS_STAFF` |
 
-Authority already includes the `ROLE_` prefix for Spring Security. No separate `AppRole.STAFF` exists — all staff are `AppRole.BUSINESS` users distinguished by their membership records.
+Authority already includes the `ROLE_` prefix for Spring Security. All staff are `AppRole.BUSINESS` users distinguished by their branch membership record.
 
 ### Branch Access Rules
 
 - Business owner has access to all branches of their business (no BranchMember record needed).
-- Branch manager has access to their specific branch through BranchMember.
-- Branch operator has limited access to their specific branch.
+- Staff has access to their specific branch through BranchMember.
 
 ## Current Data Model Alignment
 
