@@ -1,5 +1,29 @@
 # Foundation Changelog
 
+## 2026-06-22 - Role Simplification: Owner/Staff Only
+
+Removed MANAGER and OPERATOR roles from all backend contracts and task files. Business roles are now only OWNER and STAFF.
+
+- `UX_UI_BACKEND_CONTRACT.md`: Entry point model updated (Staff replaces Manager/Operator). Added explicit prohibition paragraph.
+- `AUTH_BACKEND_CONTRACT.md`: Authority table updated to ROLE_BUSINESS_OWNER and ROLE_BUSINESS_STAFF only. startRoute updated to OWNER_BRANCHES/BRANCH_WORKSPACE.
+- `FRONTEND_API_TASKS.md`: All MANAGER/OPERATOR authority references replaced with STAFF. AuthBusinessContextResponse memberRole now OWNER or STAFF. Start routes updated.
+- `PRODUCT_SERVICE_FOUNDATION_ERD.md`: branch_member role column narrowed to STAFF only. branch_invite role always STAFF.
+- `03_business_admin_product_endpoints.md`: Access rules updated to Owner+Staff, no Manager/Operator split.
+- `04_business_admin_service_endpoints.md`: Access rules updated to Owner+Staff, no Manager/Operator split.
+- Business authorities: only ROLE_BUSINESS_OWNER and ROLE_BUSINESS_STAFF. ROLE_BUSINESS_MANAGER and ROLE_BUSINESS_OPERATOR removed.
+
+## 2026-06-22 - Automatic Supplier Check Contract
+
+Updated backend contracts and search task direction:
+
+- Submitted search sessions now have locked scope: `PRODUCT` or `SERVICE`.
+- Product search can automatically create supplier check/request linked to `searchSessionId`.
+- Auto supplier check selects business/branch targets using city, category, tags, branch profile, and similar product evidence.
+- Auto supplier check is not standalone business search.
+- Auto supplier check is business-facing as Activity/request item and customer-facing as `Подходящие магазины`.
+- Sending auto supplier check must not create a customer-visible outgoing chat message or customer unread notification.
+- Customer `Чаты` tab appears only after real chat interaction.
+
 ## 2026-06-21 - Staff Management Implementation
 
 Added branch-level staff management with temporary password activation, invite codes, and granular authority.

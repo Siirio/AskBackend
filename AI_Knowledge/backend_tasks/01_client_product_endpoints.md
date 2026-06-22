@@ -18,7 +18,10 @@
 - Поиск есть только по товарам и услугам. Отдельного поиска по бизнесам в MVP нет.
 - Товар показывается в поиске, если он включен бизнесом и связан с активным филиалом.
 - DTO описывает только актуальную MVP-модель: данные товара, бизнес/филиал, price, displayState, рассчитанную дистанцию и contactActions.
-- Чат доступен всегда из конкретного product/request/business контекста.
+- Чат доступен только из конкретного product/request/business/search context.
+- Автоматическая проверка подходящих магазинов не является customer-visible chat message.
+- Для клиента auto supplier check отображается во вкладке `Подходящие магазины`.
+- Для бизнеса auto supplier check отображается как входящая Activity/request item.
 - Инвентарный учет количества не входит в MVP.
 - Актуальность не проверяется через timestamp: включенный товар считается текущим, пока бизнес его не выключил или не удалил.
 - `distanceMeters` возвращается только если backend рассчитал расстояние от геолокации клиента до координат филиала.
@@ -46,7 +49,10 @@ _-_
 |PSEARCH-002|Категория только сужает поиск.|Required|Frontend UX||
 |PSEARCH-003|Фильтры строятся динамически из найденных товаров.|Required|Frontend UX||
 |PSEARCH-004|Если включенный товар подходит под smart search, он показывается без отдельного confidence поля.|Required|Product correction||
-|PSEARCH-005|Если товаров нет, возвращается fallback block.|Required|Frontend UX||
+|PSEARCH-005|После submit product search backend может автоматически создать supplier check/request к подходящим магазинам.|Required|Product correction|Клиент не нажимает отдельный `Создать запрос`.|
+|PSEARCH-006|Один submitted search имеет locked scope PRODUCT.|Required|Product correction|Для поиска услуг создается отдельный service search session.|
+|PSEARCH-007|Auto supplier check не создает customer-visible outgoing chat message.|Required|UX correction|Для бизнеса это входящая Activity/request item.|
+|PSEARCH-008|Вкладка `Чаты` появляется у клиента только после реального chat interaction.|Required|UX correction|Auto supplier check сам по себе не считается чатом.|
 
 ## 3. Описание логики работы метода
 
@@ -62,13 +68,36 @@ _-_
 - Искать по `SearchDocument` для включенных product offers.
 - Учитывать название, описание, tags, категорию, бизнес, филиал и цену.
 - Не делать отдельный business search.
+- Найти supplier candidates для auto supplier check по безопасным признакам: city/category scope, branch/business category, product tags, branch tags/profile, похожие enabled product offers.
+- Supplier candidates не возвращаются как standalone business search results. Они прикрепляются к текущей product search session.
 - Если координаты клиента и филиала известны, рассчитать `distanceMeters`.
 - Если координаты отсутствуют, вернуть `distanceMeters=null`.
 
 ### 3.3 Fallback
 
-- `fallbackAvailable=true`, если подходящих включенных товаров нет или клиент явно хочет уточнить у магазинов.
-- Fallback не означает, что товар отсутствует во всех магазинах; это означает, что search не дал достаточно полезный результат.
+Fallback в product search работает как automatic supplier check.
+
+Backend автоматически создает supplier check/request, если:
+
+- exact product results отсутствуют;
+- exact product results слабые/неполные;
+- похожие товары есть, но наличие/совпадение требует подтверждения;
+- найдены релевантные supplier candidates по city/category/tags/profile/search evidence.
+
+Клиент не нажимает отдельный CTA `Создать запрос`. Submit product search уже является намерением найти товар.
+
+Auto supplier check:
+
+- связан с `searchSessionId`;
+- хранит `rawQuery`;
+- хранит locked scope `PRODUCT`;
+- хранит список target branches/businesses;
+- отображается клиенту во вкладке `Подходящие магазины`;
+- отображается бизнесу в Activity как входящая заявка/системное сообщение;
+- не создает customer-visible outgoing chat message;
+- не создает customer unread chat count.
+
+Чат создается/показывается клиенту только после реального сообщения бизнеса или customer-initiated chat action.
 
 ## 4. Разрешения доступа к методу
 
@@ -104,9 +133,9 @@ _-_
 |2|Сырой запрос|`rawQuery`|string|Этап 1|search_session||
 |3|Результаты|`results`|array|Этап 1|ClientProductResultResponse[]||
 |4|Количество результатов|`resultCount`|integer|Этап 1|query result||
-|5|Доступен fallback|`fallbackAvailable`|boolean|Этап 1|search logic||
-|6|Причина fallback|`fallbackReason`|string|Этап 1|search logic|nullable|
-|7|Динамические фильтры|`dynamicFilters`|array|Этап 1|result aggregation||
+|5|Динамические фильтры|`dynamicFilters`|array|Этап 1|result aggregation||
+|6|Auto supplier check|`supplierCheck`|object|Этап 1|search/request|nullable, `ClientSupplierCheckResponse`|
+|7|Tabs state|`tabs`|object|Этап 1|derived|`FOUND`, `SUPPLIER_CHECK`, `CHATS` visibility/counts|
 
 ### ClientProductResultResponse
 
@@ -127,6 +156,40 @@ _-_
 |13|Дистанция в метрах|`distanceMeters`|integer|Этап 1|calculated|nullable|
 |14|Адрес|`address`|string|Этап 1|business_branch.address|nullable|
 |15|Контактные действия|`contactActions`|array|Этап 1|branch contacts + Ask chat||
+
+Product result rows belong to the `FOUND` tab. Supplier check rows must not be mixed into `results`; they belong to `supplierCheck.suppliers`.
+
+### ClientSupplierCheckResponse
+
+| № | Описание поля | Наименование | Тип | Источник данных | Комментарий |
+|---|---|---|---|---|---|
+|1|ID supplier check/request|`supplierCheckId`|uuid|customer_request / supplier_check||
+|2|ID поисковой сессии|`searchSessionId`|uuid|search_session||
+|3|Сырой запрос|`rawQuery`|string|search_session/customer_request||
+|4|Scope|`scope`|string|search_session|`PRODUCT`|
+|5|Статус рассылки|`dispatchStatus`|string|supplier_check|`CREATED`, `DISPATCHING`, `SENT`, `PARTIALLY_RESPONDED`, `COMPLETED`, `FAILED`|
+|6|Количество найденных магазинов|`targetCount`|integer|request_target||
+|7|Количество ответов|`responseCount`|integer|supplier_response||
+|8|Количество новых ответов|`newResponseCount`|integer|read state||
+|9|Количество чатов|`chatCount`|integer|conversation|Только реальные чаты, auto-check не считается|
+|10|Кандидаты/магазины|`suppliers`|array|request_target + business/branch|`ClientSupplierCheckRowResponse[]`|
+
+### ClientSupplierCheckRowResponse
+
+| № | Описание поля | Наименование | Тип | Источник данных | Комментарий |
+|---|---|---|---|---|---|
+|1|ID target row|`targetId`|uuid|request_target||
+|2|ID бизнеса|`businessId`|uuid|business||
+|3|ID филиала|`branchId`|uuid|business_branch||
+|4|Название бизнеса|`businessName`|string|business||
+|5|Название филиала|`branchName`|string|business_branch||
+|6|Адрес|`address`|string|branch|nullable|
+|7|Дистанция|`distanceMeters`|integer|calculated|nullable|
+|8|Почему выбран|`matchReason`|string|derived|Например совпадение категории/тегов|
+|9|Статус target|`targetStatus`|string|request_target|`SENT`, `RESPONDED`, `NO_RESPONSE`, `FAILED`|
+|10|Ответ бизнеса|`response`|object|supplier_response|nullable, `ClientSupplierResponseSummary`|
+|11|Есть реальный чат|`hasChat`|boolean|conversation|true only after real chat interaction|
+|12|Unread count|`unreadCount`|integer|conversation read state|Не увеличивается от auto-check|
 
 ## Пример запроса
 
@@ -158,11 +221,15 @@ Content-Type: application/json
   "searchSessionId": "ss-uuid-001",
   "rawQuery": "чековый принтер для кассы",
   "resultCount": 1,
-  "fallbackAvailable": true,
-  "fallbackReason": null,
   "dynamicFilters": [
     { "code": "brand", "title": "Бренд", "values": ["Mercury", "Штрих-М"] }
   ],
+  "supplierCheck": null,
+  "tabs": {
+    "found": { "visible": true, "count": 1 },
+    "supplierCheck": { "visible": false, "count": 0 },
+    "chats": { "visible": false, "count": 0 }
+  },
   "results": [
     {
       "productOfferId": "po-uuid-001",

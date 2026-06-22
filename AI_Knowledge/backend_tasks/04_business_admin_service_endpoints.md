@@ -19,7 +19,10 @@
 - У услуги есть состояние показа: активна или не активна.
 - Активная услуга попадает в клиентский поиск.
 - Неактивная услуга не попадает в live client search.
-- Контракт услуг описывает только active/inactive visibility, price, duration, scheduleText и обработку заявок через Activity/chat.
+- Service management and service request handling are branch workspace actions.
+- Owner can perform them after selecting a branch.
+- Staff can perform them only for assigned branch.
+- Do not use Manager/Operator role split for services, Activity, or chat actions.
 - MVP не блокирует слоты и не является полноценным календарем.
 - Заявка на услугу подтверждается бизнесом вручную.
 

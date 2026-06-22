@@ -6,6 +6,9 @@ This document defines the current MVP database foundation for products, services
 
 - Current search scopes are product and service only.
 - Business page opens from product, service, response, chat, or history context. It is not a standalone search scope.
+- One submitted search session has one locked scope: `PRODUCT` or `SERVICE`.
+- Product search can automatically create an auto supplier check/request to relevant branches. This is not standalone business search.
+- Auto supplier check is customer-facing as the `Подходящие магазины` tab and business-facing as Activity/request item.
 - Business onboarding currently creates one concrete branch/store profile.
 - Products and services added by businesses must persist in the real database.
 - Product visibility is enabled/disabled/deleted.
@@ -23,7 +26,7 @@ This document defines the current MVP database foundation for products, services
 - `customer_profile`: customer-facing profile for an app user.
 - `business`: owning business/container.
 - `business_member`: business-level ownership (OWNER role).
-- `branch_member`: branch-level staff membership (MANAGER, OPERATOR roles).
+- `branch_member`: branch-level staff membership (STAFF role).
 - `branch_invite`: invite code for staff self-service onboarding with role and expiry.
 - `business_branch`: concrete registered store, branch, or establishment.
 - `business_contact`: contact channel for one branch or business context.
@@ -53,6 +56,9 @@ This document defines the current MVP database foundation for products, services
 - `search_session`: current product/service search lifecycle.
 - `search_snapshot`: saved search context.
 - `search_result_snapshot`: saved product/service result row.
+- `customer_request`: can be linked to a search session as an automatic supplier check/request.
+- `request_target`: stores the selected business/branch recipients for auto supplier check.
+- `supplier_response`: stores business replies to automatic supplier check.
 
 ### Messaging
 
@@ -60,6 +66,8 @@ This document defines the current MVP database foundation for products, services
 - `conversation_participant`: participants.
 - `conversation_message`: messages.
 - `conversation_link`: context link to product, service, request, or branch.
+
+Auto supplier check must not create a customer-visible outgoing `conversation_message`. It can create a business-facing Activity/request item. A customer-visible conversation appears only after real business/customer chat interaction.
 
 ## MVP Table Shape
 
@@ -124,8 +132,13 @@ Current MVP task contracts keep product offer data to price, branch ownership, a
 | `id` | Membership id. |
 | `branch_id` | Branch the staff member belongs to. |
 | `user_id` | AppUser account. |
-| `role` | MANAGER or OPERATOR. |
+| `role` | STAFF only, or removed if table existence already implies Staff. |
 | `status` | Record lifecycle (ACTIVE, DISABLED). |
+
+There are no branch-level Manager or Operator roles in the current model.
+
+Owner is represented at business level through `business_member(OWNER)`.
+Staff is represented at branch level through `branch_member(STAFF)`.
 
 ### `branch_invite`
 
@@ -134,7 +147,7 @@ Current MVP task contracts keep product offer data to price, branch ownership, a
 | `id` | Invite id. |
 | `branch_id` | Target branch. |
 | `code` | Unique random invite code string. |
-| `role` | Intended BranchMemberRole for accepted invite. |
+| `role` | Always `STAFF` if invite flow is kept. No Manager/Operator invite roles exist. |
 | `max_uses` | Maximum times this invite can be used. |
 | `use_count` | Current usage count. |
 | `expires_at` | Invite expiry timestamp. |
