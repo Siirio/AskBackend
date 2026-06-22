@@ -7,9 +7,9 @@ import kz.ask.business.api.dto.CreateInviteRequest;
 import kz.ask.business.api.dto.InviteResponse;
 import kz.ask.business.application.InviteProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.shared.api.dto.EntityResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,32 +27,27 @@ public class InviteController {
     private final InviteProcessor inviteProcessor;
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public EntityResponse<InviteResponse> createInvite(@AuthenticationPrincipal AskPrincipal principal,
+    public ResponseEntity<InviteResponse> createInvite(@AuthenticationPrincipal AskPrincipal principal,
                                         @PathVariable UUID businessId,
                                         @PathVariable UUID branchId,
                                         @Valid @RequestBody CreateInviteRequest req) {
-        return EntityResponse.<InviteResponse>builder()
-            .data(inviteProcessor.createInvite(principal, businessId, branchId, req))
-            .build();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(inviteProcessor.createInvite(principal, businessId, branchId, req));
     }
 
     @GetMapping
-    public EntityResponse<List<InviteResponse>> listInvites(@AuthenticationPrincipal AskPrincipal principal,
+    public ResponseEntity<List<InviteResponse>> listInvites(@AuthenticationPrincipal AskPrincipal principal,
                                              @PathVariable UUID businessId,
                                              @PathVariable UUID branchId) {
-        return EntityResponse.<List<InviteResponse>>builder()
-            .data(inviteProcessor.listInvites(principal, businessId, branchId))
-            .build();
+        return ResponseEntity.ok(inviteProcessor.listInvites(principal, businessId, branchId));
     }
 
     @DeleteMapping("/{inviteId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public EntityResponse<Void> revokeInvite(@AuthenticationPrincipal AskPrincipal principal,
+    public ResponseEntity<Void> revokeInvite(@AuthenticationPrincipal AskPrincipal principal,
                               @PathVariable UUID businessId,
                               @PathVariable UUID branchId,
                               @PathVariable UUID inviteId) {
         inviteProcessor.revokeInvite(principal, businessId, branchId, inviteId);
-        return EntityResponse.<Void>builder().build();
+        return ResponseEntity.noContent().build();
     }
 }

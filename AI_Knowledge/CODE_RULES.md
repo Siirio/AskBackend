@@ -99,10 +99,11 @@ Forbidden:
 
 ## Controller Rules
 
-- Every controller method must return `EntityResponse<T>` wrapping the response DTO.
-- `EntityResponse` lives in `kz.ask.shared.api.dto`.
+- Every controller method must return `ResponseEntity<T>` from `org.springframework.http.ResponseEntity` — never a custom wrapper.
+- Use `ResponseEntity.ok(body)` for 200, `ResponseEntity.status(HttpStatus.CREATED).body(body)` for 201, and `ResponseEntity.noContent().build()` for 204.
 - Controller validates transport shape and delegates to Processor.
 - Never return raw DTOs or entities from controller methods.
+- Do not use `@ResponseStatus` — status comes from the `ResponseEntity`.
 
 ## Service Interface Rules
 
