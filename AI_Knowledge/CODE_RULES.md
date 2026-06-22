@@ -44,6 +44,24 @@ infrastructure
 
 Do not create global technical buckets such as one project-wide `controller`, `service`, `repository`, `dto`, or `mapper` package.
 
+## Type Rules
+
+- Never use primitive types (`int`, `boolean`, `double`) — use wrappers (`Integer`, `Boolean`, `Double`).
+- Never use concrete collection types in declarations — use interfaces (`List` not `ArrayList`, `Map` not `HashMap`).
+- `void` return type is allowed only for methods that perform side effects (e.g., `logout`, `revokeInvite`).
+
+## Nesting And Anonymous Class Rules
+
+- No records or classes inside interfaces. Extract to standalone files.
+- No static inner classes inside DTOs or any other class. Every DTO must be a standalone file.
+- No anonymous classes — including `new TypeReference<>() {}`. Use Jackson `TypeFactory.constructMapType()` or `constructCollectionType()` instead.
+
+## Migration Rules
+
+- Modify existing migration files (V1__init.sql) — never create new V2, V3 migration files.
+- Add new columns directly to CREATE TABLE statements.
+- Add new indexes to the existing index block.
+
 ## Entity Foundation
 
 - Every entity extends `BaseUuidV7Entity`.
@@ -78,14 +96,31 @@ Forbidden:
 - Real external calls without explicit scope, credentials, provider docs, and approval.
 - Assembler classes — use Mapper, Processor, or @Builder on Response instead.
 
-## Service Rules
+## Controller Rules
+
+- Every controller method must return `EntityResponse<T>` wrapping the response DTO.
+- `EntityResponse` lives in `kz.ask.shared.api.dto`.
+- Controller validates transport shape and delegates to Processor.
+- Never return raw DTOs or entities from controller methods.
+
+## Service Interface Rules
+
+- Service interfaces must not expose domain entities in their signatures. Return 1-to-1 DTO copies of entities instead.
+- Service interfaces must only reference entities from their own domain package.
+- Only domain ServiceImpl classes may hold references to entities; even interfaces in the same domain must not return them.
+- Each Service interface owns one entity/aggregate type. `ProductService` owns `Product`, `ProductOfferService` owns `ProductOffer`. Do not put unrelated entity operations into the same service.
+
+## Service Implementation Rules
 
 - ServiceImpl must not use other domain repositories. Only `getReferenceById()` is allowed on foreign repositories — never `findById`, `save`, or query methods.
+- ServiceImpl must only inject repositories that match its own entity/aggregate type. For other entities in the same domain, call the corresponding domain service instead of injecting their repositories.
 - Services never set entity fields manually (except `entity.setId(uuidV7Generator.generate())`). Entity creation and field mapping lives in Mappers.
 - Services validate the request, get references via `getReferenceById()`, call `mapper.toEntity(...)`, set the ID, call `mapper.enrichCreated(entity)`, save, and return `mapper.toDto(saved)`.
 - Use `@RequiredArgsConstructor` instead of manual constructors.
 - Never use primitive types (`int`, `boolean`) — use wrappers (`Integer`, `Boolean`).
 - `void` return type is allowed for methods that perform side effects (e.g., `logout`, `revokeInvite`).
+- Never throw `RuntimeException` or `IllegalArgumentException` — use the shared exception hierarchy from `kz.ask.shared.error`.
+- Never call `findAll()` — always use filtered query methods with specific criteria.
 
 ### Service Flow
 

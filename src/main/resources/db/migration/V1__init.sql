@@ -170,15 +170,17 @@ CREATE TABLE data_source (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE product (
-    id          UUID        NOT NULL PRIMARY KEY,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL,
-    business_id UUID        NOT NULL REFERENCES business(id),
-    category_id UUID        NOT NULL REFERENCES category(id),
-    name        VARCHAR(255) NOT NULL,
-    description VARCHAR(255),
-    sku         VARCHAR(255),
-    status      VARCHAR(50)  NOT NULL
+    id                  UUID        NOT NULL PRIMARY KEY,
+    created_at          TIMESTAMPTZ NOT NULL,
+    updated_at          TIMESTAMPTZ NOT NULL,
+    business_id         UUID        NOT NULL REFERENCES business(id),
+    category_id         UUID        REFERENCES category(id),
+    category_label      VARCHAR(255),
+    name                VARCHAR(255) NOT NULL,
+    description         VARCHAR(255),
+    sku                 VARCHAR(255),
+    characteristics_json TEXT,
+    status              VARCHAR(50)  NOT NULL
 );
 
 CREATE TABLE product_tag (
@@ -191,18 +193,28 @@ CREATE TABLE catalog_import (
     created_at        TIMESTAMPTZ NOT NULL,
     updated_at        TIMESTAMPTZ NOT NULL,
     data_source_id    UUID        NOT NULL REFERENCES data_source(id),
+    business_id       UUID        REFERENCES business(id),
+    branch_id         UUID        REFERENCES business_branch(id),
+    created_by        UUID        REFERENCES app_user(id),
     original_file_name VARCHAR(255) NOT NULL,
     status            VARCHAR(50)  NOT NULL,
+    total_rows        INTEGER,
+    valid_rows        INTEGER,
+    invalid_rows      INTEGER,
+    warning_rows      INTEGER,
     imported_at       TIMESTAMPTZ
 );
 
 CREATE TABLE catalog_import_column_mapping (
-    id                UUID        NOT NULL PRIMARY KEY,
-    created_at        TIMESTAMPTZ NOT NULL,
-    updated_at        TIMESTAMPTZ NOT NULL,
-    catalog_import_id UUID        NOT NULL REFERENCES catalog_import(id),
-    source_column     VARCHAR(255) NOT NULL,
-    target_field      VARCHAR(255) NOT NULL
+    id                  UUID        NOT NULL PRIMARY KEY,
+    created_at          TIMESTAMPTZ NOT NULL,
+    updated_at          TIMESTAMPTZ NOT NULL,
+    catalog_import_id   UUID        NOT NULL REFERENCES catalog_import(id),
+    source_column       VARCHAR(255) NOT NULL,
+    target_field        VARCHAR(255) NOT NULL,
+    characteristic_name VARCHAR(255),
+    approved            BOOLEAN     NOT NULL DEFAULT FALSE,
+    confidence          DOUBLE PRECISION
 );
 
 CREATE TABLE product_offer (
@@ -218,14 +230,18 @@ CREATE TABLE product_offer (
 );
 
 CREATE TABLE raw_catalog_row (
-    id                UUID        NOT NULL PRIMARY KEY,
-    created_at        TIMESTAMPTZ NOT NULL,
-    updated_at        TIMESTAMPTZ NOT NULL,
-    catalog_import_id UUID        NOT NULL REFERENCES catalog_import(id),
-    product_id        UUID        REFERENCES product(id),
-    product_offer_id  UUID        REFERENCES product_offer(id),
-    row_number        INTEGER     NOT NULL,
-    row_payload       VARCHAR(255) NOT NULL
+    id                      UUID        NOT NULL PRIMARY KEY,
+    created_at              TIMESTAMPTZ NOT NULL,
+    updated_at              TIMESTAMPTZ NOT NULL,
+    catalog_import_id       UUID        NOT NULL REFERENCES catalog_import(id),
+    product_id              UUID        REFERENCES product(id),
+    product_offer_id        UUID        REFERENCES product_offer(id),
+    row_number              INTEGER     NOT NULL,
+    row_payload             TEXT        NOT NULL,
+    normalized_data_json    TEXT,
+    validation_errors_json  TEXT,
+    validation_warnings_json TEXT,
+    status                  VARCHAR(50)
 );
 
 -- ---------------------------------------------------------------------------
@@ -471,6 +487,12 @@ CREATE TABLE search_document (
     service_branch_offer_id UUID        REFERENCES service_branch_offer(id),
     title                   VARCHAR(255) NOT NULL,
     summary                 VARCHAR(255),
+    category_label          VARCHAR(255),
+    sku                     VARCHAR(255),
+    characteristics_json    TEXT,
+    business_id             UUID        REFERENCES business(id),
+    branch_id               UUID        REFERENCES business_branch(id),
+    price                   NUMERIC,
     status                  VARCHAR(50)  NOT NULL
 );
 
@@ -529,3 +551,9 @@ CREATE INDEX idx_search_session_user ON search_session (user_id);
 CREATE INDEX idx_search_result_snapshot_parent ON search_result_snapshot (search_snapshot_id);
 
 CREATE INDEX idx_booking_customer ON booking (customer_id);
+
+CREATE INDEX idx_catalog_import_business ON catalog_import (business_id);
+CREATE INDEX idx_catalog_import_branch ON catalog_import (branch_id);
+CREATE INDEX idx_raw_catalog_row_import ON raw_catalog_row (catalog_import_id);
+CREATE INDEX idx_catalog_import_column_mapping_import ON catalog_import_column_mapping (catalog_import_id);
+CREATE INDEX idx_data_source_business_type ON data_source (business_id, source_type);

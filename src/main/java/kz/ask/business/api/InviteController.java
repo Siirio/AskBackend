@@ -7,6 +7,7 @@ import kz.ask.business.api.dto.CreateInviteRequest;
 import kz.ask.business.api.dto.InviteResponse;
 import kz.ask.business.application.InviteProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.shared.api.dto.EntityResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,26 +29,31 @@ public class InviteController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public InviteResponse createInvite(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<InviteResponse> createInvite(@AuthenticationPrincipal AskPrincipal principal,
                                         @PathVariable UUID businessId,
                                         @PathVariable UUID branchId,
                                         @Valid @RequestBody CreateInviteRequest req) {
-        return inviteProcessor.createInvite(principal, businessId, branchId, req);
+        return EntityResponse.<InviteResponse>builder()
+            .data(inviteProcessor.createInvite(principal, businessId, branchId, req))
+            .build();
     }
 
     @GetMapping
-    public List<InviteResponse> listInvites(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<List<InviteResponse>> listInvites(@AuthenticationPrincipal AskPrincipal principal,
                                              @PathVariable UUID businessId,
                                              @PathVariable UUID branchId) {
-        return inviteProcessor.listInvites(principal, businessId, branchId);
+        return EntityResponse.<List<InviteResponse>>builder()
+            .data(inviteProcessor.listInvites(principal, businessId, branchId))
+            .build();
     }
 
     @DeleteMapping("/{inviteId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeInvite(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<Void> revokeInvite(@AuthenticationPrincipal AskPrincipal principal,
                               @PathVariable UUID businessId,
                               @PathVariable UUID branchId,
                               @PathVariable UUID inviteId) {
         inviteProcessor.revokeInvite(principal, businessId, branchId, inviteId);
+        return EntityResponse.<Void>builder().build();
     }
 }

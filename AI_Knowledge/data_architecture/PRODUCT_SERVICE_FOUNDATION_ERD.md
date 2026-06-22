@@ -38,8 +38,9 @@ This document defines the current MVP database foundation for products, services
 - `product`: one concrete sellable item.
 - `product_offer`: branch-level visibility and price for a product.
 - `product_offer.enabled`: branch-level live-search toggle for a product.
-- `catalog_import`: future import run.
-- `raw_catalog_row`: future preserved source row.
+- `catalog_import`: Excel import run with status, counts, and source tracking.
+- `catalog_import_column_mapping`: column-to-target-field mapping per import.
+- `raw_catalog_row`: preserved Excel source row with normalized data and validation results.
 
 ### Services
 
@@ -103,11 +104,13 @@ Auto supplier check must not create a customer-visible outgoing `conversation_me
 |---|---|
 | `id` | Product id. |
 | `business_id` | Owning business. |
-| `category_id` | Category. |
+| `category_id` | Category, nullable (free-text `category_label` is the primary category field for imports). |
+| `category_label` | Custom category text, not FK-validated. |
 | `name` | Product name. |
 | `description` | Description. |
 | `tags` | Search language/tags. |
 | `sku` | Optional SKU. |
+| `characteristics_json` | JSON map of custom characteristics (key-value). |
 | `status` | Active/deleted. |
 
 ### `product_offer`
@@ -228,9 +231,58 @@ Do not add business result rows as standalone search results. `business_id` and 
 | `service_branch_offer_id` | Service branch offer context, nullable. |
 | `title` | Search/display title. |
 | `summary` | Search/display summary. |
+| `category_label` | Category text for search. |
+| `sku` | SKU for search. |
+| `characteristics_json` | Characteristics JSON for search. |
+| `business_id` | Context business. |
+| `branch_id` | Context branch. |
+| `price` | Display price. |
+| `tokens` | Tokenized search index. |
 | `status` | Document lifecycle. |
 
-`search_document` must not contain `business_id` as a standalone indexed business document and must not contain availability confidence fields.
+`search_document` must not contain availability confidence fields.
+
+### `catalog_import`
+
+| Column | Meaning |
+|---|---|
+| `id` | Import id. |
+| `data_source_id` | Source data source. |
+| `business_id` | Owning business. |
+| `branch_id` | Target branch. |
+| `created_by` | User who initiated the import. |
+| `original_file_name` | Uploaded file name. |
+| `status` | UPLOADED, MAPPING_REQUIRED, PREVIEW_READY, IMPORTED, FAILED, CANCELLED. |
+| `total_rows` | Total data rows in file. |
+| `valid_rows` | Rows that passed validation. |
+| `invalid_rows` | Rows that failed validation. |
+| `warning_rows` | Rows imported with warnings. |
+| `imported_at` | Timestamp when import was approved. |
+
+### `catalog_import_column_mapping`
+
+| Column | Meaning |
+|---|---|
+| `id` | Mapping id. |
+| `catalog_import_id` | Parent import. |
+| `source_column` | Excel column name. |
+| `target_field` | TargetField enum value. |
+| `characteristic_name` | Name for CHARACTERISTIC mapping. |
+| `approved` | Whether user approved this mapping. |
+| `confidence` | Auto-mapping confidence score. |
+
+### `raw_catalog_row`
+
+| Column | Meaning |
+|---|---|
+| `id` | Row id. |
+| `catalog_import_id` | Parent import. |
+| `row_number` | Excel row number. |
+| `row_payload` | Original Excel row as JSON. |
+| `normalized_data_json` | Normalized data after mapping. |
+| `validation_errors_json` | Validation error messages. |
+| `validation_warnings_json` | Validation warning messages. |
+| `status` | PENDING, VALID, WARNING, INVALID. |
 
 ## ERD
 
@@ -283,7 +335,10 @@ Product search indexes:
 
 - product name;
 - product description;
+- product category label;
+- product SKU;
 - product tags;
+- product characteristics (keys and values);
 - category;
 - business name;
 - branch name;

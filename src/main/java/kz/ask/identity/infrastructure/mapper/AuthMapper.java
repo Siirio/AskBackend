@@ -1,10 +1,8 @@
 package kz.ask.identity.infrastructure.mapper;
 
-import kz.ask.business.domain.BusinessService.BusinessRegistrationResult;
-import kz.ask.identity.api.dto.AuthBusinessContextResponse;
-import kz.ask.identity.api.dto.AuthChallengeResponse;
-import kz.ask.identity.api.dto.AuthSessionResponse;
-import kz.ask.identity.api.dto.AuthUserResponse;
+import kz.ask.identity.domain.dto.AppUserDto;
+import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.domain.entity.AuthChallenge;
 import kz.ask.identity.domain.entity.AuthSession;
@@ -77,79 +75,52 @@ public class AuthMapper {
         return session;
     }
 
-    public AuthChallengeResponse toChallengeResponse(AuthChallenge challenge,
-                                                      String maskedDestination, String role) {
-        return AuthChallengeResponse.builder()
-                .authChallengeId(challenge.getId())
-                .role(role)
-                .purpose(challenge.getPurpose().name())
-                .channel(challenge.getChannel().name())
-                .maskedDestination(maskedDestination)
-                .expiresAt(challenge.getExpiresAt())
+    public AppUserDto toAppUserDto(AppUser entity) {
+        return AppUserDto.builder()
+                .id(entity.getId())
+                .email(entity.getEmail())
+                .phone(entity.getPhone())
+                .displayName(entity.getDisplayName())
+                .passwordHash(entity.getPasswordHash())
+                .role(entity.getRole())
+                .status(entity.getStatus())
+                .mustChangePassword(entity.getMustChangePassword())
+                .tempPasswordEncrypted(entity.getTempPasswordEncrypted())
+                .activatedAt(entity.getActivatedAt())
                 .build();
     }
 
-    public AuthSessionResponse toSessionResponse(AuthSession session, AppUser user,
-                                                  BusinessRegistrationResult bizResult) {
-        AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
-                .tokenType("Bearer")
-                .user(toUserResponse(user));
-
-        if (session != null) {
-            builder.accessToken(session.getPlainToken())
-                   .expiresAt(session.getExpiresAt())
-                   .remembered(session.getRemembered())
-                   .activationRequired(session.getActivationRequired())
-                   .role(session.getAuthority())
-                   .startRoute(resolveStartRoute(session.getAuthority(), null, user));
-        } else {
-            builder.role(user.getRole().name())
-                   .startRoute(resolveStartRoute(null, bizResult, user));
-        }
-
-        if (bizResult != null) {
-            builder.business(toBusinessContextResponse(bizResult));
-        }
-
-        return builder.build();
-    }
-
-    public AuthUserResponse toUserResponse(AppUser user) {
-        return AuthUserResponse.builder()
-                .userId(user.getId())
-                .displayName(user.getDisplayName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .status(user.getStatus().name())
+    public AuthChallengeDto toAuthChallengeDto(AuthChallenge entity) {
+        return AuthChallengeDto.builder()
+                .id(entity.getId())
+                .userId(entity.getUser() != null ? entity.getUser().getId() : null)
+                .email(entity.getEmail())
+                .phone(entity.getPhone())
+                .channel(entity.getChannel())
+                .purpose(entity.getPurpose())
+                .codeHash(entity.getCodeHash())
+                .attempts(entity.getAttempts())
+                .maxAttempts(entity.getMaxAttempts())
+                .expiresAt(entity.getExpiresAt())
+                .status(entity.getStatus())
+                .rememberMe(entity.getRememberMe())
+                .registrationData(entity.getRegistrationData())
+                .codePlain(entity.getCodePlain())
                 .build();
     }
 
-    private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult, AppUser user) {
-        if (user.getRole() == AppRole.CUSTOMER) {
-            return "CLIENT_SEARCH";
-        }
-        if (authority != null) {
-            if (authority.contains("OWNER")) {
-                return "OWNER_BRANCHES";
-            }
-            if (authority.contains("STAFF")) {
-                return "BRANCH_WORKSPACE";
-            }
-        }
-        if (bizResult != null) {
-            return "OWNER_BRANCHES";
-        }
-        return "BRANCH_WORKSPACE";
-    }
-
-    public AuthBusinessContextResponse toBusinessContextResponse(BusinessRegistrationResult bizResult) {
-        return AuthBusinessContextResponse.builder()
-                .businessId(bizResult.business().getId())
-                .businessName(bizResult.business().getName())
-                .branchId(bizResult.branch().getId())
-                .branchName(bizResult.branch().getName())
-                .membershipId(bizResult.member().getId())
-                .memberRole(bizResult.member().getRole().name())
+    public AuthSessionDto toAuthSessionDto(AuthSession entity) {
+        return AuthSessionDto.builder()
+                .id(entity.getId())
+                .userId(entity.getUser() != null ? entity.getUser().getId() : null)
+                .userDisplayName(entity.getUser() != null ? entity.getUser().getDisplayName() : null)
+                .tokenHash(entity.getTokenHash())
+                .authority(entity.getAuthority())
+                .remembered(entity.getRemembered())
+                .activationRequired(entity.getActivationRequired())
+                .expiresAt(entity.getExpiresAt())
+                .revokedAt(entity.getRevokedAt())
+                .plainToken(entity.getPlainToken())
                 .build();
     }
 }

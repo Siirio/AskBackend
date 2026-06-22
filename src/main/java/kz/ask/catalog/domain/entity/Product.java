@@ -30,12 +30,15 @@ public class Product extends BaseUuidV7Entity {
     @JoinColumn(name = "business_id", nullable = false)
     private Business business;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @Column(nullable = false)
     private String name;
+
+    @Column(name = "category_label")
+    private String categoryLabel;
 
     private String description;
 
@@ -45,6 +48,9 @@ public class Product extends BaseUuidV7Entity {
     @CollectionTable(name = "product_tag", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "tag", nullable = false)
     private List<String> tags = new ArrayList<>();
+
+    @Column(name = "characteristics_json", columnDefinition = "TEXT")
+    private String characteristicsJson;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
