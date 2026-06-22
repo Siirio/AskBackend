@@ -114,13 +114,19 @@ public class BusinessServiceImpl implements BusinessService {
     }
 
     @Override
-    public Boolean isOwnerOrManagerOfBranch(UUID branchId, UUID userId) {
+    public Boolean isOwnerOrStaffOfBranch(UUID branchId, UUID userId) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null) return false;
         if (isOwnerOfBusiness(branch.getBusiness().getId(), userId)) return true;
         List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
         return members.stream().anyMatch(m -> m.getBranch().getId().equals(branchId)
-                && (m.getRole() == BranchMemberRole.MANAGER || m.getRole() == BranchMemberRole.OPERATOR));
+                && m.getRole() == BranchMemberRole.STAFF);
+    }
+
+    @Override
+    public Boolean isBranchStaff(UUID userId) {
+        List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        return !members.isEmpty();
     }
 
     @Override

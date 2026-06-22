@@ -29,33 +29,32 @@ public class InviteProcessor {
     @Transactional
     public InviteResponse createInvite(AskPrincipal principal, UUID businessId, UUID branchId,
                                         CreateInviteRequest req) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranch branch = requireBranch(businessId, branchId);
 
         AppUser createdBy = identityService.findById(principal.getUserId());
-        BranchMemberRole role = BranchMemberRole.valueOf(req.getRole());
         Long ttlSeconds = 86400L;
         Integer maxUses = req.getMaxUses() != null && req.getMaxUses() > 0 ? req.getMaxUses() : 1;
 
         return businessMapper.toInviteResponse(
-                businessService.createInvite(branch, role, maxUses, ttlSeconds, createdBy));
+                businessService.createInvite(branch, BranchMemberRole.STAFF, maxUses, ttlSeconds, createdBy));
     }
 
     public List<InviteResponse> listInvites(AskPrincipal principal, UUID businessId, UUID branchId) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         return businessMapper.toInviteResponseList(businessService.findBranchInvites(branchId));
     }
 
     @Transactional
     public void revokeInvite(AskPrincipal principal, UUID businessId, UUID branchId, UUID inviteId) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         businessService.revokeInvite(inviteId);
     }
 
-    private void verifyBranchAccess(UUID userId, UUID branchId) {
-        if (!businessService.isOwnerOrManagerOfBranch(branchId, userId)) {
+    private void verifyOwnerAccess(UUID userId, UUID businessId) {
+        if (!businessService.isOwnerOfBusiness(businessId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

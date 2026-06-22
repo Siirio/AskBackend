@@ -27,7 +27,9 @@ public interface BusinessService {
 
     Boolean isOwnerOfBusiness(UUID businessId, UUID userId);
 
-    Boolean isOwnerOrManagerOfBranch(UUID branchId, UUID userId);
+    Boolean isOwnerOrStaffOfBranch(UUID branchId, UUID userId);
+
+    Boolean isBranchStaff(UUID userId);
 
     BusinessBranch findBranchById(UUID branchId);
 

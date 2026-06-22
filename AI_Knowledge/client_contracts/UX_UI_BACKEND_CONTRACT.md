@@ -196,7 +196,7 @@ Updating a business response updates the same row. It must not create duplicates
 
 ### Core Principle
 
-Staff do not register themselves. There is no public registration form for manager or operator roles. Staff accounts are created inside the business cabinet by owners or managers, then activated by the staff member through the standard login form with a temporary password.
+Staff do not register themselves. There is no public registration form for staff roles. Staff accounts are created inside the business cabinet by owners, then activated by the staff member through the standard login form with a temporary password.
 
 ### Staff Roles
 
@@ -235,10 +235,10 @@ Staff endpoints require `OWNER` authority on the target branch. Staff cannot man
 
 `POST /api/v1/businesses/{businessId}/branches/{branchId}/staff`
 
-Owner or manager fills in:
+Owner fills in:
 
 - Staff name
-- Role: Manager / Operator
+- Role: STAFF
 - Login: email (phone in future)
 
 Backend:
@@ -246,7 +246,7 @@ Backend:
 1. Verifies caller is OWNER of the business/branch.
 2. Creates `AppUser` with `role=BUSINESS`, `status=PENDING_ACTIVATION`, `mustChangePassword=true`.
 3. Generates temporary password, BCrypt-hashes it for login verification, AES-encrypts the plain text for owner visibility.
-4. Creates `BranchMember` with the requested role.
+4. Creates `BranchMember` with STAFF role.
 5. Returns `StaffResponse` with `tempPassword` in plain text (one-time visibility at creation, plus visible in staff card while pending).
 
 After creation, owner sees a confirmation screen with copy actions:
@@ -254,9 +254,9 @@ After creation, owner sees a confirmation screen with copy actions:
 ```
 Сотрудник создан
 Имя: Манас
-Роль: Manager
+Роль: Сотрудник
 Филиал: Mega Silk Way
-Логин: manager@example.com
+Логин: staff@example.com
 Временный пароль: Q7K9-M2PA
 
 [Скопировать логин]
@@ -287,13 +287,13 @@ After the staff member logs in and sets their own password:
 - Activated at: timestamp
 - Login visible
 - Password: hidden — "Сотрудник уже активировал аккаунт. Временный пароль больше недоступен."
-- Actions: change role, reset password, disable access
+- Actions: reset password, disable access
 
 ### Staff Password Reset
 
 `POST /api/v1/businesses/{businessId}/branches/{branchId}/staff/{id}/reset-password`
 
-Owner or manager resets a staff password:
+Owner resets a staff password:
 
 1. Generates new temporary password.
 2. Sets status to `PASSWORD_RESET_REQUIRED`, `mustChangePassword=true`.
@@ -311,8 +311,7 @@ A staff member logged in with `PASSWORD_RESET_REQUIRED` sees the same password c
 
 - Customer
 - Business owner
-- Business manager
-- Business operator
+- Business staff
 
 Login logic:
 
@@ -359,7 +358,7 @@ Frontend password change screen:
 
 `POST /api/v1/businesses/{businessId}/branches/{branchId}/invites` creates shareable invite codes. This is an alternative self-service path:
 
-- Owner or manager creates invite with role and optional `maxUses`.
+- Owner creates invite with optional `maxUses`.
 - Invite code is a random opaque string with configurable expiry.
 - Invite can be revoked before use.
 - Invite list shows code, role, usage count, expiry, and revocation status.
