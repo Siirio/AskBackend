@@ -44,13 +44,31 @@ infrastructure
 
 Do not create global technical buckets such as one project-wide `controller`, `service`, `repository`, `dto`, or `mapper` package.
 
+## Type Rules
+
+- Never use primitive types (`int`, `boolean`, `double`) — use wrappers (`Integer`, `Boolean`, `Double`).
+- Never use concrete collection types in declarations — use interfaces (`List` not `ArrayList`, `Map` not `HashMap`).
+- `void` return type is allowed only for methods that perform side effects (e.g., `logout`, `revokeInvite`).
+
+## Nesting And Anonymous Class Rules
+
+- No records or classes inside interfaces. Extract to standalone files.
+- No static inner classes inside DTOs or any other class. Every DTO must be a standalone file.
+- No anonymous classes — including `new TypeReference<>() {}`. Use Jackson `TypeFactory.constructMapType()` or `constructCollectionType()` instead.
+
+## Migration Rules
+
+- Modify existing migration files if this migration isn't in the dev branch yet
+- Add new columns directly to CREATE TABLE statements.
+- Add new indexes to the existing index block.
+
 ## Entity Foundation
 
 - Every entity extends `BaseUuidV7Entity`.
 - UUIDv7 IDs are assigned in the base entity before first persist.
 - Audit fields are `createdAt` and `updatedAt`.
 - Use Lombok `@Getter` and `@Setter` on entities instead of hand-written accessors.
-- Entities stay inside their domain package and must not be returned from API methods.
+- Entities stay inside their domain package and must not be returned from API.
 - Use enums for statuses and data-truth states.
 - Avoid bidirectional relationships unless there is a clear domain need.
 - Use `FetchType.LAZY` for entity references.
@@ -74,18 +92,42 @@ Forbidden:
 - Mapper calling Service, Repository, Processor, Client, or Validator.
 - DomainService calling Processor.
 - DomainService returning Entity to another layer.
+- Processor touching entities or mappers — processors work ONLY with DTOs via domain service interfaces.
 - Service-to-service cycles.
 - Real external calls without explicit scope, credentials, provider docs, and approval.
 - Assembler classes — use Mapper, Processor, or @Builder on Response instead.
 
-## Service Rules
+## Controller Rules
+
+- Every controller method must return `EntityResponse<T>` wrapping the response DTO.
+- `EntityResponse` lives in `kz.ask.shared.api.dto`.
+- Controller validates transport shape and delegates to Processor.
+- Never return raw DTOs or entities from controller methods.
+
+## Service Interface Rules
+
+- Service interfaces must not expose domain entities in their signatures. Return 1-to-1 DTO copies of entities instead.
+- Service interfaces must only reference entities from their own domain package.
+- Only domain ServiceImpl classes may hold references to entities; even interfaces in the same domain must not return them.
+- Each Service interface owns one entity type. `ProductService` owns `Product`, `ProductOfferService` owns `ProductOffer`. Do not put unrelated entity operations into the same service.
+- Even the slightest naming difference between entities means separate domain services. `BusinessBranch` and `BranchMember` sound similar but are different entities — each needs its own service interface + impl.
+- Service interfaces accept UUIDs and DTOs only. Never accept entities as parameters.
+- `void` return is allowed only for side-effect methods (e.g., `logout`, `revoke`, `cancel`).
+
+## Service Implementation Rules
 
 - ServiceImpl must not use other domain repositories. Only `getReferenceById()` is allowed on foreign repositories — never `findById`, `save`, or query methods.
-- Services never set entity fields manually (except `entity.setId(uuidV7Generator.generate())`). Entity creation and field mapping lives in Mappers.
-- Services validate the request, get references via `getReferenceById()`, call `mapper.toEntity(...)`, set the ID, call `mapper.enrichCreated(entity)`, save, and return `mapper.toDto(saved)`.
+- ServiceImpl must only inject repositories that match its own entity type. For other entities in the same domain, call the corresponding domain service instead of injecting their repositories.
+- `getReferenceById()` is the ONLY allowed cross-entity repository access — use it only to obtain JPA proxy references for setting entity relationships. All save/find/delete/query operations on foreign entities must go through that entity's own domain service.
+- Services never set entity fields manually. Entity creation and field mapping lives in Mappers.
+- Services validate the request, get references via `getReferenceById()`, call `mapper.toEntity(...)`, save, and return `mapper.toDto(saved)`.
+- Composite result DTOs that aggregate multiple entities (e.g., `BusinessRegistrationResult`) are built via `@Builder` directly in the service impl — NOT via specialized mapper methods. Mappers only do entity ↔ single DTO conversion.
 - Use `@RequiredArgsConstructor` instead of manual constructors.
+- Use `@Transactional` on mutation methods only (create, update, delete, status changes). Read-only query methods must NOT be annotated with `@Transactional`.
 - Never use primitive types (`int`, `boolean`) — use wrappers (`Integer`, `Boolean`).
 - `void` return type is allowed for methods that perform side effects (e.g., `logout`, `revokeInvite`).
+- Never throw `RuntimeException` or `IllegalArgumentException` — use the shared exception hierarchy from `kz.ask.shared.error`.
+- Never call `findAll()` — always use filtered query methods with specific criteria.
 
 ### Service Flow
 
@@ -135,9 +177,19 @@ No nested DTO classes. Create standalone DTO files when DTOs exist.
 
 - Mappers own Entity ↔ Dto mapping. They do `new Entity()` + `.setX().setX().setX()`. No business logic, just field copying.
 - Mappers live in `infrastructure/mapper/` per feature.
+- One mapper per domain layer. Do not create multiple mappers in the same domain package — all entity/DTO conversions for that domain go through one mapper class.
 - Hand-written only — no MapStruct.
 - Mappers never call Service, Repository, Processor, Client, or Validator.
-- ID assignment lives in Services (not Mappers), always via `uuidV7Generator.generate()`.
+- Mappers are called ONLY by domain service implementations. Processors and controllers never touch mappers.
+
+## No Unused Code
+
+- Zero unused imports. Every import must be consumed by the file.
+- Zero unused methods. If a method is no longer called, delete it — do not leave dead code.
+- Zero unused fields or variables.
+- Zero unused classes. If a class was created speculatively and is never used, delete it.
+- When removing the last caller of a mapper method, delete the mapper method and its now-unused imports in the same commit.
+- Do not create "just in case" code, helper methods with no callers, or speculative abstractions.
 
 ## Error Handling Rules
 

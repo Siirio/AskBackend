@@ -1,5 +1,61 @@
 # Foundation Changelog
 
+## 2026-06-22 - Product Excel Import Implementation (Task 06)
+
+Full production backend implementation for Product Excel Import. Backend now owns Excel parsing (fastexcel-reader), auto-mapping, row normalization, validation, and product/offer/search-document creation. Frontend prototype branch (`feature/product-excel-import`) is preserved as UX reference only.
+
+### Endpoints (5 REST)
+
+Base path: `/api/v1/business-admin/branches/{branchId}/product-imports`
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/product-imports` | Upload .xlsx, parse, auto-map, save raw rows → `MAPPING_REQUIRED` |
+| `POST` | `/product-imports/{importId}/mapping` | Save user mapping, normalize rows, return preview → `PREVIEW_READY` |
+| `GET` | `/product-imports/{importId}/preview` | Get current preview state |
+| `POST` | `/product-imports/{importId}/approve` | Create Product + ProductOffer + SearchDocument → `IMPORTED` |
+| `POST` | `/product-imports/{importId}/cancel` | Cancel import → `CANCELLED` |
+
+### Architecture
+
+Standard layer chain: `CatalogImportController` → `ProductImportProcessor` (@Transactional) → `ProductImportServiceImpl` / `CatalogImportServiceImpl` → repositories. Access control via `isOwnerOrStaffOfBranch` (both Owner and Staff can import).
+
+### New Components
+
+- **ExcelParser** — fastexcel streaming parser, reads first sheet, header row → columns, data rows → List<Map<String,String>>
+- **AutoMappingEngine** — 30+ Russian/English patterns per TargetField, forced IGNORE for stock/quantity/warehouse/availability columns, confidence scoring
+- **RowNormalizer** — deserializes raw row JSON, applies mappings, validates (NAME required → INVALID, PRICE parse → WARNING), produces normalized JSON + error/warning lists
+- **CatalogImportService** (interface + impl) — CRUD for CatalogImport, CatalogImportColumnMapping, RawCatalogRow
+- **ProductImportService** (interface + impl) — orchestration: parseAndStore, applyMappings, buildPreview, approveImport, cancelImport
+- **CatalogImportMapper** — hand-written entity ↔ DTO mapping with Jackson ObjectMapper
+
+### Data Model Changes (V2__product_import.sql)
+
+- **Product**: added `category_label`, `characteristics_json` (TEXT); made `category_id` nullable
+- **CatalogImport**: added `business_id`, `branch_id`, `created_by` FKs; `total_rows`, `valid_rows`, `invalid_rows`, `warning_rows` counters
+- **CatalogImportColumnMapping**: added `characteristic_name`, `approved` (boolean), `confidence` (double)
+- **RawCatalogRow**: added `normalized_data_json`, `validation_errors_json`, `validation_warnings_json` (TEXT); `status` (RawRowStatus enum)
+- **SearchDocument**: added `category_label`, `sku`, `characteristics_json` (TEXT); `business_id`, `branch_id` FKs; `price` (numeric)
+
+### New Enums
+
+- **TargetField**: NAME, CATEGORY_LABEL, DESCRIPTION, SKU, PRICE, TAGS, IGNORE, APPEND_TO_DESCRIPTION, CHARACTERISTIC
+- **RawRowStatus**: PENDING, VALID, WARNING, INVALID
+- **CatalogImportStatus** updated: UPLOADED, MAPPING_REQUIRED, PREVIEW_READY, IMPORTED, FAILED, CANCELLED
+
+### Files Created (26)
+
+Migration (1), enums (2), domain services (6), DTOs (5), repositories (7), mapper (1), processor (1), controller (1), service interfaces (2).
+
+### Files Modified (9)
+
+Entities (5): Product, CatalogImport, CatalogImportColumnMapping, RawCatalogRow, SearchDocument. Enums (1): CatalogImportStatus. Error codes (1): +7 import-specific entries. Business service (1): +resolveDataSource. Build (1): +fastexcel-reader dependency.
+
+### Documentation
+
+- Rewrote `06_product_excel_import_endpoints.md` to match implemented architecture with real DTOs, statuses, flow, and rules.
+- Updated frontend `FRONTEND_BACKEND_CONTRACT.md` to reflect backend-owned import, real endpoint URLs, and real DTO shapes.
+
 ## 2026-06-22 - Role Simplification: Owner/Staff Only
 
 Removed MANAGER and OPERATOR roles from all backend contracts and task files. Business roles are now only OWNER and STAFF.

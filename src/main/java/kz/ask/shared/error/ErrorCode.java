@@ -22,7 +22,14 @@ public enum ErrorCode {
     STAFF_NOT_FOUND("Сотрудник не найден"),
     ACCESS_DENIED("Доступ запрещен"),
     DELIVERY_FAILED("Ошибка отправки кода подтверждения"),
-    INTERNAL_ERROR("Внутренняя ошибка сервера");
+    INTERNAL_ERROR("Внутренняя ошибка сервера"),
+    IMPORT_NOT_FOUND("Импорт не найден"),
+    IMPORT_NOT_XLSX("Файл должен быть в формате .xlsx"),
+    IMPORT_EMPTY_FILE("Файл пуст"),
+    IMPORT_INVALID_STATUS("Недопустимый статус импорта для этой операции"),
+    IMPORT_NAME_REQUIRED("Название товара обязательно"),
+    IMPORT_COLUMN_NOT_FOUND("Колонка не найдена: %s"),
+    FILE_NOT_XLSX("Поддерживаются только файлы .xlsx");
 
     private final String template;
 

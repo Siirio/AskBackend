@@ -8,6 +8,7 @@ import kz.ask.business.api.dto.StaffResponse;
 import kz.ask.business.api.dto.UpdateStaffRequest;
 import kz.ask.business.application.StaffManagementProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.shared.api.dto.EntityResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,34 +29,42 @@ public class StaffController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public StaffResponse createStaff(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<StaffResponse> createStaff(@AuthenticationPrincipal AskPrincipal principal,
                                       @PathVariable UUID businessId,
                                       @PathVariable UUID branchId,
                                       @Valid @RequestBody CreateStaffRequest req) {
-        return staffProcessor.createStaff(principal, businessId, branchId, req);
+        return EntityResponse.<StaffResponse>builder()
+            .data(staffProcessor.createStaff(principal, businessId, branchId, req))
+            .build();
     }
 
     @GetMapping
-    public List<StaffResponse> listStaff(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<List<StaffResponse>> listStaff(@AuthenticationPrincipal AskPrincipal principal,
                                           @PathVariable UUID businessId,
                                           @PathVariable UUID branchId) {
-        return staffProcessor.listStaff(principal, businessId, branchId);
+        return EntityResponse.<List<StaffResponse>>builder()
+            .data(staffProcessor.listStaff(principal, businessId, branchId))
+            .build();
     }
 
     @PostMapping("/{staffId}/update")
-    public StaffResponse updateStaff(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<StaffResponse> updateStaff(@AuthenticationPrincipal AskPrincipal principal,
                                       @PathVariable UUID businessId,
                                       @PathVariable UUID branchId,
                                       @PathVariable UUID staffId,
                                       @Valid @RequestBody UpdateStaffRequest req) {
-        return staffProcessor.updateStaff(principal, businessId, branchId, staffId, req);
+        return EntityResponse.<StaffResponse>builder()
+            .data(staffProcessor.updateStaff(principal, businessId, branchId, staffId, req))
+            .build();
     }
 
     @PostMapping("/{staffId}/reset-password")
-    public StaffResponse resetPassword(@AuthenticationPrincipal AskPrincipal principal,
+    public EntityResponse<StaffResponse> resetPassword(@AuthenticationPrincipal AskPrincipal principal,
                                         @PathVariable UUID businessId,
                                         @PathVariable UUID branchId,
                                         @PathVariable UUID staffId) {
-        return staffProcessor.resetPassword(principal, businessId, branchId, staffId);
+        return EntityResponse.<StaffResponse>builder()
+            .data(staffProcessor.resetPassword(principal, businessId, branchId, staffId))
+            .build();
     }
 }

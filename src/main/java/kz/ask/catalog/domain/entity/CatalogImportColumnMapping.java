@@ -26,4 +26,12 @@ public class CatalogImportColumnMapping extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     private String targetField;
+
+    @Column(name = "characteristic_name")
+    private String characteristicName;
+
+    @Column(nullable = false)
+    private Boolean approved = false;
+
+    private Double confidence;
 }

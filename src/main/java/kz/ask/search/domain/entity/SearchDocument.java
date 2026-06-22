@@ -13,8 +13,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import kz.ask.business.domain.entity.Business;
+import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
@@ -43,6 +46,24 @@ public class SearchDocument extends BaseUuidV7Entity {
     private String title;
 
     private String summary;
+
+    @Column(name = "category_label")
+    private String categoryLabel;
+
+    private String sku;
+
+    @Column(name = "characteristics_json", columnDefinition = "TEXT")
+    private String characteristicsJson;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_id")
+    private Business business;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private BusinessBranch branch;
+
+    private BigDecimal price;
 
     @ElementCollection
     @CollectionTable(name = "search_document_token", joinColumns = @JoinColumn(name = "search_document_id"))

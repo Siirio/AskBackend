@@ -1,5 +1,6 @@
 package kz.ask.identity.domain;
 
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -10,6 +11,9 @@ import java.util.HexFormat;
 import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import kz.ask.identity.domain.dto.AppUserDto;
+import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.domain.entity.AuthChallenge;
 import kz.ask.identity.domain.entity.AuthSession;
@@ -26,85 +30,72 @@ import kz.ask.shared.error.ValidationException;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.repository.AuthChallengeRepository;
 import kz.ask.identity.infrastructure.repository.AuthSessionRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class IdentityServiceImpl implements IdentityService {
 
     private final AppUserRepository appUserRepository;
     private final AuthChallengeRepository authChallengeRepository;
     private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SecureRandom secureRandom;
     private final AuthMapper authMapper;
+    private final SecureRandom secureRandom = new SecureRandom();
 
-    private final Integer challengeTtlSeconds;
-    private final Integer challengeCodeLength;
-    private final Integer challengeMaxAttempts;
-    private final Long customerSessionTtlSeconds;
-    private final Long customerRememberedSessionTtlSeconds;
-    private final Long businessSessionTtlSeconds;
-    private final Long businessRememberedSessionTtlSeconds;
-    private final Long staffSessionTtlSeconds;
-    private final Long staffRememberedSessionTtlSeconds;
-    private final Long staffActivationSessionTtlSeconds;
-    private final SecretKeySpec aesKey;
+    @Value("${auth.challenge.ttl}")
+    private Integer challengeTtlSeconds;
+    @Value("${auth.challenge.code-length}")
+    private Integer challengeCodeLength;
+    @Value("${auth.challenge.max-attempts}")
+    private Integer challengeMaxAttempts;
+    @Value("${auth.customer.session.ttl}")
+    private Long customerSessionTtlSeconds;
+    @Value("${auth.customer.remembered-session.ttl}")
+    private Long customerRememberedSessionTtlSeconds;
+    @Value("${auth.business.session.ttl}")
+    private Long businessSessionTtlSeconds;
+    @Value("${auth.business.remembered-session.ttl}")
+    private Long businessRememberedSessionTtlSeconds;
+    @Value("${auth.staff.session.ttl}")
+    private Long staffSessionTtlSeconds;
+    @Value("${auth.staff.remembered-session.ttl}")
+    private Long staffRememberedSessionTtlSeconds;
+    @Value("${auth.staff.activation-session.ttl}")
+    private Long staffActivationSessionTtlSeconds;
 
-    public IdentityServiceImpl(
-            AppUserRepository appUserRepository,
-            AuthChallengeRepository authChallengeRepository,
-            AuthSessionRepository authSessionRepository,
-            PasswordEncoder passwordEncoder,
-            AuthMapper authMapper,
-            @Value("${auth.challenge.ttl}") Integer challengeTtlSeconds,
-            @Value("${auth.challenge.code-length}") Integer challengeCodeLength,
-            @Value("${auth.challenge.max-attempts}") Integer challengeMaxAttempts,
-            @Value("${auth.customer.session.ttl}") Long customerSessionTtlSeconds,
-            @Value("${auth.customer.remembered-session.ttl}") Long customerRememberedSessionTtlSeconds,
-            @Value("${auth.business.session.ttl}") Long businessSessionTtlSeconds,
-            @Value("${auth.business.remembered-session.ttl}") Long businessRememberedSessionTtlSeconds,
-            @Value("${auth.staff.session.ttl}") Long staffSessionTtlSeconds,
-            @Value("${auth.staff.remembered-session.ttl}") Long staffRememberedSessionTtlSeconds,
-            @Value("${auth.staff.activation-session.ttl}") Long staffActivationSessionTtlSeconds,
-            @Value("${auth.staff.temp-password-key}") String tempPasswordKey) {
-        this.appUserRepository = appUserRepository;
-        this.authChallengeRepository = authChallengeRepository;
-        this.authSessionRepository = authSessionRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authMapper = authMapper;
-        this.secureRandom = new SecureRandom();
-        this.challengeTtlSeconds = challengeTtlSeconds;
-        this.challengeCodeLength = challengeCodeLength;
-        this.challengeMaxAttempts = challengeMaxAttempts;
-        this.customerSessionTtlSeconds = customerSessionTtlSeconds;
-        this.customerRememberedSessionTtlSeconds = customerRememberedSessionTtlSeconds;
-        this.businessSessionTtlSeconds = businessSessionTtlSeconds;
-        this.businessRememberedSessionTtlSeconds = businessRememberedSessionTtlSeconds;
-        this.staffSessionTtlSeconds = staffSessionTtlSeconds;
-        this.staffRememberedSessionTtlSeconds = staffRememberedSessionTtlSeconds;
-        this.staffActivationSessionTtlSeconds = staffActivationSessionTtlSeconds;
+    @Value("${auth.staff.temp-password-key}")
+    private String tempPasswordKey;
+    private SecretKeySpec aesKey;
+
+    @PostConstruct
+    private void initAesKey() {
         byte[] keyBytes = sha256Raw(tempPasswordKey);
         this.aesKey = new SecretKeySpec(keyBytes, "AES");
     }
 
     @Override
     @Transactional
-    public AppUser createUser(String email, String phone, String displayName, String password, AppRole role) {
+    public AppUserDto createUser(String email, String phone, String displayName, String password, AppRole role) {
         AppUser user = authMapper.toAppUserEntity(
                 blankToNull(email), blankToNull(phone), displayName,
                 hashPassword(password), role, UserStatus.PENDING);
-        return appUserRepository.save(user);
+        AppUser saved = appUserRepository.save(user);
+        return authMapper.toAppUserDto(saved);
     }
 
+    @Override
     @Transactional
-    public AuthChallenge createChallenge(AppUser user, String email, String phone,
-                                          AuthChallengeChannel channel,
-                                          AuthChallengePurpose purpose,
-                                          Boolean rememberMe,
-                                          String registrationData) {
+    public AuthChallengeDto createChallenge(UUID userId, String email, String phone,
+                                            AuthChallengeChannel channel,
+                                            AuthChallengePurpose purpose,
+                                            Boolean rememberMe,
+                                            String registrationData) {
+        AppUser user = appUserRepository.getReferenceById(userId);
         expireUserPendingChallenges(user);
         String code = generateCode();
         AuthChallenge challenge = authMapper.toChallengeEntity(
@@ -113,11 +104,12 @@ public class IdentityServiceImpl implements IdentityService {
                 rememberMe, registrationData);
         AuthChallenge saved = authChallengeRepository.save(challenge);
         saved.setCodePlain(code);
-        return saved;
+        return authMapper.toAuthChallengeDto(saved);
     }
 
+    @Override
     @Transactional
-    public AuthChallenge verifyCode(UUID challengeId, String code) {
+    public AuthChallengeDto verifyCode(UUID challengeId, String code) {
         AuthChallenge challenge = authChallengeRepository.findByIdAndStatus(challengeId, AuthChallengeStatus.PENDING)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
         if (challenge.getExpiresAt().isBefore(Instant.now())) {
@@ -136,18 +128,19 @@ public class IdentityServiceImpl implements IdentityService {
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challengeId);
         }
         challenge.setStatus(AuthChallengeStatus.VERIFIED);
-        return challenge;
+        return authMapper.toAuthChallengeDto(challenge);
     }
 
     @Override
     @Transactional
-    public AuthSession createSession(AppUser user, String authority, Boolean remembered) {
+    public AuthSessionDto createSession(UUID userId, String authority, Boolean remembered) {
         Long ttl = sessionTtl(authority, remembered);
-        return createSession(user, authority, remembered, ttl, false);
+        return createSession(userId, authority, remembered, ttl, false);
     }
 
+    @Override
     @Transactional
-    public AuthSession findSessionByToken(String token) {
+    public AuthSessionDto findSessionByToken(String token) {
         String hash = hashToken(token);
         AuthSession session = authSessionRepository.findByTokenHash(hash).orElse(null);
         if (session == null || session.getRevokedAt() != null) {
@@ -157,39 +150,43 @@ public class IdentityServiceImpl implements IdentityService {
             session.setRevokedAt(Instant.now());
             return null;
         }
-        return session;
+        return authMapper.toAuthSessionDto(session);
     }
 
     @Override
     @Transactional
-    public void activateUser(AppUser user) {
+    public void activateUser(UUID userId) {
+        AppUser user = appUserRepository.getReferenceById(userId);
         user.setStatus(UserStatus.ACTIVE);
     }
 
     @Override
     @Transactional
-    public AppUser createStaffUser(String email, String displayName, String tempPassword) {
+    public AppUserDto createStaffUser(String email, String displayName, String tempPassword) {
         AppUser user = authMapper.toStaffUserEntity(
                 email, displayName, hashPassword(tempPassword), encrypt(tempPassword));
-        return appUserRepository.save(user);
+        AppUser saved = appUserRepository.save(user);
+        return authMapper.toAppUserDto(saved);
     }
 
     @Override
     @Transactional
-    public AuthSession createSession(AppUser user, String authority, Boolean remembered,
-                                      Long ttlSeconds, Boolean activationRequired) {
+    public AuthSessionDto createSession(UUID userId, String authority, Boolean remembered,
+                                        Long ttlSeconds, Boolean activationRequired) {
+        AppUser user = appUserRepository.getReferenceById(userId);
         String token = generateToken();
         AuthSession session = authMapper.toSessionEntity(
                 user, hashToken(token), authority, remembered,
                 Instant.now().plusSeconds(ttlSeconds), activationRequired);
         AuthSession saved = authSessionRepository.save(session);
         saved.setPlainToken(token);
-        return saved;
+        return authMapper.toAuthSessionDto(saved);
     }
 
     @Override
     @Transactional
-    public void activateStaff(AppUser user, String newPassword) {
+    public void activateStaff(UUID userId, String newPassword) {
+        AppUser user = appUserRepository.getReferenceById(userId);
         user.setPasswordHash(hashPassword(newPassword));
         user.setTempPasswordEncrypted(null);
         user.setMustChangePassword(false);
@@ -199,11 +196,19 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public void resetStaffPassword(AppUser user, String newTempPassword) {
+    public void resetStaffPassword(UUID userId, String newTempPassword) {
+        AppUser user = appUserRepository.getReferenceById(userId);
         user.setPasswordHash(hashPassword(newTempPassword));
         user.setTempPasswordEncrypted(encrypt(newTempPassword));
         user.setMustChangePassword(true);
         user.setStatus(UserStatus.PASSWORD_RESET_REQUIRED);
+    }
+
+    @Override
+    @Transactional
+    public void updateUserStatus(UUID userId, String status) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setStatus(UserStatus.valueOf(status));
     }
 
     @Override
@@ -213,19 +218,25 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public AppUser findById(UUID id) {
-        return appUserRepository.findById(id).orElse(null);
-    }
-
-    public AppUser findActiveByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email)
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+    public AppUserDto findById(UUID id) {
+        return appUserRepository.findById(id)
+                .map(authMapper::toAppUserDto)
                 .orElse(null);
     }
 
-    public AppUser findActiveByPhone(String phone) {
+    @Override
+    public AppUserDto findActiveByEmail(String email) {
+        return appUserRepository.findByEmailIgnoreCase(email)
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(authMapper::toAppUserDto)
+                .orElse(null);
+    }
+
+    @Override
+    public AppUserDto findActiveByPhone(String phone) {
         return appUserRepository.findByPhone(phone)
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(authMapper::toAppUserDto)
                 .orElse(null);
     }
 
@@ -250,8 +261,10 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public AppUser findByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email).orElse(null);
+    public AppUserDto findByEmail(String email) {
+        return appUserRepository.findByEmailIgnoreCase(email)
+                .map(authMapper::toAppUserDto)
+                .orElse(null);
     }
 
     @Override

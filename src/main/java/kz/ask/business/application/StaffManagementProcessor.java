@@ -5,14 +5,13 @@ import java.util.UUID;
 import kz.ask.business.api.dto.CreateStaffRequest;
 import kz.ask.business.api.dto.StaffResponse;
 import kz.ask.business.api.dto.UpdateStaffRequest;
+import kz.ask.business.domain.BranchMemberService;
+import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.business.domain.entity.BranchMember;
+import kz.ask.business.domain.dto.BranchMemberDto;
 import kz.ask.business.domain.enums.BranchMemberRole;
-import kz.ask.business.infrastructure.mapper.BusinessMapper;
 import kz.ask.identity.domain.IdentityService;
-import kz.ask.identity.domain.entity.AppUser;
-import kz.ask.identity.domain.enums.UserStatus;
+import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
@@ -28,29 +27,31 @@ public class StaffManagementProcessor {
 
     private final IdentityService identityService;
     private final BusinessService businessService;
-    private final BusinessMapper businessMapper;
+    private final BranchMemberService branchMemberService;
+    private final BusinessBranchService businessBranchService;
 
     @Transactional
     public StaffResponse createStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       CreateStaffRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
-        BusinessBranch branch = requireBranch(businessId, branchId);
+        requireBranchExists(businessId, branchId);
 
         if (identityService.findByEmail(req.getEmail()) != null) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         String tempPassword = generateTempPassword();
-        AppUser user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword);
-        BranchMember member = businessService.addBranchMember(branch, user, BranchMemberRole.STAFF);
+        AppUserDto user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword);
+        BranchMemberDto member = branchMemberService.addMember(branchId, user.getId(), BranchMemberRole.STAFF);
 
-        return businessMapper.toStaffResponse(member, tempPassword);
+        return buildStaffResponse(member, tempPassword);
     }
 
     public List<StaffResponse> listStaff(AskPrincipal principal, UUID businessId, UUID branchId) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
-        return businessMapper.toStaffResponseList(businessService.findBranchMembers(branchId));
+        List<BranchMemberDto> members = branchMemberService.findByBranch(branchId);
+        return members.stream().map(m -> buildStaffResponse(m, null)).toList();
     }
 
     @Transactional
@@ -58,26 +59,25 @@ public class StaffManagementProcessor {
                                       UUID staffId, UpdateStaffRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
-        BranchMember member = requireBranchMember(staffId, branchId);
+        BranchMemberDto member = requireBranchMember(staffId, branchId);
 
         if (req.getStatus() != null) {
-            AppUser user = member.getUser();
-            user.setStatus(UserStatus.valueOf(req.getStatus()));
+            identityService.updateUserStatus(member.getUserId(), req.getStatus());
         }
 
-        return businessMapper.toStaffResponse(member, null);
+        return buildStaffResponse(member, null);
     }
 
     @Transactional
     public StaffResponse resetPassword(AskPrincipal principal, UUID businessId, UUID branchId, UUID staffId) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
-        BranchMember member = requireBranchMember(staffId, branchId);
+        BranchMemberDto member = requireBranchMember(staffId, branchId);
 
         String newTempPassword = generateTempPassword();
-        identityService.resetStaffPassword(member.getUser(), newTempPassword);
+        identityService.resetStaffPassword(member.getUserId(), newTempPassword);
 
-        return businessMapper.toStaffResponse(member, newTempPassword);
+        return buildStaffResponse(member, newTempPassword);
     }
 
     private void verifyOwnerAccess(UUID userId, UUID businessId) {
@@ -86,28 +86,32 @@ public class StaffManagementProcessor {
         }
     }
 
-    private BusinessBranch requireBranch(UUID businessId, UUID branchId) {
-        BusinessBranch branch = businessService.findBranchByBusinessAndId(businessId, branchId);
-        if (branch == null) {
-            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
-        }
-        return branch;
-    }
-
     private void requireBranchExists(UUID businessId, UUID branchId) {
-        if (businessService.findBranchByBusinessAndId(businessId, branchId) == null) {
+        if (businessBranchService.findByBusinessAndId(businessId, branchId) == null) {
             throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
     }
 
-    private BranchMember requireBranchMember(UUID staffId, UUID branchId) {
-        return businessService.findBranchMembers(branchId).stream()
+    private BranchMemberDto requireBranchMember(UUID staffId, UUID branchId) {
+        return branchMemberService.findByBranch(branchId).stream()
                 .filter(m -> m.getId().equals(staffId))
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException(ErrorCode.STAFF_NOT_FOUND));
     }
 
+    private StaffResponse buildStaffResponse(BranchMemberDto member, String tempPassword) {
+        return StaffResponse.builder()
+                .id(member.getId())
+                .email(member.getUserEmail())
+                .displayName(member.getUserDisplayName())
+                .role(member.getRole())
+                .status(member.getUserStatus())
+                .tempPassword(tempPassword)
+                .activatedAt(member.getUserActivatedAt())
+                .build();
+    }
+
     private String generateTempPassword() {
-        return java.util.UUID.randomUUID().toString().substring(0, 8);
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 }
