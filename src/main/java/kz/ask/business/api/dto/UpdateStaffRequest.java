@@ -1,6 +1,5 @@
 package kz.ask.business.api.dto;
 
-import kz.ask.business.domain.enums.BranchMemberRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,6 +13,5 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UpdateStaffRequest {
 
-    private BranchMemberRole role;
     private String status;
 }

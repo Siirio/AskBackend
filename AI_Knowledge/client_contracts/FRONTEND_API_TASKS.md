@@ -477,7 +477,7 @@ Owner creates a staff member.
 
 ```
 GET /api/v1/businesses/{businessId}/branches/{branchId}/staff
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
 **Request body:** none.
@@ -515,7 +515,7 @@ Key frontend logic for each staff card:
 
 ```
 POST /api/v1/businesses/{businessId}/branches/{branchId}/staff/{staffId}/update
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
 Update staff role or status (disable/enable).
@@ -554,10 +554,10 @@ Updated staff record. Same shape as create response.
 
 ```
 POST /api/v1/businesses/{businessId}/branches/{branchId}/staff/{staffId}/reset-password
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
-Owner/manager generates a new temporary password for a staff member.
+Owner generates a new temporary password for a staff member.
 
 **Request body:** none.
 
@@ -598,7 +598,7 @@ Note: for MVP, direct staff creation (section 2) is the primary path. Invite cod
 
 ```
 POST /api/v1/businesses/{businessId}/branches/{branchId}/invites
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
 Create a shareable invite code.
@@ -646,7 +646,7 @@ Create a shareable invite code.
 
 ```
 GET /api/v1/businesses/{businessId}/branches/{branchId}/invites
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
 **Request body:** none.
@@ -674,7 +674,7 @@ Array of invite objects. See fields in 3.1.
 
 ```
 DELETE /api/v1/businesses/{businessId}/branches/{branchId}/invites/{inviteId}
-Auth: Bearer token (OWNER or MANAGER)
+Auth: Bearer token (OWNER)
 ```
 
 Revoke an invite code. Already-activated users are unaffected.

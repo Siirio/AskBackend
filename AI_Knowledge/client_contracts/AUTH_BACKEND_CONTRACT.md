@@ -224,7 +224,7 @@ Response: `LogoutResponse`.
 | 3 | `branchId` | uuid | + | Registered branch id. |
 | 4 | `branchName` | string | + | Registered branch name. |
 | 5 | `membershipId` | uuid | + | Owner membership id. |
-| 6 | `memberRole` | string | + | `OWNER`. |
+| 6 | `memberRole` | string | + | `OWNER` or `STAFF`. |
 
 ## 7. Implementation Boundaries
 

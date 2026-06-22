@@ -101,12 +101,10 @@ public class AuthMapper {
                    .remembered(session.getRemembered())
                    .activationRequired(session.getActivationRequired())
                    .role(session.getAuthority())
-                   .startRoute(session.getAuthority().contains("CUSTOMER")
-                           ? "CLIENT_SEARCH" : "BUSINESS_ACTIVITY");
+                   .startRoute(resolveStartRoute(session.getAuthority(), null, user));
         } else {
             builder.role(user.getRole().name())
-                   .startRoute(user.getRole() == AppRole.CUSTOMER
-                           ? "CLIENT_SEARCH" : "BUSINESS_ACTIVITY");
+                   .startRoute(resolveStartRoute(null, bizResult, user));
         }
 
         if (bizResult != null) {
@@ -124,6 +122,24 @@ public class AuthMapper {
                 .phone(user.getPhone())
                 .status(user.getStatus().name())
                 .build();
+    }
+
+    private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult, AppUser user) {
+        if (user.getRole() == AppRole.CUSTOMER) {
+            return "CLIENT_SEARCH";
+        }
+        if (authority != null) {
+            if (authority.contains("OWNER")) {
+                return "OWNER_BRANCHES";
+            }
+            if (authority.contains("STAFF")) {
+                return "BRANCH_WORKSPACE";
+            }
+        }
+        if (bizResult != null) {
+            return "OWNER_BRANCHES";
+        }
+        return "BRANCH_WORKSPACE";
     }
 
     public AuthBusinessContextResponse toBusinessContextResponse(BusinessRegistrationResult bizResult) {

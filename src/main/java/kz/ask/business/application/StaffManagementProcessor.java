@@ -8,6 +8,7 @@ import kz.ask.business.api.dto.UpdateStaffRequest;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.business.domain.entity.BranchMember;
+import kz.ask.business.domain.enums.BranchMemberRole;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.entity.AppUser;
@@ -32,7 +33,7 @@ public class StaffManagementProcessor {
     @Transactional
     public StaffResponse createStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       CreateStaffRequest req) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranch branch = requireBranch(businessId, branchId);
 
         if (identityService.findByEmail(req.getEmail()) != null) {
@@ -41,13 +42,13 @@ public class StaffManagementProcessor {
 
         String tempPassword = generateTempPassword();
         AppUser user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword);
-        BranchMember member = businessService.addBranchMember(branch, user, req.getRole());
+        BranchMember member = businessService.addBranchMember(branch, user, BranchMemberRole.STAFF);
 
         return businessMapper.toStaffResponse(member, tempPassword);
     }
 
     public List<StaffResponse> listStaff(AskPrincipal principal, UUID businessId, UUID branchId) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         return businessMapper.toStaffResponseList(businessService.findBranchMembers(branchId));
     }
@@ -55,13 +56,10 @@ public class StaffManagementProcessor {
     @Transactional
     public StaffResponse updateStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       UUID staffId, UpdateStaffRequest req) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         BranchMember member = requireBranchMember(staffId, branchId);
 
-        if (req.getRole() != null) {
-            member.setRole(req.getRole());
-        }
         if (req.getStatus() != null) {
             AppUser user = member.getUser();
             user.setStatus(UserStatus.valueOf(req.getStatus()));
@@ -72,7 +70,7 @@ public class StaffManagementProcessor {
 
     @Transactional
     public StaffResponse resetPassword(AskPrincipal principal, UUID businessId, UUID branchId, UUID staffId) {
-        verifyBranchAccess(principal.getUserId(), branchId);
+        verifyOwnerAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         BranchMember member = requireBranchMember(staffId, branchId);
 
@@ -82,8 +80,8 @@ public class StaffManagementProcessor {
         return businessMapper.toStaffResponse(member, newTempPassword);
     }
 
-    private void verifyBranchAccess(UUID userId, UUID branchId) {
-        if (!businessService.isOwnerOrManagerOfBranch(branchId, userId)) {
+    private void verifyOwnerAccess(UUID userId, UUID businessId) {
+        if (!businessService.isOwnerOfBusiness(businessId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

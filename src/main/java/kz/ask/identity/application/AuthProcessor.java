@@ -226,6 +226,9 @@ public class AuthProcessor {
         if (bizResult != null && bizResult.member() != null) {
             return "ROLE_BUSINESS_" + bizResult.member().getRole().name();
         }
+        if (businessService.isBranchStaff(user.getId())) {
+            return "ROLE_BUSINESS_STAFF";
+        }
         return "ROLE_BUSINESS_OWNER";
     }
 }

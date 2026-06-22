@@ -1,5 +1,6 @@
 package kz.ask.identity.application;
 
+import kz.ask.business.domain.BusinessService;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.ChangeTemporaryPasswordRequest;
 import kz.ask.identity.api.dto.LoginRequest;
@@ -13,7 +14,6 @@ import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.AuthException;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
-import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoginProcessor {
 
     private final IdentityService identityService;
+    private final BusinessService businessService;
     private final AuthMapper authMapper;
 
     @Transactional
@@ -40,13 +41,13 @@ public class LoginProcessor {
         }
 
         if (user.getMustChangePassword()) {
-            String authority = roleAuthority(user.getRole());
+            String authority = resolveAuthority(user);
             Long ttl = identityService.staffActivationSessionTtl();
             AuthSession session = identityService.createSession(user, authority, false, ttl, true);
             return authMapper.toSessionResponse(session, user, null);
         }
 
-        String authority = roleAuthority(user.getRole());
+        String authority = resolveAuthority(user);
         AuthSession session = identityService.createSession(user, authority, false);
         return authMapper.toSessionResponse(session, user, null);
     }
@@ -65,12 +66,18 @@ public class LoginProcessor {
         identityService.activateStaff(user, req.getNewPassword());
         identityService.logout(principal.getUserId());
 
-        String authority = roleAuthority(user.getRole());
+        String authority = resolveAuthority(user);
         AuthSession session = identityService.createSession(user, authority, false);
         return authMapper.toSessionResponse(session, user, null);
     }
 
-    private String roleAuthority(AppRole role) {
-        return "ROLE_" + role.name();
+    private String resolveAuthority(AppUser user) {
+        if (user.getRole() == AppRole.CUSTOMER) {
+            return "ROLE_CUSTOMER";
+        }
+        if (businessService.isBranchStaff(user.getId())) {
+            return "ROLE_BUSINESS_STAFF";
+        }
+        return "ROLE_BUSINESS_OWNER";
     }
 }

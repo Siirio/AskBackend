@@ -1,7 +1,6 @@
 package kz.ask.business.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import kz.ask.business.domain.enums.BranchMemberRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +19,4 @@ public class CreateStaffRequest {
 
     @NotBlank
     private String displayName;
-
-    private BranchMemberRole role;
 }
