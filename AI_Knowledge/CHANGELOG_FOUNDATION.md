@@ -19,11 +19,9 @@ Rebased `feature/T11-product-endpoints` onto current `dev` and fully actualized 
 
 ### API Contract Changes
 
-- **Controller now wraps all responses in `EntityResponse<T>`** (per `CODE_RULES.md`). This is a breaking API change:
-  - Before: `GET /api/v1/business-admin/branches/{branchId}/products` → `BusinessProductListResponse`
-  - After: `GET ...` → `{ "data": { "items": [...], "page": 0, ... } }`
-  - Before: `POST/PATCH/DELETE ...` → `BusinessProductRowResponse`
-  - After: `POST/PATCH/DELETE ...` → `{ "data": { "productId": "...", ... } }`
+- **Controller now returns `ResponseEntity<T>`** (per `CODE_RULES.md` line 102: "Every controller method must return `ResponseEntity<T>` from `org.springframework.http.ResponseEntity`"). This changes status delivery from `@ResponseStatus` to explicit `ResponseEntity.status(HttpStatus.CREATED).body(...)` for 201 and `ResponseEntity.ok(...)` for 200. The JSON body shape is unchanged (same DTO), but HTTP semantics are now explicit.
+- **Removed `@ResponseStatus`**: Status now comes from `ResponseEntity`, per CODE_RULES line 106.
+- **Removed `status` field from `BusinessProductRowResponse`**: The response DTO now contains exactly the 11 fields listed in the MD spec (productId, productOfferId, branchId, categoryId, name, description, sku, tags, price, enabled, updatedAt). Internal status is still tracked via `ProductOfferDto.status` but not exposed in API responses.
 - **Removed `status` field from `BusinessProductRowResponse`**: The response DTO now contains exactly the 11 fields listed in the MD spec (productId, productOfferId, branchId, categoryId, name, description, sku, tags, price, enabled, updatedAt). Internal status is still tracked via `ProductOfferDto.status` but not exposed in API responses.
 - **Removed `hasOnlyEnabledField()` from `BusinessProductUpdateRequest`**: This method was only used by the now-deleted role-splitting logic.
 
