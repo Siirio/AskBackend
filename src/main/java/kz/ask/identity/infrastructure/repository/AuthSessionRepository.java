@@ -12,6 +12,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> {
 
+    @Query("""
+        select s from AuthSession s
+        join fetch s.user u
+        where s.tokenHash = :tokenHash
+        """)
     Optional<AuthSession> findByTokenHash(String tokenHash);
 
     @Modifying

@@ -101,7 +101,7 @@ public class IdentityServiceImpl implements IdentityService {
         AuthChallenge challenge = authMapper.toChallengeEntity(
                 user, email, phone, channel, purpose,
                 hashCode(code), challengeMaxAttempts, challengeTtlSeconds,
-                rememberMe, registrationData);
+                Boolean.TRUE.equals(rememberMe), registrationData);
         AuthChallenge saved = authChallengeRepository.save(challenge);
         saved.setCodePlain(code);
         return authMapper.toAuthChallengeDto(saved);

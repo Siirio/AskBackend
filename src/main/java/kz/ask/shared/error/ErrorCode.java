@@ -29,7 +29,12 @@ public enum ErrorCode {
     IMPORT_INVALID_STATUS("Недопустимый статус импорта для этой операции"),
     IMPORT_NAME_REQUIRED("Название товара обязательно"),
     IMPORT_COLUMN_NOT_FOUND("Колонка не найдена: %s"),
-    FILE_NOT_XLSX("Поддерживаются только файлы .xlsx");
+    FILE_NOT_XLSX("Поддерживаются только файлы .xlsx"),
+    CATEGORY_NOT_FOUND("Категория не найдена"),
+    PRODUCT_NOT_FOUND("Товар не найден для этого филиала"),
+    SKU_ALREADY_EXISTS("SKU уже используется другим товаром в этом бизнесе"),
+    PRODUCT_NAME_BLANK("Название товара не может быть пустым"),
+    OPERATOR_FORBIDDEN_ACTION("Оператору не разрешено выполнять действие: %s");
 
     private final String template;
 
