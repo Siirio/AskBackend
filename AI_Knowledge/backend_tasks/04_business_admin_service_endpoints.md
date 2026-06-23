@@ -12,6 +12,37 @@
 - `Category`, `ServiceOffering`, `ServiceBranchOffer`
 - `CustomerRequest`, `RequestTarget`, `SupplierResponse`, `ConversationLink`, `SearchDocument`
 
+## Философия продукта: Chat-First, Button-for-Fixation
+
+Ask Services MVP — это **не календарь бронирования**, а **чат + структурированная фиксация финальной договоренности**.
+
+- Основной способ общения компании с клиентом — **обычный чат Ask**. Кнопки/actions внутри чата нужны не для замены общения, а для **служебной фиксации результата уже достигнутой в чате договоренности**.
+- Клиент выбирает желаемое время при заявке → это **requested/desired time**, не гарантированная бронь.
+- Компания и клиент общаются в чате. В процессе общения они могут договориться на другое время.
+- Когда договоренность достигнута, компания внутри чата фиксирует финальное **confirmedStartAt / confirmedEndAt**.
+- Подтверждение/изменение/отмена времени создает **system event в conversation** — видимый и клиенту, и бизнесу.
+
+## Три уровня зрелости услуг
+
+### Level 1: MVP Request-to-Book (текущий Task 04)
+
+- Клиент отправляет заявку с желаемым временем.
+- Время является **desired** — не гарантированный слот.
+- Компания подтверждает, отклоняет или продолжает обсуждение в чате.
+- Нет автоматической гарантии свободного слота.
+
+### Level 2: Minimal Confirmed Appointment Tracking (текущий Task 04)
+
+- После чата компания фиксирует финальное **confirmedStartAt / confirmedEndAt**.
+- Это создает подтвержденную запись / confirmed appointment в таблице `booking`.
+- Подтвержденный интервал **блокирует будущие suggested time options** для этой услуги/филиала (минимальная проверка пересечений).
+- Это НЕ полноценная CRM — нет ресурсов, мастеров, смен, автоматического slot availability.
+
+### Level 3: Future Calendar System (НЕ входит в Task 04)
+
+- Мастера, ресурсы, расписания сотрудников, пересечения, интеграции, автоматическое slot availability.
+- **Ничего из этого не реализуется сейчас.**
+
 ## Общие правила задачи
 
 - Услуги сохраняются в реальной базе и становятся основой клиентского поиска.
@@ -24,7 +55,9 @@
 - Staff can perform them only for assigned branch.
 - Do not use Manager/Operator role split for services, Activity, or chat actions.
 - MVP не блокирует слоты и не является полноценным календарем.
-- Заявка на услугу подтверждается бизнесом вручную.
+- Заявка на услугу подтверждается бизнесом вручную после обсуждения в чате.
+- Основной канал общения — чат. Actions — фиксация результата.
+- Подтверждение/изменение/отмена времени создает system event в conversation.
 
 ## Список услуг филиала - GET /api/v1/business-admin/branches/{branchId}/services
 
@@ -132,24 +165,54 @@
 ### ActivityRowResponse
 
 | № | Поле | Тип | Источник | Комментарий |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 |1|`activityId`|uuid|request/target/response||
-|2|`type`|string|derived|Only `PRODUCT` or `SERVICE`|
+|2|`type`|string|derived|`PRODUCT` or `SERVICE`|
 |3|`requestText`|string|customer request||
 |4|`branchId`|uuid|branch||
 |5|`branchAddress`|string|branch|Separate column|
 |6|`customerName`|string|customer profile||
 |7|`customerContact`|string|customer profile||
-|8|`desiredStartAt`|datetime|service request|nullable|
-|9|`status`|string|request/response||
-|10|`unreadCount`|integer|messaging||
-|11|`actions`|array|derived|Open chat, answer, confirm service|
+|8|`requestedStartAt`|datetime|service request|nullable; время, которое клиент указал при заявке|
+|9|`proposedStartAt`|datetime|supplier response|nullable; время, предложенное бизнесом через `SUGGEST_OTHER_TIME`|
+|10|`confirmedStartAt`|datetime|supplier response|nullable; финально согласованное начало|
+|11|`confirmedEndAt`|datetime|supplier response|nullable; финально согласованный конец|
+|12|`activityDisplayStatus`|string|derived|`DISCUSSING`, `CONFIRMED`, or `CONFIRMATION_DECLINED` — ТОЛЬКО это поле видит UI|
+|13|`customerRequestStatus`|string|raw lifecycle|`CREATED`, `SENT`, `PARTIALLY_RESPONDED`, `COMPLETED`, `EXPIRED`, `CANCELLED`, `FAILED`|
+|14|`supplierResponseStatus`|string|raw response|`CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`|
+|15|`unreadCount`|integer|messaging||
+|16|`actions`|array|derived|Open chat, confirm, decline, suggest other time|
+
+### ActivityDisplayStatus — Правила вычисления
+
+`ActivityDisplayStatus` — это **единственный** статус, который видит Activity UI. Он **никогда не хранится** в базе и вычисляется на лету из lifecycle-статуса заявки и статуса ответа поставщика.
+
+| ActivityDisplayStatus | Условие | Что видит бизнес |
+|---|---|---|
+|`DISCUSSING`|Все случаи кроме двух ниже|Заявка в процессе обсуждения. Бизнес может ответить, подтвердить, отклонить, предложить другое время.|
+|`CONFIRMED`|`customerRequestStatus ∈ {COMPLETED, PARTIALLY_RESPONDED}` И `supplierResponseStatus = CAN_PROVIDE` И `confirmedStartAt != null`|Время согласовано. Создана запись в `booking`. Действия: открыть чат.|
+|`CONFIRMATION_DECLINED`|`supplierResponseStatus = CANNOT_PROVIDE`|Бизнес отказал. Действия: открыть чат (чат остается доступным).|
+
+**Важно:**
+- `CAN_PROVIDE` без `confirmedStartAt` = `DISCUSSING` (бизнес сказал "можем", но время еще не зафиксировано).
+- `SUGGEST_OTHER_TIME` = всегда `DISCUSSING` (бизнес предложил другое время — ждет ответа клиента в чате).
+- `NEED_CLARIFICATION` = всегда `DISCUSSING` (бизнес задал уточняющий вопрос в чате).
+- Подтверждение, изменение, или отмена времени создает **system event в conversation** — видимый и клиенту, и бизнесу.
+
+### Actions
+
+| Action | Когда показывать | Что делает |
+|---|---|---|
+|Open chat|Всегда|Открывает чат, привязанный к заявке. Основной канал общения.|
+|Confirm (`CAN_PROVIDE`)|`supplierResponseStatus != CAN_PROVIDE` И `supplierResponseStatus != CANNOT_PROVIDE`|Бизнес подтверждает возможность оказания услуги и фиксирует `confirmedStartAt`/`confirmedEndAt`. Без времени = `DISCUSSING`. С временем = `CONFIRMED`.|
+|Decline (`CANNOT_PROVIDE`)|`supplierResponseStatus != CANNOT_PROVIDE`|Бизнес отказывает. Статус → `CONFIRMATION_DECLINED`.|
+|Suggest other time (`SUGGEST_OTHER_TIME`)|`supplierResponseStatus != CAN_PROVIDE` И `supplierResponseStatus != CANNOT_PROVIDE`|Бизнес предлагает другое время через `proposedStartAt`. Оставляет заявку в `DISCUSSING`. Открывает чат для обсуждения.|
 
 ## Подтверждение заявки на услугу - PATCH /api/v1/business-admin/branches/{branchId}/service-requests/{requestId}
 
 |   |   |
 |---|---|
-|**Описание**|Бизнес подтверждает, отклоняет или предлагает другое время для заявки на услугу.|
+|**Описание**|Бизнес подтверждает, отклоняет или предлагает другое время для заявки на услугу. Использует `SupplierResponseStatus` напрямую.|
 |**Доступ только авторизованным пользователям**|+|
 |**Endpoint URL**|`/api/v1/business-admin/branches/{branchId}/service-requests/{requestId}`|
 |**Метод запроса**|PATCH|
@@ -157,19 +220,14 @@
 ### Параметры
 
 | № | Описание | Наименование | Тип | Обязательно | По умолчанию | Комментарий |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|
 |1|ID филиала|`branchId`|uuid path|+|-||
 |2|ID заявки|`requestId`|uuid path|+|-||
-|3|Действие|`action`|string body|+|-|`CONFIRM`, `DECLINE`, `SUGGEST_OTHER_TIME`|
-|4|Финальное начало|`confirmedStartAt`|datetime body|-|-|Обязательно для CONFIRM если есть время|
-|5|Финальный конец|`confirmedEndAt`|datetime body|-|-||
-|6|Комментарий бизнеса|`providerNote`|string body|-|-||
-
-### Правила
-
-- Подтверждение создает финальное согласованное время.
-- Это не автоматическая бронь слота календаря.
-- Если время менялось в чате, бизнес указывает итоговое время явно.
+|3|Статус ответа|`status`|`SupplierResponseStatus` body|+|-|`CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`|
+|4|Предложенное время|`proposedStartAt`|datetime body|-|-|Обязательно для `SUGGEST_OTHER_TIME`|
+|5|Финальное начало|`confirmedStartAt`|datetime body|-|-|Обязательно для `CAN_PROVIDE` если фиксируется время|
+|6|Финальный конец|`confirmedEndAt`|datetime body|-|-||
+|7|Комментарий бизнеса|`providerNote`|string body|-|-||
 
 ## Пример создания услуги
 
@@ -207,7 +265,7 @@ Content-Type: application/json
 }
 ```
 
-## Пример подтверждения заявки
+## Пример подтверждения заявки (с фиксацией времени)
 
 ```http
 PATCH /api/v1/business-admin/branches/branch-uuid-001/service-requests/req-uuid-service-001
@@ -215,7 +273,7 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "action": "CONFIRM",
+  "status": "CAN_PROVIDE",
   "confirmedStartAt": "2026-06-21T15:30:00Z",
   "confirmedEndAt": "2026-06-21T16:30:00Z",
   "providerNote": "Можем принять в 15:30"
@@ -228,9 +286,41 @@ Content-Type: application/json
 {
   "requestId": "req-uuid-service-001",
   "branchId": "branch-uuid-001",
-  "status": "CONFIRMED",
+  "customerRequestStatus": "COMPLETED",
+  "supplierResponseStatus": "CAN_PROVIDE",
+  "activityDisplayStatus": "CONFIRMED",
+  "requestedStartAt": "2026-06-21T14:00:00Z",
   "confirmedStartAt": "2026-06-21T15:30:00Z",
   "confirmedEndAt": "2026-06-21T16:30:00Z",
   "providerNote": "Можем принять в 15:30"
+}
+```
+
+## Пример предложения другого времени
+
+```http
+PATCH /api/v1/business-admin/branches/branch-uuid-001/service-requests/req-uuid-service-001
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "status": "SUGGEST_OTHER_TIME",
+  "proposedStartAt": "2026-06-21T17:00:00Z",
+  "providerNote": "В 15:30 не можем, предлагаем 17:00"
+}
+```
+
+## Пример ответа предложения другого времени
+
+```json
+{
+  "requestId": "req-uuid-service-001",
+  "branchId": "branch-uuid-001",
+  "customerRequestStatus": "PARTIALLY_RESPONDED",
+  "supplierResponseStatus": "SUGGEST_OTHER_TIME",
+  "activityDisplayStatus": "DISCUSSING",
+  "requestedStartAt": "2026-06-21T14:00:00Z",
+  "proposedStartAt": "2026-06-21T17:00:00Z",
+  "providerNote": "В 15:30 не можем, предлагаем 17:00"
 }
 ```

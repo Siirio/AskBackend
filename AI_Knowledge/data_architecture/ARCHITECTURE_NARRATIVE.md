@@ -74,15 +74,75 @@ Current MVP rules:
 
 Services are separate from products.
 
-Current MVP rules:
+The service booking model has three maturity levels. Only Levels 1 and 2 are in current MVP scope. Level 3 is explicitly deferred.
+
+### Core Philosophy: Chat-First, Button-for-Fixation
+
+Ask Services MVP is **not a booking calendar** — it is **chat + structured fixation of a final agreement**.
+
+- The primary communication channel between business and customer is the regular Ask chat. Buttons/actions within chat exist not to replace communication, but to **record the result of an agreement already reached in chat**.
+- The customer selects a desired time when creating a request → this is **requested/desired time**, not a guaranteed booking.
+- Business and customer communicate in chat. During communication they may agree on a different time.
+- When agreement is reached, the business fixes the final **confirmedStartAt / confirmedEndAt** within the chat.
+- Confirmation/change/cancellation of time creates a **system event in conversation** — visible to both customer and business.
+
+### Three-Tier Service Maturity Model
+
+#### Level 1: MVP Request-to-Book (current Task 04)
+
+- Customer sends a request with desired time.
+- Time is **desired** — not a guaranteed slot.
+- Business confirms, declines, or continues discussion in chat.
+- No automatic guarantee of a free slot.
+
+#### Level 2: Minimal Confirmed Appointment Tracking (current Task 04)
+
+- After chat, business fixes the final **confirmedStartAt / confirmedEndAt**.
+- This creates a confirmed appointment record in the `booking` table.
+- The confirmed interval **blocks future suggested time options** for this service/branch (minimal overlap check).
+- This is NOT full CRM — no resources, masters, shifts, automatic slot availability.
+
+#### Level 3: Future Calendar System (NOT in Task 04)
+
+- Masters, resources, employee schedules, overlaps, integrations, automatic slot availability.
+- **Nothing from this level is implemented now.**
+
+### Three-Level Time Model
+
+Service requests track three distinct time levels:
+
+- `requestedStartAt` — the time the customer specified when creating the request (desired time). Never changed by backend.
+- `proposedStartAt` — the time the business counter-offered via `SUGGEST_OTHER_TIME`. Can be updated on repeated proposals.
+- `confirmedStartAt` / `confirmedEndAt` — the finally agreed time, fixed by the business via `CAN_PROVIDE`. Only this time creates a confirmed appointment.
+
+### Current MVP Rules
 
 - a service belongs to a business and is offered by a concrete branch;
 - `ServiceBranchOffer.active` controls live search visibility for a branch-level service offer;
+- active services appear in live client search;
+- inactive services do NOT appear in live client search;
 - `ServiceBranchOffer.scheduleText` is display/conditions text, not guaranteed slot truth;
 - service requests are request-to-book, not guaranteed slot reservations;
-- the customer can choose desired time;
-- business confirms final time, declines, or proposes another time;
-- MVP does not model full staff/calendar slot blocking.
+- the customer can choose desired time (`requestedStartAt`);
+- business confirms final time (`confirmedStartAt`/`confirmedEndAt`), declines (`CANNOT_PROVIDE`), or proposes another time (`SUGGEST_OTHER_TIME` with `proposedStartAt`);
+- MVP does not model full staff/calendar slot blocking;
+- confirmed appointments at Level 2 perform minimal overlap checks for the same service/branch/time interval.
+
+### ActivityDisplayStatus
+
+`ActivityDisplayStatus` is the **only** status visible in the Activity UI. It is **never stored** in the database — it is derived at runtime from the request lifecycle status and the supplier response status.
+
+| ActivityDisplayStatus | Condition | Meaning |
+|---|---|---|
+| `DISCUSSING` | All cases except the two below | Request is in discussion. Business can respond, confirm, decline, suggest other time. |
+| `CONFIRMED` | `customerRequestStatus ∈ {COMPLETED, PARTIALLY_RESPONDED}` AND `supplierResponseStatus = CAN_PROVIDE` AND `confirmedStartAt != null` | Time is agreed. `booking` record created. Actions: open chat. |
+| `CONFIRMATION_DECLINED` | `supplierResponseStatus = CANNOT_PROVIDE` | Business declined. Actions: open chat (chat remains accessible). |
+
+Key rules:
+- `CAN_PROVIDE` without `confirmedStartAt` = `DISCUSSING` (business said "can do" but time not yet fixed).
+- `SUGGEST_OTHER_TIME` = always `DISCUSSING` (business proposed another time — waiting for customer response in chat).
+- `NEED_CLARIFICATION` = always `DISCUSSING` (business asked a clarifying question in chat).
+- Every confirmation, time change, or cancellation creates a **system event in conversation** — visible to both customer and business.
 
 ## Membership And Authority Model
 

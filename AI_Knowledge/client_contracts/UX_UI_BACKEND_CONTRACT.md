@@ -157,28 +157,83 @@ Branch contacts are managed by the branch. A future business account may manage 
 
 ## Service Management Rules
 
+### Core Philosophy: Chat-First, Button-for-Fixation
+
+Ask Services MVP is **not a booking calendar** -- it is **chat + structured fixation of a final agreement**. The primary communication channel between business and customer is the regular Ask chat. Buttons/actions within chat exist to record the result of an agreement already reached in chat, not to replace communication.
+
+### Three-Tier Service Maturity Model
+
+| Level | Scope | Description |
+|---|---|---|
+| Level 1 | MVP Request-to-Book (current) | Customer sends request with desired time. Time is desired, not guaranteed. Business confirms/declines/discusses in chat. |
+| Level 2 | Minimal Confirmed Appointment Tracking (current) | Business fixes confirmedStartAt/EndAt after chat. Creates booking record. Minimal overlap check blocks future time suggestions for same service/branch. NOT full CRM. |
+| Level 3 | Future Calendar System (deferred) | Masters, resources, schedules, auto slot availability. Not implemented now. |
+
+### Three-Level Time Model
+
+- `requestedStartAt` -- time the customer specified at request creation (desired time). Never changed by backend.
+- `proposedStartAt` -- time the business counter-offered via `SUGGEST_OTHER_TIME`. Updated on repeated proposals.
+- `confirmedStartAt` / `confirmedEndAt` -- finally agreed time, fixed via `CAN_PROVIDE`. Only this creates a confirmed appointment.
+
+### Service State Rules
+
 - Services can be active or inactive.
 - Active services can appear in client service search.
 - Inactive services must not appear in live client service search.
 - Services may have price, approximate duration, description, schedule text or future schedule pattern, and branch.
 - MVP service requests are not guaranteed bookings.
-- Business confirms final date/time/conditions.
+- Business confirms final date/time/conditions via `CAN_PROVIDE` with `confirmedStartAt`.
+- Confirmation/change/cancellation of time creates a **system event in conversation** visible to both sides.
+
+### ActivityDisplayStatus
+
+`ActivityDisplayStatus` is the **only** status visible in the Activity UI. It is **never stored** -- derived at runtime:
+
+| ActivityDisplayStatus | Condition | Meaning |
+|---|---|---|
+| `DISCUSSING` | Default (all cases except below) | In discussion. Business can respond, confirm, decline, suggest other time. |
+| `CONFIRMED` | `supplierResponseStatus = CAN_PROVIDE` AND `confirmedStartAt != null` | Time agreed. `booking` record created. |
+| `CONFIRMATION_DECLINED` | `supplierResponseStatus = CANNOT_PROVIDE` | Business declined. |
+
+Key rules:
+- `CAN_PROVIDE` without `confirmedStartAt` = `DISCUSSING` (business said "can do" but time not yet fixed).
+- `SUGGEST_OTHER_TIME` = always `DISCUSSING` (business proposed another time -- waiting for customer response in chat).
+- `NEED_CLARIFICATION` = always `DISCUSSING` (business asked a clarifying question in chat).
 
 ## Request And Response Statuses
 
-Product request business responses:
+### Customer Request Statuses (Lifecycle)
+
+`DRAFT` to `CREATED` to `DISPATCHING` to `SENT` to `PARTIALLY_RESPONDED` to `COMPLETED`
+Also: `EXPIRED`, `CANCELLED`, `FAILED`
+
+### Product Request Business Responses
 
 - `HAS_ITEM`: business has the requested product or a sufficiently matching product.
 - `NO_ITEM`: business says it does not have it.
 - `NEED_CLARIFICATION`: business needs details.
 - `HAS_ANALOG`: business offers an analog.
 
-Service request business responses:
+### Service Request Business Responses
 
-- `CAN_PROVIDE`: business can provide the service.
-- `CANNOT_PROVIDE`: business cannot provide it.
-- `NEED_CLARIFICATION`: business needs date, time, address, service type, or other details.
-- `SUGGEST_OTHER_TIME`: business proposes another time.
+- `CAN_PROVIDE`: business can provide the service. If accompanied by `confirmedStartAt`/`confirmedEndAt`, creates a confirmed appointment in `booking` and transitions to `CONFIRMED`. Without confirmed time, stays in `DISCUSSING`.
+- `CANNOT_PROVIDE`: business cannot provide it. Transitions to `CONFIRMATION_DECLINED`.
+- `NEED_CLARIFICATION`: business needs date, time, address, service type, or other details. Stays in `DISCUSSING`.
+- `SUGGEST_OTHER_TIME`: business proposes another time via `proposedStartAt`. Stays in `DISCUSSING`. Opens chat for discussion.
+
+### ActivityDisplayStatus (Derived -- NOT stored)
+
+The Activity UI sees only three derived statuses computed from the above:
+
+| ActivityDisplayStatus | Derived From |
+|---|---|
+| `DISCUSSING` | Default. `CAN_PROVIDE` without time. `SUGGEST_OTHER_TIME`. `NEED_CLARIFICATION`. |
+| `CONFIRMED` | `CAN_PROVIDE` + `confirmedStartAt != null` |
+| `CONFIRMATION_DECLINED` | `CANNOT_PROVIDE` |
+
+### System Events in Conversation
+
+Every confirmation (`CAN_PROVIDE` with time), time change, cancellation (`CANNOT_PROVIDE`), or time proposal (`SUGGEST_OTHER_TIME`) creates a **system message** in the conversation -- visible to both customer and business in the chat history.
 
 Updating a business response updates the same row. It must not create duplicates.
 
@@ -191,6 +246,9 @@ Updating a business response updates the same row. It must not create duplicates
 - Chat is scoped to product, service, request, booking request, business page, or response context.
 - If the entity is visible and the user is authenticated, chat can be opened from the concrete context.
 - WhatsApp, Telegram, phone, email, map action, and Ask chat are separate contact actions.
+- Chat is the primary communication channel for service booking. Buttons (confirm, decline, suggest other time) record the result of an agreement reached in chat.
+- Every confirmation, time change, or cancellation creates a **system event message** in the conversation, visible to both customer and business.
+- System events are backend messages with a special type, not regular user messages.
 
 ## Staff Management Flow
 
