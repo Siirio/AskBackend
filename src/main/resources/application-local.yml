@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ask
+    username: ask
+    password: ask
+  jpa:
+    show-sql: true
+  mail:
+    username: local-test@example.com
+    password: local-test-password
+
+server:
+  port: 9090
+
+auth:
+  jwt:
+    secret: local-development-secret-key-at-least-256-bits-long
+  verification:
+    email:
+      enabled: false
+    sms:
+      enabled: false
+
+springdoc:
+  swagger-ui:
+    enabled: true

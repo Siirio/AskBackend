@@ -7,4 +7,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, UUID> {
+
+    boolean existsByBusinessIdAndSkuIgnoreCase(UUID businessId, String sku);
+
+    boolean existsByBusinessIdAndSkuIgnoreCaseAndIdNot(UUID businessId, String sku, UUID excludedProductId);
 }
