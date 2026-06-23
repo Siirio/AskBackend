@@ -1,6 +1,5 @@
 package kz.ask.catalog.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import java.util.List;
@@ -32,10 +31,4 @@ public class BusinessProductUpdateRequest {
     private BigDecimal price;
 
     private Boolean enabled;
-
-    @JsonIgnore
-    public boolean hasOnlyEnabledField() {
-        return categoryId == null && name == null && description == null
-                && sku == null && tags == null && price == null;
-    }
 }

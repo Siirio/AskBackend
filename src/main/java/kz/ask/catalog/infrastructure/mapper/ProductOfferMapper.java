@@ -71,11 +71,14 @@ public class ProductOfferMapper {
 
     public ProductOfferDto toDto(ProductOffer offer) {
         Product product = offer.getProduct();
+        Category category = product.getCategory();
         return ProductOfferDto.builder()
                 .productId(product.getId())
                 .productOfferId(offer.getId())
+                .businessId(product.getBusiness().getId())
                 .branchId(offer.getBranch().getId())
-                .categoryId(product.getCategory().getId())
+                .categoryId(category != null ? category.getId() : null)
+                .categoryLabel(category != null ? category.getName() : null)
                 .name(product.getName())
                 .description(product.getDescription())
                 .sku(product.getSku())

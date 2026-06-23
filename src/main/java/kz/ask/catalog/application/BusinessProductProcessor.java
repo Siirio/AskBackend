@@ -1,11 +1,11 @@
 package kz.ask.catalog.application;
 
 import java.util.UUID;
+import kz.ask.business.domain.BranchMemberService;
+import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.CategoryService;
-import kz.ask.business.domain.entity.BranchMember;
-import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.business.domain.enums.BranchMemberRole;
+import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.catalog.api.dto.BusinessProductCreateRequest;
 import kz.ask.catalog.api.dto.BusinessProductListResponse;
 import kz.ask.catalog.api.dto.BusinessProductRowResponse;
@@ -29,6 +29,8 @@ public class BusinessProductProcessor {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final BusinessService businessService;
+    private final BusinessBranchService businessBranchService;
+    private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
     private final ProductService productService;
     private final SearchDocumentService searchDocumentService;
@@ -36,7 +38,7 @@ public class BusinessProductProcessor {
     @Transactional(readOnly = true)
     public BusinessProductListResponse listProducts(AskPrincipal principal, UUID branchId, UUID categoryId,
                                                       Boolean enabled, String query, Integer page, Integer size) {
-        BusinessBranch branch = requireBranch(branchId);
+        BusinessBranchDto branch = requireBranch(branchId);
         requireAnyAccess(principal.getUserId(), branch);
 
         int safeSize = Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE);
@@ -55,11 +57,11 @@ public class BusinessProductProcessor {
 
     @Transactional
     public BusinessProductRowResponse createProduct(AskPrincipal principal, UUID branchId, BusinessProductCreateRequest req) {
-        BusinessBranch branch = requireBranch(branchId);
-        requireManagerOrAbove(principal.getUserId(), branch, "create a product");
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
         categoryService.requireActiveCategory(req.getCategoryId());
-        ProductOfferDto dto = productService.createProduct(branch.getBusiness().getId(), branchId, req);
+        ProductOfferDto dto = productService.createProduct(branch.getBusinessId(), branchId, req);
         syncSearchDocument(dto);
         return toRowResponse(dto);
     }
@@ -67,12 +69,8 @@ public class BusinessProductProcessor {
     @Transactional
     public BusinessProductRowResponse updateProduct(AskPrincipal principal, UUID branchId, UUID productId,
                                                       BusinessProductUpdateRequest req) {
-        BusinessBranch branch = requireBranch(branchId);
-        if (req.hasOnlyEnabledField()) {
-            requireAnyAccess(principal.getUserId(), branch);
-        } else {
-            requireManagerOrAbove(principal.getUserId(), branch, "edit product fields other than availability");
-        }
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
         if (req.getCategoryId() != null) {
             categoryService.requireActiveCategory(req.getCategoryId());
@@ -84,8 +82,8 @@ public class BusinessProductProcessor {
 
     @Transactional
     public BusinessProductRowResponse deleteProduct(AskPrincipal principal, UUID branchId, UUID productId) {
-        BusinessBranch branch = requireBranch(branchId);
-        requireManagerOrAbove(principal.getUserId(), branch, "delete a product");
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
         ProductOfferDto dto = productService.deleteProduct(productId, branchId);
         syncSearchDocument(dto);
@@ -95,7 +93,9 @@ public class BusinessProductProcessor {
     private void syncSearchDocument(ProductOfferDto dto) {
         boolean live = Boolean.TRUE.equals(dto.getEnabled()) && "ACTIVE".equals(dto.getStatus());
         searchDocumentService.syncProductDocument(
-                dto.getProductOfferId(), dto.getName(), dto.getDescription(), dto.getTags(), live);
+                dto.getProductOfferId(), dto.getBusinessId(), dto.getBranchId(),
+                dto.getName(), dto.getDescription(), dto.getCategoryLabel(),
+                dto.getSku(), dto.getTags(), dto.getPrice(), live);
     }
 
     private BusinessProductRowResponse toRowResponse(ProductOfferDto dto) {
@@ -110,48 +110,25 @@ public class BusinessProductProcessor {
                 .tags(dto.getTags())
                 .price(dto.getPrice())
                 .enabled(dto.getEnabled())
-                .status(dto.getStatus())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
     }
 
-    private BusinessBranch requireBranch(UUID branchId) {
-        BusinessBranch branch = businessService.findBranchById(branchId);
+    private BusinessBranchDto requireBranch(UUID branchId) {
+        BusinessBranchDto branch = businessBranchService.findById(branchId);
         if (branch == null) {
             throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
         return branch;
     }
 
-    private void requireAnyAccess(UUID userId, BusinessBranch branch) {
-        if (isOwner(userId, branch) || resolveBranchRole(userId, branch.getId()) != null) {
+    private void requireAnyAccess(UUID userId, BusinessBranchDto branch) {
+        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
+            return;
+        }
+        if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
-    }
-
-    private void requireManagerOrAbove(UUID userId, BusinessBranch branch, String action) {
-        if (isOwner(userId, branch)) {
-            return;
-        }
-        BranchMemberRole role = resolveBranchRole(userId, branch.getId());
-        if (role == null) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
-        }
-        if (role != BranchMemberRole.MANAGER) {
-            throw new ForbiddenException(ErrorCode.OPERATOR_FORBIDDEN_ACTION, action);
-        }
-    }
-
-    private boolean isOwner(UUID userId, BusinessBranch branch) {
-        return businessService.isOwnerOfBusiness(branch.getBusiness().getId(), userId);
-    }
-
-    private BranchMemberRole resolveBranchRole(UUID userId, UUID branchId) {
-        return businessService.findBranchMembers(branchId).stream()
-                .filter(m -> m.getUser().getId().equals(userId))
-                .map(BranchMember::getRole)
-                .findFirst()
-                .orElse(null);
     }
 }

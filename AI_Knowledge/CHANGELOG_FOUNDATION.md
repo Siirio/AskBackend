@@ -1,5 +1,55 @@
 # Foundation Changelog
 
+## 2026-06-23 - T11 Business Product Endpoints Actualization
+
+Rebased `feature/T11-product-endpoints` onto current `dev` and fully actualized the implementation to match the latest `03_business_admin_product_endpoints.md` specification. Removed all obsolete role/permission logic inherited from the pre-simplification workflow.
+
+### Rebase
+
+- Cherry-picked the single T11 commit (`impl logic`) onto `dev` HEAD (`fcb82e1`).
+- Resolved 4 merge conflicts: `ProductOfferRepository.java` (add/add), `ProductRepository.java` (add/add), `SecurityConfig.java` (whitespace), `ErrorCode.java` (enum member merge).
+
+### Role/Permission Actualization
+
+- **Removed `requireManagerOrAbove()`** from `BusinessProductProcessor`. The `BranchMemberRole` enum now contains only `STAFF` (no `MANAGER`/`OPERATOR`), making the old role-gate a compilation error and a behavioral mismatch with the current MD spec.
+- **Unified all product operations under `requireAnyAccess()`**: Owner of the business OR any staff assigned to the branch can now list, create, update, and delete products. This matches `03_business_admin_product_endpoints.md` line 23-24: "Both Owner and Staff assigned to that branch can manage products" and "There is no Manager/Operator permission split for product management."
+- **Removed the `enabled`-only toggle shortcut**: Previously, Operators (non-Manager staff) could only toggle `enabled` on existing products. Since the role split no longer exists, all staff can perform all product mutations.
+- Replaced `businessService.findBranchById()` → `businessBranchService.findById()` (returns `BusinessBranchDto`).
+- Replaced `businessService.findBranchMembers()` → `branchMemberService.findByBranch()` (returns `List<BranchMemberDto>`).
+
+### API Contract Changes
+
+- **Controller now wraps all responses in `EntityResponse<T>`** (per `CODE_RULES.md`). This is a breaking API change:
+  - Before: `GET /api/v1/business-admin/branches/{branchId}/products` → `BusinessProductListResponse`
+  - After: `GET ...` → `{ "data": { "items": [...], "page": 0, ... } }`
+  - Before: `POST/PATCH/DELETE ...` → `BusinessProductRowResponse`
+  - After: `POST/PATCH/DELETE ...` → `{ "data": { "productId": "...", ... } }`
+- **Removed `status` field from `BusinessProductRowResponse`**: The response DTO now contains exactly the 11 fields listed in the MD spec (productId, productOfferId, branchId, categoryId, name, description, sku, tags, price, enabled, updatedAt). Internal status is still tracked via `ProductOfferDto.status` but not exposed in API responses.
+- **Removed `hasOnlyEnabledField()` from `BusinessProductUpdateRequest`**: This method was only used by the now-deleted role-splitting logic.
+
+### DTO And Internal Transfer Changes
+
+- **`ProductOfferDto`**: Added `businessId` (UUID) and `categoryLabel` (String) fields to carry richer data from the service layer to the processor and search service.
+- **`ProductOfferMapper.toDto()`**: Now populates `businessId` from `product.getBusiness().getId()` and `categoryLabel` from `product.getCategory().getName()`, with null-safe accessors for nullable Category.
+- **`toRowResponse()`**: No longer maps `status` — only the 11 MD-specified fields.
+
+### Search Document Sync Expansion
+
+- **`SearchDocumentService.syncProductDocument()`**: Signature expanded from 5 parameters to 10 — now accepts `businessId`, `branchId`, `categoryLabel`, `sku`, and `price` in addition to the existing `productOfferId`, `title`, `summary`, `tags`, and `live`. Matches MD spec line 89: "Search document строится по названию, описанию, тегам, категории, бизнесу, филиалу и цене."
+- **`SearchDocumentServiceImpl.syncProductDocument()`**: Now fully populates the `SearchDocument` entity — sets `business`, `branch`, `categoryLabel`, `sku`, and `price` using `getReferenceById()` for foreign entities.
+- Added `BusinessRepository` and `BusinessBranchRepository` to the impl (used only via `getReferenceById()`, compliant with CODE_RULES).
+
+### Obsolete Code Removed
+
+- `BusinessProductProcessor.requireManagerOrAbove()` — entire method deleted.
+- `BusinessProductProcessor.resolveBranchRole()` — entire method deleted.
+- `BusinessProductUpdateRequest.hasOnlyEnabledField()` — method and `@JsonIgnore` import deleted.
+- Imports for `BranchMember` (entity) and `BranchMemberRole` (enum) removed from Processor.
+
+### Files Changed (8)
+
+`BusinessProductController.java`, `BusinessProductProcessor.java`, `BusinessProductRowResponse.java`, `BusinessProductUpdateRequest.java`, `ProductOfferDto.java`, `ProductOfferMapper.java`, `SearchDocumentService.java`, `SearchDocumentServiceImpl.java`.
+
 ## 2026-06-22 - Product Excel Import Implementation (Task 06)
 
 Full production backend implementation for Product Excel Import. Backend now owns Excel parsing (fastexcel-reader), auto-mapping, row normalization, validation, and product/offer/search-document creation. Frontend prototype branch (`feature/product-excel-import`) is preserved as UX reference only.

@@ -8,6 +8,7 @@ import kz.ask.catalog.api.dto.BusinessProductRowResponse;
 import kz.ask.catalog.api.dto.BusinessProductUpdateRequest;
 import kz.ask.catalog.application.BusinessProductProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.shared.api.dto.EntityResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,36 +31,44 @@ public class BusinessProductController {
     private final BusinessProductProcessor processor;
 
     @GetMapping
-    public BusinessProductListResponse listProducts(@AuthenticationPrincipal AskPrincipal principal,
-                                                      @PathVariable UUID branchId,
-                                                      @RequestParam(required = false) UUID categoryId,
-                                                      @RequestParam(required = false) Boolean enabled,
-                                                      @RequestParam(required = false) String query,
-                                                      @RequestParam(defaultValue = "0") Integer page,
-                                                      @RequestParam(defaultValue = "20") Integer size) {
-        return processor.listProducts(principal, branchId, categoryId, enabled, query, page, size);
+    public EntityResponse<BusinessProductListResponse> listProducts(@AuthenticationPrincipal AskPrincipal principal,
+                                                                      @PathVariable UUID branchId,
+                                                                      @RequestParam(required = false) UUID categoryId,
+                                                                      @RequestParam(required = false) Boolean enabled,
+                                                                      @RequestParam(required = false) String query,
+                                                                      @RequestParam(defaultValue = "0") Integer page,
+                                                                      @RequestParam(defaultValue = "20") Integer size) {
+        return EntityResponse.<BusinessProductListResponse>builder()
+                .data(processor.listProducts(principal, branchId, categoryId, enabled, query, page, size))
+                .build();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BusinessProductRowResponse createProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                      @PathVariable UUID branchId,
-                                                      @Valid @RequestBody BusinessProductCreateRequest req) {
-        return processor.createProduct(principal, branchId, req);
+    public EntityResponse<BusinessProductRowResponse> createProduct(@AuthenticationPrincipal AskPrincipal principal,
+                                                                      @PathVariable UUID branchId,
+                                                                      @Valid @RequestBody BusinessProductCreateRequest req) {
+        return EntityResponse.<BusinessProductRowResponse>builder()
+                .data(processor.createProduct(principal, branchId, req))
+                .build();
     }
 
     @PatchMapping("/{productId}")
-    public BusinessProductRowResponse updateProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                      @PathVariable UUID branchId,
-                                                      @PathVariable UUID productId,
-                                                      @Valid @RequestBody BusinessProductUpdateRequest req) {
-        return processor.updateProduct(principal, branchId, productId, req);
+    public EntityResponse<BusinessProductRowResponse> updateProduct(@AuthenticationPrincipal AskPrincipal principal,
+                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID productId,
+                                                                      @Valid @RequestBody BusinessProductUpdateRequest req) {
+        return EntityResponse.<BusinessProductRowResponse>builder()
+                .data(processor.updateProduct(principal, branchId, productId, req))
+                .build();
     }
 
     @DeleteMapping("/{productId}")
-    public BusinessProductRowResponse deleteProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                      @PathVariable UUID branchId,
-                                                      @PathVariable UUID productId) {
-        return processor.deleteProduct(principal, branchId, productId);
+    public EntityResponse<BusinessProductRowResponse> deleteProduct(@AuthenticationPrincipal AskPrincipal principal,
+                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID productId) {
+        return EntityResponse.<BusinessProductRowResponse>builder()
+                .data(processor.deleteProduct(principal, branchId, productId))
+                .build();
     }
 }

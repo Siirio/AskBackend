@@ -27,6 +27,5 @@ public class BusinessProductRowResponse {
     private List<String> tags;
     private BigDecimal price;
     private Boolean enabled;
-    private String status;
     private Instant updatedAt;
 }

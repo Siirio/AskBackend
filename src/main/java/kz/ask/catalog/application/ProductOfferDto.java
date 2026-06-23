@@ -19,8 +19,10 @@ public class ProductOfferDto {
 
     private UUID productId;
     private UUID productOfferId;
+    private UUID businessId;
     private UUID branchId;
     private UUID categoryId;
+    private String categoryLabel;
     private String name;
     private String description;
     private String sku;

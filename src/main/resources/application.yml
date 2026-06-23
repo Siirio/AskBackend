@@ -3,8 +3,8 @@ spring:
     name: ask-backend
   datasource:
     url: ${ASK_DB_URL:jdbc:postgresql://localhost:5432/ask}
-    username: ${ASK_DB_USERNAME:ask}
-    password: ${ASK_DB_PASSWORD:ask}
+    username: ${ASK_DB_USERNAME:postgres}
+    password: ${ASK_DB_PASSWORD:admin}
   jpa:
     hibernate:
       ddl-auto: validate
