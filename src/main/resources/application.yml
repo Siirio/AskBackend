@@ -1,6 +1,8 @@
 spring:
   application:
     name: ask-backend
+  jackson:
+    property-naming-strategy: SNAKE_CASE
   datasource:
     url: ${ASK_DB_URL:jdbc:postgresql://localhost:5432/ask}
     username: ${ASK_DB_USERNAME:postgres}

@@ -73,4 +73,12 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private RecordStatus status;
+
+    @Column(name = "confidence_code")
+    private String confidenceCode;
+
+    private String source;
+
+    @Column(name = "public_note")
+    private String publicNote;
 }

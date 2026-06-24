@@ -46,6 +46,12 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         document.setPrice(price);
         document.setTokens(new ArrayList<>(tags == null ? List.of() : tags));
         document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
+        if (document.getConfidenceCode() == null) {
+            document.setConfidenceCode("MEDIUM");
+        }
+        if (document.getSource() == null) {
+            document.setSource("CATALOG");
+        }
 
         searchDocumentRepository.save(document);
     }
