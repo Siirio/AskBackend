@@ -2,9 +2,10 @@ package kz.ask.request.domain.enums;
 
 public enum CustomerRequestStatus {
     CREATED,
-    ROUTED,
-    ANSWERED,
-    CLOSED,
+    SENT,
+    PARTIALLY_RESPONDED,
+    COMPLETED,
+    EXPIRED,
     CANCELLED,
-    EXPIRED
+    FAILED
 }

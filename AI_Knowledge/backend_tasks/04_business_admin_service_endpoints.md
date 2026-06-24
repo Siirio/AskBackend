@@ -181,7 +181,7 @@ Ask Services MVP — это **не календарь бронирования**
 |13|`customerRequestStatus`|string|raw lifecycle|`CREATED`, `SENT`, `PARTIALLY_RESPONDED`, `COMPLETED`, `EXPIRED`, `CANCELLED`, `FAILED`|
 |14|`supplierResponseStatus`|string|raw response|`CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`|
 |15|`unreadCount`|integer|messaging||
-|16|`actions`|array|derived|Open chat, confirm, decline, suggest other time|
+|16|`actions`|array|derived|`OPEN_CHAT` always; `FIX_BOOKING` when `activityDisplayStatus = DISCUSSING`|
 
 ### ActivityDisplayStatus — Правила вычисления
 
@@ -201,12 +201,15 @@ Ask Services MVP — это **не календарь бронирования**
 
 ### Actions
 
+Chat-First, Button-for-Fixation: бизнес общается через чат, а кнопки фиксируют результат уже достигнутой договорённости.
+
 | Action | Когда показывать | Что делает |
 |---|---|---|
-|Open chat|Всегда|Открывает чат, привязанный к заявке. Основной канал общения.|
-|Confirm (`CAN_PROVIDE`)|`supplierResponseStatus != CAN_PROVIDE` И `supplierResponseStatus != CANNOT_PROVIDE`|Бизнес подтверждает возможность оказания услуги и фиксирует `confirmedStartAt`/`confirmedEndAt`. Без времени = `DISCUSSING`. С временем = `CONFIRMED`.|
-|Decline (`CANNOT_PROVIDE`)|`supplierResponseStatus != CANNOT_PROVIDE`|Бизнес отказывает. Статус → `CONFIRMATION_DECLINED`.|
-|Suggest other time (`SUGGEST_OTHER_TIME`)|`supplierResponseStatus != CAN_PROVIDE` И `supplierResponseStatus != CANNOT_PROVIDE`|Бизнес предлагает другое время через `proposedStartAt`. Оставляет заявку в `DISCUSSING`. Открывает чат для обсуждения.|
+|`OPEN_CHAT`|Всегда|Открывает чат, привязанный к заявке. Основной канал общения.|
+|`FIX_BOOKING`|`activityDisplayStatus = DISCUSSING`|Открывает форму фиксации финального результата. Бизнес выбирает `SupplierResponseStatus` (`CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`) и при необходимости устанавливает время. Один вызов `PATCH /service-requests/{id}`.|
+
+**Почему нет отдельных кнопок Confirm / Decline / SuggestOtherTime:**
+Основное общение идёт в чате. `FIX_BOOKING` — единственная кнопка фиксации, которая появляется пока заявка в `DISCUSSING`. После `CONFIRMED` или `CONFIRMATION_DECLINED` остаётся только `OPEN_CHAT`.
 
 ## Подтверждение заявки на услугу - PATCH /api/v1/business-admin/branches/{branchId}/service-requests/{requestId}
 

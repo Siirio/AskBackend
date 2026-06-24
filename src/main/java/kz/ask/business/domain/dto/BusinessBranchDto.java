@@ -13,4 +13,5 @@ public class BusinessBranchDto {
     private UUID id;
     private UUID businessId;
     private String name;
+    private String address;
 }

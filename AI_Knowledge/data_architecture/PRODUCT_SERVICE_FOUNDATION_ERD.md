@@ -185,6 +185,51 @@ Staff is represented at branch level through `branch_member(STAFF)`.
 
 Current MVP task contracts keep service branch offer data to price, approximate duration, schedule text, branch ownership, and visibility state.
 
+### `customer_request`
+
+| Column | Meaning |
+|---|---|
+| `id` | Request id. |
+| `user_id` | Customer who created the request. |
+| `service_branch_offer_id` | Service context, nullable (set when request targets a specific service). |
+| `query_text` | Customer's free-text request description. |
+| `status` | `CREATED`, `SENT`, `PARTIALLY_RESPONDED`, `COMPLETED`, `EXPIRED`, `CANCELLED`, `FAILED`. |
+| `requested_start_at` | Customer's desired time specified at request creation. Nullable. Never changed by backend after creation. **Added in V2.** |
+| `created_at` | Created time. |
+| `updated_at` | Updated time. |
+
+### `supplier_response`
+
+| Column | Meaning |
+|---|---|
+| `id` | Response id. |
+| `request_target_id` | Target that this response answers. |
+| `status` | `CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`. |
+| `comment` | Provider's comment/note. |
+| `proposed_start_at` | Business counter-offer time (used with `SUGGEST_OTHER_TIME`). Nullable. **Added in V2.** |
+| `confirmed_start_at` | Finally agreed start time (fixed via `CAN_PROVIDE`). Nullable. **Added in V2.** |
+| `confirmed_end_at` | Finally agreed end time. Nullable. **Added in V2.** |
+| `created_at` | Created time. |
+
+### `booking`
+
+| Column | Meaning |
+|---|---|
+| `id` | Booking id. |
+| `customer_id` | Customer who booked. |
+| `service_branch_offer_id` | Service booked. |
+| `branch_id` | Branch providing the service. |
+| `conversation_id` | Linked conversation, nullable. |
+| `status` | `CONFIRMED_BY_BUSINESS` when created from a handled request. |
+| `source` | `CUSTOMER_REQUEST` when created from service request fixation. |
+| `requested_start_at` | Customer's original desired time (copied from customer_request). |
+| `confirmed_start_at` | Finally agreed start time. |
+| `confirmed_end_at` | Finally agreed end time. |
+| `customer_note` | Customer note, nullable. |
+| `provider_note` | Business note, nullable. |
+
+Booking is created only when `CAN_PROVIDE` + `confirmedStartAt != null` + `serviceBranchOfferId != null`. Minimal overlap check (Overlap Check F) is deferred to a separate task.
+
 ### `search_session`
 
 | Column | Meaning |

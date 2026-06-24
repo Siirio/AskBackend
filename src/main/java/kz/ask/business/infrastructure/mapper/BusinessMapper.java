@@ -105,6 +105,7 @@ public class BusinessMapper {
                 .id(entity.getId())
                 .businessId(entity.getBusiness().getId())
                 .name(entity.getName())
+                .address(entity.getAddress())
                 .build();
     }
 

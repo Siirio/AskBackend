@@ -700,7 +700,303 @@ Empty body. Frontend removes the invite from the list.
 
 ---
 
-## 4. Error Response Format
+## 4. Business Cabinet: Service Endpoints
+
+Base path: `/api/v1/business-admin/branches/{branchId}`
+
+All endpoints require Bearer token. Access: Owner of the business OR Staff assigned to the branch.
+
+---
+
+### 4.1. List Branch Services
+
+```
+GET /api/v1/business-admin/branches/{branchId}/services
+Auth: Bearer token (OWNER or STAFF)
+```
+
+**Path parameter:** `branchId` (uuid)
+
+**Query parameters:**
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `categoryId` | `uuid` | no | Filter by category. |
+| `active` | `boolean` | no | Filter by active state. |
+| `query` | `string` | no | Name/description search. |
+| `page` | `integer` | no | Default `0`. |
+| `size` | `integer` | no | Default `20`, max `100`. |
+
+**Response `200`: `BusinessServiceListResponse`**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `items` | `array<BusinessServiceRowResponse>` | Page items. |
+| `page` | `integer` | Current page index. |
+| `size` | `integer` | Page size. |
+| `totalElements` | `long` | Total matching records. |
+| `totalPages` | `integer` | Total pages. |
+
+**`BusinessServiceRowResponse`**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `serviceOfferingId` | `uuid` | Service definition id (business-scoped). |
+| `serviceBranchOfferId` | `uuid` | Branch-level offer id. |
+| `branchId` | `uuid` | Branch id. |
+| `categoryId` | `uuid` | Category id. |
+| `name` | `string` | Service name. |
+| `description` | `string` | Description (nullable). |
+| `basePrice` | `decimal` | Price-from (nullable). |
+| `durationMinutes` | `integer` | Approximate duration (nullable). |
+| `scheduleText` | `string` | Display schedule/conditions text (nullable). NOT slot truth. |
+| `active` | `boolean` | Whether service appears in live client search. |
+| `updatedAt` | `datetime` | Last updated (ISO 8601). |
+
+**Error responses**
+
+| Status | ErrorCode | When |
+|--------|-----------|------|
+| `401` | `SESSION_INVALID` | Token expired. |
+| `403` | `ACCESS_DENIED` | Caller is not owner or staff of this branch. |
+| `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
+| `500` | `INTERNAL_ERROR` | Unexpected server error. |
+
+**Frontend behavior**
+- Show service list with active/inactive toggle.
+- Active badge (green) / inactive badge (grey) based on `active`.
+- `scheduleText` is a display string, not a calendar — render as-is.
+- `basePrice` shown as "от X ₸" when present; "цена по договорённости" when null.
+
+---
+
+### 4.2. Create Branch Service
+
+```
+POST /api/v1/business-admin/branches/{branchId}/services
+Auth: Bearer token (OWNER or STAFF)
+Content-Type: application/json
+```
+
+**Path parameter:** `branchId` (uuid)
+
+**Request: `CreateServiceRequest`**
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `categoryId` | `uuid` | yes | Service category. |
+| `name` | `string` | yes | Service name. |
+| `description` | `string` | no | Description. |
+| `basePrice` | `decimal` | no | Price-from. |
+| `durationMinutes` | `integer` | no | Approximate duration. |
+| `scheduleText` | `string` | no | Display schedule/conditions. NOT guaranteed slot. |
+| `active` | `boolean` | no | Default `true`. Controls live search visibility. |
+
+**Response `201`: `BusinessServiceRowResponse`**
+
+Same shape as in 4.1.
+
+**Error responses**
+
+| Status | ErrorCode | When |
+|--------|-----------|------|
+| `400` | `VALIDATION_ERROR` | Required fields missing or invalid. |
+| `401` | `SESSION_INVALID` | Token expired. |
+| `403` | `ACCESS_DENIED` | Not owner or staff of this branch. |
+| `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
+| `404` | `CATEGORY_NOT_FOUND` | Category doesn't exist. |
+| `500` | `INTERNAL_ERROR` | Unexpected server error. |
+
+**Frontend behavior**
+- After `201`: add service to list, show success toast.
+- Created active service immediately becomes searchable by customers.
+- `scheduleText` is a free-text helper for customers — not a slot reservation system.
+
+---
+
+### 4.3. Update Branch Service
+
+```
+PATCH /api/v1/business-admin/branches/{branchId}/services/{serviceOfferingId}
+Auth: Bearer token (OWNER or STAFF)
+Content-Type: application/json
+```
+
+**Path parameters:** `branchId` (uuid), `serviceOfferingId` (uuid)
+
+**Request: `UpdateServiceRequest`**
+
+All fields are optional — only provided fields are updated.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `categoryId` | `uuid` | no | Update category. |
+| `name` | `string` | no | Update name. |
+| `description` | `string` | no | Update description. |
+| `basePrice` | `decimal` | no | Update price-from. |
+| `durationMinutes` | `integer` | no | Update approximate duration. |
+| `scheduleText` | `string` | no | Update display schedule. |
+| `active` | `boolean` | no | Toggle live search visibility. |
+
+**Response `200`: `BusinessServiceRowResponse`**
+
+Same shape as in 4.1.
+
+**Error responses**
+
+| Status | ErrorCode | When |
+|--------|-----------|------|
+| `400` | `VALIDATION_ERROR` | Invalid field values. |
+| `401` | `SESSION_INVALID` | Token expired. |
+| `403` | `ACCESS_DENIED` | Not owner or staff of this branch. |
+| `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
+| `404` | `SERVICE_NOT_FOUND` | Service offering not found for this branch. |
+| `500` | `INTERNAL_ERROR` | Unexpected server error. |
+
+**Frontend behavior**
+- `active=false` hides service from live client search immediately.
+- `active=true` restores service to live client search.
+- Use inline edit (sheet/modal) and update item in list after `200`.
+
+---
+
+### 4.4. List Activity
+
+```
+GET /api/v1/business-admin/branches/{branchId}/activity
+Auth: Bearer token (OWNER or STAFF)
+```
+
+**Path parameter:** `branchId` (uuid)
+
+Returns all service/product requests targeting this branch.
+
+**Response `200`: `List<ActivityRowResponse>`**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `activityId` | `uuid` | RequestTarget id — unique row key. |
+| `type` | `string` | `"SERVICE"` or `"PRODUCT"`. |
+| `requestText` | `string` | Customer's free-text description (nullable). |
+| `branchId` | `uuid` | Branch id. |
+| `branchAddress` | `string` | Branch address (nullable). |
+| `customerName` | `string` | Customer display name. |
+| `customerContact` | `string` | Customer's phone (preferred) or email. |
+| `requestedStartAt` | `datetime` | Customer's desired time (nullable, ISO 8601). |
+| `proposedStartAt` | `datetime` | Business counter-offer time (nullable). Set via `SUGGEST_OTHER_TIME`. |
+| `confirmedStartAt` | `datetime` | Finally agreed start time (nullable). Set via `CAN_PROVIDE`. |
+| `confirmedEndAt` | `datetime` | Finally agreed end time (nullable). |
+| `activityDisplayStatus` | `string` | Derived: `DISCUSSING`, `CONFIRMED`, or `CONFIRMATION_DECLINED`. **This is the only status shown in Activity UI.** |
+| `customerRequestStatus` | `string` | Raw lifecycle: `CREATED`, `SENT`, `PARTIALLY_RESPONDED`, `COMPLETED`, `EXPIRED`, `CANCELLED`, `FAILED`. |
+| `supplierResponseStatus` | `string` | Raw response: `CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME` (nullable — null before any response). |
+| `unreadCount` | `integer` | Unread chat messages (currently always `0` — chat integration deferred). |
+| `actions` | `array<string>` | `["OPEN_CHAT"]` or `["OPEN_CHAT", "FIX_BOOKING"]`. |
+
+**ActivityDisplayStatus derivation rules:**
+
+| `activityDisplayStatus` | Condition |
+|---|---|
+| `CONFIRMED` | `supplierResponseStatus = CAN_PROVIDE` AND `confirmedStartAt != null` |
+| `CONFIRMATION_DECLINED` | `supplierResponseStatus = CANNOT_PROVIDE` |
+| `DISCUSSING` | All other cases (including no response yet, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`, `CAN_PROVIDE` without time) |
+
+**Actions:**
+
+| Action | When present |
+|---|---|
+| `OPEN_CHAT` | Always. |
+| `FIX_BOOKING` | When `activityDisplayStatus = DISCUSSING`. |
+
+**Error responses**
+
+| Status | ErrorCode | When |
+|--------|-----------|------|
+| `401` | `SESSION_INVALID` | Token expired. |
+| `403` | `ACCESS_DENIED` | Not owner or staff of this branch. |
+| `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
+| `500` | `INTERNAL_ERROR` | Unexpected server error. |
+
+**Frontend behavior**
+- Show activity as list/table with `activityDisplayStatus` as the primary status chip.
+- Status chips: `DISCUSSING` (yellow), `CONFIRMED` (green), `CONFIRMATION_DECLINED` (red).
+- `OPEN_CHAT` → navigate to conversation for this request.
+- `FIX_BOOKING` → open fixation form (see 4.5 for request shape).
+- Show `confirmedStartAt/EndAt` when `CONFIRMED`. Show `proposedStartAt` when present and `DISCUSSING`.
+- `requestedStartAt` is always the customer's desired time — show as reference.
+- `customerRequestStatus` and `supplierResponseStatus` are for debug/log display only — business UI should only use `activityDisplayStatus`.
+
+---
+
+### 4.5. Fix Service Booking (Business Responds to Request)
+
+```
+PATCH /api/v1/business-admin/branches/{branchId}/service-requests/{requestId}
+Auth: Bearer token (OWNER or STAFF)
+Content-Type: application/json
+```
+
+**Path parameters:** `branchId` (uuid), `requestId` (uuid — CustomerRequest id)
+
+**Request: `FixServiceBookingRequest`**
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `status` | `string` (SupplierResponseStatus) | yes | One of: `CAN_PROVIDE`, `CANNOT_PROVIDE`, `NEED_CLARIFICATION`, `SUGGEST_OTHER_TIME`. |
+| `proposedStartAt` | `datetime` | conditional | Required/meaningful for `SUGGEST_OTHER_TIME`. Nullable otherwise. |
+| `confirmedStartAt` | `datetime` | conditional | Required for `CAN_PROVIDE` if fixing final time. Nullable otherwise. |
+| `confirmedEndAt` | `datetime` | no | Final agreed end time (nullable). |
+| `providerNote` | `string` | no | Business comment visible in response. |
+
+**Response `200`: `FixServiceBookingResponse`**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `requestId` | `uuid` | CustomerRequest id. |
+| `branchId` | `uuid` | Branch id. |
+| `customerRequestStatus` | `string` | Updated request status (`COMPLETED` or `PARTIALLY_RESPONDED`). |
+| `supplierResponseStatus` | `string` | The status that was just saved. |
+| `activityDisplayStatus` | `string` | Derived display status after this action. |
+| `requestedStartAt` | `datetime` | Customer's original desired time (nullable). |
+| `proposedStartAt` | `datetime` | Business counter-offer (nullable). |
+| `confirmedStartAt` | `datetime` | Final agreed start (nullable). |
+| `confirmedEndAt` | `datetime` | Final agreed end (nullable). |
+| `providerNote` | `string` | Business comment (nullable). |
+
+**Status behavior summary:**
+
+| `status` sent | Result `activityDisplayStatus` | Booking created? |
+|---|---|---|
+| `CAN_PROVIDE` + `confirmedStartAt` | `CONFIRMED` | Yes |
+| `CAN_PROVIDE` (no time) | `DISCUSSING` | No |
+| `CANNOT_PROVIDE` | `CONFIRMATION_DECLINED` | No |
+| `NEED_CLARIFICATION` | `DISCUSSING` | No |
+| `SUGGEST_OTHER_TIME` | `DISCUSSING` | No |
+
+**Error responses**
+
+| Status | ErrorCode | When |
+|--------|-----------|------|
+| `400` | `VALIDATION_ERROR` | Missing or invalid fields. |
+| `401` | `SESSION_INVALID` | Token expired. |
+| `403` | `ACCESS_DENIED` | Not owner or staff of this branch. |
+| `404` | `BRANCH_NOT_FOUND` | Branch doesn't exist. |
+| `404` | `REQUEST_NOT_FOUND` | CustomerRequest doesn't exist or doesn't target this branch. |
+| `500` | `INTERNAL_ERROR` | Unexpected server error. |
+
+**Frontend behavior**
+- `FIX_BOOKING` button opens a sheet/modal with:
+  - Status picker: Can provide / Cannot provide / Need clarification / Suggest other time
+  - Time inputs shown contextually: `confirmedStartAt`/`confirmedEndAt` for `CAN_PROVIDE`; `proposedStartAt` for `SUGGEST_OTHER_TIME`
+  - Optional `providerNote` field
+- After `200`: update row in Activity list with returned `activityDisplayStatus`. If `CONFIRMED`, remove `FIX_BOOKING` action.
+- If `CONFIRMED`: a booking record was automatically created in backend — no additional frontend action needed.
+- `SUGGEST_OTHER_TIME` keeps status `DISCUSSING` — business should continue conversation via `OPEN_CHAT`.
+
+---
+
+## 5. Error Response Format
+
+
 
 All error responses follow this structure:
 
@@ -772,7 +1068,7 @@ All error responses follow this structure:
 
 ---
 
-## 5. Auth State Reference
+## 6. Auth State Reference
 
 ### 5.1. Session TTLs
 
@@ -836,7 +1132,7 @@ DISABLED ──(owner re-enables)──→ ACTIVE (or PASSWORD_RESET_REQUIRED)
 
 ---
 
-## 6. Frontend Routing Map
+## 7. Frontend Routing Map
 
 | Route | Screen | Auth required | Notes |
 |-------|--------|---------------|-------|
@@ -859,7 +1155,7 @@ DISABLED ──(owner re-enables)──→ ACTIVE (or PASSWORD_RESET_REQUIRED)
 
 ---
 
-## 7. Auth Header Convention
+## 8. Auth Header Convention
 
 All authenticated requests must include:
 

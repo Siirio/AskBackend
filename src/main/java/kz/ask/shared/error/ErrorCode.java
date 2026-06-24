@@ -22,6 +22,7 @@ public enum ErrorCode {
     CATEGORY_NOT_FOUND("Категория не найдена"),
     SERVICE_OFFERING_NOT_FOUND("Услуга не найдена"),
     BOOKING_NOT_FOUND("Заявка не найдена"),
+    REQUEST_NOT_FOUND("Заявка клиента не найдена"),
     STAFF_NOT_FOUND("Сотрудник не найден"),
     ACCESS_DENIED("Доступ запрещен"),
     DELIVERY_FAILED("Ошибка отправки кода подтверждения"),

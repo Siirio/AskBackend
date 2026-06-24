@@ -1,5 +1,92 @@
 # Foundation Changelog
 
+## 2026-06-24 - T12 Business Cabinet Service And Activity Endpoints
+
+Implemented all 5 branch workspace service endpoints on `feature/T-12-ask-service-logic`. Implementation follows the Chat-First / Button-for-Fixation philosophy: no separate Confirm/Decline/SuggestOtherTime buttons — business uses `FIX_BOOKING` to record an agreement already reached in chat.
+
+### Schema Changes (V2__service_time_fields.sql)
+
+Four new nullable TIMESTAMPTZ columns:
+
+- `customer_request.requested_start_at` — customer's desired time at request creation. Never changed by backend.
+- `supplier_response.proposed_start_at` — business counter-offer time (for `SUGGEST_OTHER_TIME`).
+- `supplier_response.confirmed_start_at` — finally agreed start time (fixed via `CAN_PROVIDE`).
+- `supplier_response.confirmed_end_at` — finally agreed end time.
+
+V1 migration was already committed and Flyway-applied; V2 is a separate file. Cannot merge into V1.
+
+### Endpoints (5 REST, base: `/api/v1/business-admin/branches/{branchId}`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`   | `/services` | List branch services with filters |
+| `POST`  | `/services` | Create service offering for branch |
+| `PATCH` | `/services/{serviceOfferingId}` | Update service offering |
+| `GET`   | `/activity` | List activity rows (all requests for branch) |
+| `PATCH` | `/service-requests/{requestId}` | Fix service booking (confirm/decline/suggest/clarify) |
+
+Access: Owner of the business OR Staff assigned to the branch. No Manager/Operator split.
+
+### Architecture
+
+Standard layer chain: `BranchWorkspaceController` → `ServiceProcessor` → domain services → repositories.
+
+New domain services:
+- `ServiceBranchOfferServiceImpl` — full CRUD for ServiceBranchOffer with JPA Specification filtering
+- `ServiceRequestServiceImpl` — `listActivity` (maps RequestTarget → ActivityDto) + `handleRequest` (creates SupplierResponse, updates CustomerRequest)
+- `BookingServiceImpl` — creates Booking with `CONFIRMED_BY_BUSINESS` status and `CUSTOMER_REQUEST` source
+
+### ActivityDisplayStatus — Derivation (never stored)
+
+| Status | Condition |
+|---|---|
+| `CONFIRMED` | `supplierResponseStatus = CAN_PROVIDE` AND `confirmedStartAt != null` |
+| `CONFIRMATION_DECLINED` | `supplierResponseStatus = CANNOT_PROVIDE` |
+| `DISCUSSING` | All other cases (default) |
+
+Key: `CAN_PROVIDE` without `confirmedStartAt` = `DISCUSSING` (business said "can" but time not fixed).
+
+### Actions (Chat-First, Button-for-Fixation)
+
+- `OPEN_CHAT` — always present.
+- `FIX_BOOKING` — present only when `activityDisplayStatus = DISCUSSING`. Single button that opens the fixation form where business chooses a `SupplierResponseStatus` and optionally sets time fields.
+
+No separate Confirm / Decline / SuggestOtherTime action buttons. Business communicates via chat and uses `FIX_BOOKING` to record the agreed result.
+
+### CustomerRequestStatus Resolution
+
+After `handleRequest`:
+- `CAN_PROVIDE` or `CANNOT_PROVIDE` → `COMPLETED`
+- Any other status → `PARTIALLY_RESPONDED`
+
+### Booking Creation Condition
+
+Booking record created only when `shouldCreateBooking = true`:
+- `supplierResponseStatus = CAN_PROVIDE` AND `confirmedStartAt != null` AND `serviceBranchOfferId != null`
+
+### New Error Code
+
+- `REQUEST_NOT_FOUND` — "Заявка клиента не найдена"
+
+### Cross-Module Changes
+
+- `BusinessBranchDto` — added `address` field (needed by `ActivityRowResponse.branchAddress`).
+- `BusinessMapper.toBusinessBranchDto()` — maps `.address(entity.getAddress())`.
+- `ProductServiceImpl` (@catalog) — renamed bean to `@Service("catalogProductImportServiceImpl")` to resolve Spring bean name conflict with `kz.ask.service` module.
+
+### Deferred (separate tasks)
+
+- **System Events (E)** — write conversation_message when business confirms/changes/cancels time. Not implemented.
+- **Overlap Check (F)** — minimal check for serviceBranchOfferId conflicts in booking table before creating new booking. Not implemented. On overlap: throw ConflictException (no slot recalculation — that's Level 3).
+
+### Files Changed
+
+**New**: `BranchWorkspaceController.java`, `ServiceProcessor.java`, `ServiceBranchOfferServiceImpl.java`, `ServiceRequestServiceImpl.java`, `BookingServiceImpl.java`, `ActivityRowResponse.java`, `ActivityDto.java`, `ServiceRequestResult.java`, `CreateServiceRequest.java`, `UpdateServiceRequest.java`, `FixServiceBookingRequest.java`, `FixServiceBookingResponse.java`, `ActivityDisplayStatus.java`, `V2__service_time_fields.sql`.
+
+**Modified**: `BusinessBranchDto.java`, `BusinessMapper.java`, `ProductServiceImpl.java` (catalog), `ErrorCode.java`.
+
+---
+
 ## 2026-06-23 - T11 Business Product Endpoints Actualization
 
 Rebased `feature/T11-product-endpoints` onto current `dev` and fully actualized the implementation to match the latest `03_business_admin_product_endpoints.md` specification. Removed all obsolete role/permission logic inherited from the pre-simplification workflow.

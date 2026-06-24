@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import kz.ask.request.domain.enums.SupplierResponseStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 
@@ -34,4 +35,10 @@ public class SupplierResponse extends BaseUuidV7Entity {
     private String productHint;
 
     private String comment;
+
+    private Instant proposedStartAt;
+
+    private Instant confirmedStartAt;
+
+    private Instant confirmedEndAt;
 }

@@ -53,5 +53,7 @@ public class CustomerRequest extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private CustomerRequestStatus status;
 
+    private Instant requestedStartAt;
+
     private Instant expiresAt;
 }

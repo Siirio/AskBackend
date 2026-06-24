@@ -1,173 +1,224 @@
 package kz.ask.service.application.processor;
 
-import jakarta.transaction.Transactional;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import kz.ask.business.domain.BranchMemberService;
+import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.business.domain.entity.Category;
-import kz.ask.business.infrastructure.repository.CategoryRepository;
+import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.service.api.dto.*;
-import kz.ask.service.domain.entity.Booking;
-import kz.ask.service.domain.entity.ServiceBranchOffer;
-import kz.ask.service.domain.entity.ServiceOffering;
-import kz.ask.service.domain.enums.BookingStatus;
-import kz.ask.service.domain.enums.ServiceMode;
-import kz.ask.service.infrastructure.mapper.ServiceMapper;
-import kz.ask.service.infrastructure.repository.BookingRepository;
-import kz.ask.service.infrastructure.repository.ServiceBranchOfferRepository;
-import kz.ask.service.infrastructure.repository.ServiceBranchOfferSpecification;
-import kz.ask.service.infrastructure.repository.ServiceOfferingRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+import kz.ask.request.domain.dto.ActivityDto;
+import kz.ask.request.domain.dto.ServiceRequestResult;
+import kz.ask.request.domain.enums.SupplierResponseStatus;
+import kz.ask.request.domain.service.ServiceRequestService;
+import kz.ask.service.api.dto.ActivityDisplayStatus;
+import kz.ask.service.api.dto.ActivityRowResponse;
+import kz.ask.service.api.dto.BusinessServiceListResponse;
+import kz.ask.service.api.dto.BusinessServiceRowResponse;
+import kz.ask.service.api.dto.CreateServiceRequest;
+import kz.ask.service.api.dto.FixServiceBookingRequest;
+import kz.ask.service.api.dto.FixServiceBookingResponse;
+import kz.ask.service.api.dto.UpdateServiceRequest;
+import kz.ask.service.domain.service.BookingService;
+import kz.ask.service.domain.service.ServiceBranchOfferService;
+import kz.ask.service.domain.dto.ServiceBranchOfferDto;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 public class ServiceProcessor {
-    private final ServiceOfferingRepository serviceOfferingRepository;
-    private final ServiceBranchOfferRepository serviceBranchOfferRepository;
-    private final BookingRepository bookingRepository;
-    private final CategoryRepository categoryRepository;
+
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final BusinessService businessService;
-    private final ServiceMapper serviceMapper;
+    private final BusinessBranchService businessBranchService;
+    private final BranchMemberService branchMemberService;
+    private final ServiceBranchOfferService serviceBranchOfferService;
+    private final ServiceRequestService serviceRequestService;
+    private final BookingService bookingService;
 
-    @Transactional
-    public Page<BusinessServiceRowResponse> listServices(
-            AskPrincipal principal, UUID branchId, UUID categoryId,
-            Boolean active, String query, int page, int size) {
-        checkAccess(principal, branchId);
+    @Transactional(readOnly = true)
+    public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId,
+                                                    UUID categoryId, Boolean active,
+                                                    String query, Integer page, Integer size) {
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
-        Specification<ServiceBranchOffer> specification = Specification.
-                where(ServiceBranchOfferSpecification.hasBranch(branchId));
-        if(categoryId != null){
-            specification = specification.and(ServiceBranchOfferSpecification.hasCategory(categoryId));
-        }
-        if(active != null){
-            specification = specification.and(ServiceBranchOfferSpecification.isActive(active));
-        }
-        if(query != null){
-            specification = specification.and(ServiceBranchOfferSpecification.nameContains(query));
-        }
+        int safeSize = Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE);
+        int safePage = Math.max(page == null ? 0 : page, 0);
 
-        Pageable pageable = PageRequest.of(page, size);
-        Page<ServiceBranchOffer> offerPage = serviceBranchOfferRepository.findAll(specification, pageable);
-        return offerPage.map(serviceMapper::toBusinessServiceRowResponse);
+        Page<ServiceBranchOfferDto> offers = serviceBranchOfferService.listOffers(
+                branchId, categoryId, active, query, PageRequest.of(safePage, safeSize));
+
+        return BusinessServiceListResponse.builder()
+                .items(offers.getContent().stream().map(this::toRowResponse).toList())
+                .page(offers.getNumber())
+                .size(offers.getSize())
+                .totalElements(offers.getTotalElements())
+                .totalPages(offers.getTotalPages())
+                .build();
     }
 
     @Transactional
-    public BusinessServiceRowResponse createService(
-            AskPrincipal principal, UUID branchId, CreateServiceRequest request) {
-        checkAccess(principal, branchId);
+    public BusinessServiceRowResponse createService(AskPrincipal principal, UUID branchId,
+                                                    CreateServiceRequest req) {
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
-        BusinessBranch branch =  businessService.findBranchById(branchId);
-        Category category =  categoryRepository.findById(request.getCategoryId()).orElse(null);
-        if(category == null){
-            throw new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-
-        ServiceOffering serviceOffering = new ServiceOffering();
-        serviceOffering.setBusiness(branch.getBusiness());
-        serviceOffering.setCategory(category);
-        serviceOffering.setName(request.getName());
-        serviceOffering.setDescription(request.getDescription());
-        serviceOffering.setStatus(RecordStatus.ACTIVE);
-        serviceOfferingRepository.save(serviceOffering);
-
-        ServiceBranchOffer serviceBranchOffer = new ServiceBranchOffer();
-        serviceBranchOffer.setServiceOffering(serviceOffering);
-        serviceBranchOffer.setBranch(branch);
-        serviceBranchOffer.setServiceMode(ServiceMode.SCHEDULED);
-        serviceBranchOffer.setBasePrice(request.getBasePrice());
-        serviceBranchOffer.setDurationMinutes(request.getDurationMinutes());
-        serviceBranchOffer.setScheduleText(request.getScheduleText());
-        serviceBranchOffer.setActive(request.getActive() != null ? request.getActive() : true);
-        serviceBranchOffer.setStatus(RecordStatus.ACTIVE);
-        serviceBranchOfferRepository.save(serviceBranchOffer);
-
-        return serviceMapper.toBusinessServiceRowResponse(serviceBranchOffer);
+        ServiceBranchOfferDto dto = serviceBranchOfferService.createOffer(branch.getBusinessId(), branchId, req);
+        return toRowResponse(dto);
     }
 
     @Transactional
-    public BusinessServiceRowResponse updateService(
-            AskPrincipal principal, UUID branchId,
-            UUID serviceOfferingId, UpdateServiceRequest request) {
-        checkAccess(principal, branchId);
+    public BusinessServiceRowResponse updateService(AskPrincipal principal, UUID branchId,
+                                                    UUID serviceOfferingId, UpdateServiceRequest req) {
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
-        ServiceBranchOffer sbo = serviceBranchOfferRepository
-                .findByServiceOfferingIdAndBranchId(serviceOfferingId, branchId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.SERVICE_OFFERING_NOT_FOUND));
+        ServiceBranchOfferDto dto = serviceBranchOfferService.updateOffer(serviceOfferingId, branchId, req);
+        return toRowResponse(dto);
+    }
 
-        if (request.getBasePrice() != null) sbo.setBasePrice(request.getBasePrice());
-        if (request.getDurationMinutes() != null) sbo.setDurationMinutes(request.getDurationMinutes());
-        if (request.getScheduleText() != null) sbo.setScheduleText(request.getScheduleText());
-        if (request.getActive() != null) sbo.setActive(request.getActive());
+    @Transactional(readOnly = true)
+    public List<ActivityRowResponse> listActivity(AskPrincipal principal, UUID branchId) {
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
-        ServiceOffering offering = sbo.getServiceOffering();
-        if (request.getCategoryId() != null) {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND));
-            offering.setCategory(category);
-        }
-        if (request.getName() != null) offering.setName(request.getName());
-        if (request.getDescription() != null) offering.setDescription(request.getDescription());
-
-        serviceOfferingRepository.save(offering);
-        serviceBranchOfferRepository.save(sbo);
-
-        return serviceMapper.toBusinessServiceRowResponse(sbo);
+        return serviceRequestService.listActivity(branchId).stream()
+                .map(this::toActivityRowResponse)
+                .toList();
     }
 
     @Transactional
-    public ServiceRequestResponse handleServiceRequest(
-            AskPrincipal principal, UUID branchId, UUID requestId, HandleServiceRequestBody body) {
-        checkAccess(principal, branchId);
+    public FixServiceBookingResponse fixServiceBooking(AskPrincipal principal, UUID branchId,
+                                                       UUID requestId, FixServiceBookingRequest req) {
+        BusinessBranchDto branch = requireBranch(branchId);
+        requireAnyAccess(principal.getUserId(), branch);
 
-        Booking booking = bookingRepository.findByIdAndBranch_Id(requestId, branchId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.BOOKING_NOT_FOUND));
+        ServiceRequestResult result = serviceRequestService.handleRequest(
+                branchId, requestId,
+                req.getStatus(),
+                req.getProposedStartAt(),
+                req.getConfirmedStartAt(),
+                req.getConfirmedEndAt(),
+                req.getProviderNote());
 
-        switch (body.getAction()) {
-            case "CONFIRM" -> {
-                booking.setStatus(BookingStatus.CONFIRMED_BY_BUSINESS);
-                booking.setConfirmedStartAt(body.getConfirmedStartAt());
-                booking.setConfirmedEndAt(body.getConfirmedEndAt());
-                booking.setProviderNote(body.getProviderNote());
-            }
-            case "DECLINE" -> {
-                booking.setStatus(BookingStatus.DECLINED_BY_BUSINESS);
-                booking.setProviderNote(body.getProviderNote());
-            }
-            case "SUGGEST_OTHER_TIME" -> {
-                booking.setStatus(BookingStatus.SUGGEST_OTHER_TIME_BY_BUSINESS);
-                booking.setProviderNote(body.getProviderNote());
-            }
-            default -> throw new IllegalArgumentException("Unknown action: " + body.getAction());
+        if (result.isShouldCreateBooking() && result.getServiceBranchOfferId() != null) {
+            bookingService.createBookingFromRequest(
+                    result.getCustomerId(),
+                    result.getServiceBranchOfferId(),
+                    branchId,
+                    result.getRequestedStartAt(),
+                    result.getConfirmedStartAt(),
+                    result.getConfirmedEndAt());
         }
 
-        bookingRepository.save(booking);
+        ActivityDisplayStatus displayStatus = deriveDisplayStatus(
+                result.getSupplierResponseStatus(),
+                result.getConfirmedStartAt());
 
-        ServiceRequestResponse response = new ServiceRequestResponse();
-        response.setRequestId(booking.getId());
-        response.setBranchId(booking.getBranch().getId());
-        response.setStatus(booking.getStatus().name());
-        response.setConfirmedStartAt(booking.getConfirmedStartAt());
-        response.setConfirmedEndAt(booking.getConfirmedEndAt());
-        response.setProviderNote(booking.getProviderNote());
+        return FixServiceBookingResponse.builder()
+                .requestId(result.getRequestId())
+                .branchId(result.getBranchId())
+                .customerRequestStatus(result.getCustomerRequestStatus().name())
+                .supplierResponseStatus(result.getSupplierResponseStatus().name())
+                .activityDisplayStatus(displayStatus)
+                .requestedStartAt(result.getRequestedStartAt())
+                .proposedStartAt(result.getProposedStartAt())
+                .confirmedStartAt(result.getConfirmedStartAt())
+                .confirmedEndAt(result.getConfirmedEndAt())
+                .providerNote(result.getProviderNote())
+                .build();
+    }
+
+    private ActivityRowResponse toActivityRowResponse(ActivityDto dto) {
+        ActivityDisplayStatus displayStatus = deriveDisplayStatus(
+                dto.getSupplierResponseStatus(),
+                dto.getConfirmedStartAt());
+
+        List<String> actions = deriveActions(displayStatus);
+
+        return ActivityRowResponse.builder()
+                .activityId(dto.getActivityId())
+                .type(dto.getType())
+                .requestText(dto.getRequestText())
+                .branchId(dto.getBranchId())
+                .branchAddress(dto.getBranchAddress())
+                .customerName(dto.getCustomerName())
+                .customerContact(dto.getCustomerContact())
+                .requestedStartAt(dto.getRequestedStartAt())
+                .proposedStartAt(dto.getProposedStartAt())
+                .confirmedStartAt(dto.getConfirmedStartAt())
+                .confirmedEndAt(dto.getConfirmedEndAt())
+                .activityDisplayStatus(displayStatus)
+                .customerRequestStatus(dto.getCustomerRequestStatus() != null
+                        ? dto.getCustomerRequestStatus().name() : null)
+                .supplierResponseStatus(dto.getSupplierResponseStatus() != null
+                        ? dto.getSupplierResponseStatus().name() : null)
+                .unreadCount(dto.getUnreadCount())
+                .actions(actions)
+                .build();
+    }
+
+    private ActivityDisplayStatus deriveDisplayStatus(SupplierResponseStatus responseStatus,
+                                                       java.time.Instant confirmedStartAt) {
+        if (responseStatus == SupplierResponseStatus.CANNOT_PROVIDE) {
+            return ActivityDisplayStatus.CONFIRMATION_DECLINED;
+        }
+        if (responseStatus == SupplierResponseStatus.CAN_PROVIDE && confirmedStartAt != null) {
+            return ActivityDisplayStatus.CONFIRMED;
+        }
+        return ActivityDisplayStatus.DISCUSSING;
+    }
+
+    private List<String> deriveActions(ActivityDisplayStatus displayStatus) {
+        List<String> actions = new ArrayList<>();
+        actions.add("OPEN_CHAT");
+        if (displayStatus == ActivityDisplayStatus.DISCUSSING) {
+            actions.add("FIX_BOOKING");
+        }
+        return actions;
+    }
+
+    private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {
+        BusinessServiceRowResponse response = new BusinessServiceRowResponse();
+        response.setServiceOfferingId(dto.getServiceOfferingId());
+        response.setServiceBranchOfferId(dto.getServiceBranchOfferId());
+        response.setBranchId(dto.getBranchId());
+        response.setCategoryId(dto.getCategoryId());
+        response.setName(dto.getName());
+        response.setDescription(dto.getDescription());
+        response.setBasePrice(dto.getBasePrice());
+        response.setDurationMinutes(dto.getDurationMinutes());
+        response.setScheduleText(dto.getScheduleText());
+        response.setActive(dto.getActive());
+        response.setUpdatedAt(dto.getUpdatedAt());
         return response;
     }
 
-    private void checkAccess( AskPrincipal principal, UUID branchId){
-        if (!businessService.isOwnerOrStaffOfBranch(branchId, principal.getUserId())) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+    private BusinessBranchDto requireBranch(UUID branchId) {
+        BusinessBranchDto branch = businessBranchService.findById(branchId);
+        if (branch == null) {
+            throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
+        return branch;
     }
 
+    private void requireAnyAccess(UUID userId, BusinessBranchDto branch) {
+        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
+            return;
+        }
+        if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {
+            return;
+        }
+        throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+    }
 }
