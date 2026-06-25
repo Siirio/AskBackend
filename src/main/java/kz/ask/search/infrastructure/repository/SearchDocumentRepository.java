@@ -26,9 +26,17 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
             AND d.documentType IN :documentTypes
             AND (:normalizedQuery IS NULL OR :normalizedQuery = ''
                  OR LOWER(d.title) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(d.summary) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(d.categoryLabel) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(d.sku) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(d.business.name) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(d.branch.name) LIKE CONCAT('%', :normalizedQuery, '%')
                  OR LOWER(t) LIKE CONCAT('%', :normalizedQuery, '%'))
+            AND (:normalizedCategory IS NULL OR :normalizedCategory = ''
+                 OR LOWER(d.categoryLabel) = :normalizedCategory)
             """)
     Page<SearchDocument> search(@Param("documentTypes") List<SearchDocumentType> documentTypes,
                                  @Param("normalizedQuery") String normalizedQuery,
+                                 @Param("normalizedCategory") String normalizedCategory,
                                  Pageable pageable);
 }

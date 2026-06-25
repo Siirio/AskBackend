@@ -26,12 +26,14 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     private final BusinessMapper businessMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public BusinessBranchDto findById(UUID branchId) {
         BusinessBranch entity = businessBranchRepository.findById(branchId).orElse(null);
         return entity != null ? businessMapper.toBusinessBranchDto(entity) : null;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BusinessBranchDto findByBusinessAndId(UUID businessId, UUID branchId) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null || !branch.getBusiness().getId().equals(businessId)) {
@@ -55,6 +57,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BusinessBranchDto findFirstByBusinessId(UUID businessId) {
         BusinessBranch branch = businessBranchRepository
                 .findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE)
@@ -63,6 +66,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<BusinessBranchDto> listByBusiness(UUID businessId) {
         return businessBranchRepository.findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE)
                 .stream()

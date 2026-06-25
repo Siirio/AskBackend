@@ -20,6 +20,7 @@ public class BusinessServiceRowResponse {
     private UUID serviceBranchOfferId;
     private UUID branchId;
     private UUID categoryId;
+    private String categoryLabel;
     private String name;
     private String description;
     private BigDecimal basePrice;

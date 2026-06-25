@@ -2,6 +2,7 @@ package kz.ask.catalog.domain.service;
 
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
+import kz.ask.business.infrastructure.repository.CategoryRepository;
 import kz.ask.catalog.domain.dto.CreateProductDto;
 import kz.ask.catalog.domain.dto.ProductDto;
 import kz.ask.catalog.domain.entity.Product;
@@ -17,6 +18,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final BusinessRepository businessRepository;
+    private final CategoryRepository categoryRepository;
     private final CatalogImportMapper mapper;
 
     @Override
@@ -24,6 +26,10 @@ public class ProductServiceImpl implements ProductService {
     public ProductDto create(CreateProductDto dto) {
         Business businessRef = businessRepository.getReferenceById(dto.getBusinessId());
         Product product = mapper.toProductEntity(dto, businessRef);
+        if (dto.getCategoryLabel() != null && !dto.getCategoryLabel().isBlank()) {
+            categoryRepository.findByNameIgnoreCase(dto.getCategoryLabel().trim())
+                    .ifPresent(product::setCategory);
+        }
         Product saved = productRepository.save(product);
         return mapper.toProductDto(saved);
     }

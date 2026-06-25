@@ -12,13 +12,18 @@ import kz.ask.shared.error.InternalServerException;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.UnauthorizedException;
 import kz.ask.shared.error.ValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice(basePackages = "kz.ask")
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
@@ -53,6 +58,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<ErrorResponse> handleExternal(ExternalServiceException ex) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(toResponse(ex));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ErrorResponse.builder()
+                        .timestamp(Instant.now())
+                        .errorCode("FILE_TOO_LARGE")
+                        .message("Размер файла превышает допустимый лимит (10MB)")
+                        .build());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
+        log.error("Unhandled exception", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.builder()
+                        .timestamp(Instant.now())
+                        .errorCode("INTERNAL_ERROR")
+                        .message("Внутренняя ошибка сервера")
+                        .build());
     }
 
     private ErrorResponse toResponse(BusinessException ex) {
