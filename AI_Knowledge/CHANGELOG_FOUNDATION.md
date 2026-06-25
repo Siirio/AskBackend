@@ -337,3 +337,90 @@ Restored the foundation document set after an accidental over-revert.
 - Generated runtime state.
 - Machine-specific setup.
 - Web-staging-only mechanics as active backend requirements.
+
+## 2026-06-25 — Session: Public API endpoints, Security fixes, CORS, Snake-case sync
+
+### Context
+
+User reported 403 Forbidden on `/api/v1/auth/profile` and all edit/save endpoints. Investigation revealed a cascade of issues: missing public endpoints in security config, missing PATCH in CORS, and critically — snake_case/camelCase mismatch between backend and frontend preventing JWT tokens from being stored.
+
+### Root Cause: Jackson snake_case + Frontend camelCase = Token never stored
+
+- Backend `application.yml` has `jackson.property-naming-strategy: SNAKE_CASE` — all JSON keys are snake_case (`access_token`, `display_name`, `business_id`).
+- Frontend TypeScript types use camelCase (`accessToken`, `displayName`, `businessId`).
+- `persistSession(session)` called `setStoredToken(session.accessToken)` — but `session.accessToken` was `undefined` because the JSON had `access_token`.
+- `setStoredToken(undefined)` triggered `localStorage.removeItem()` — token NEVER persisted.
+- All authenticated API requests sent no `Authorization` header → anonymous → Spring Security returned 403.
+- **Fix (frontend):** Added `transformKeys()` in `httpClient.ts` that recursively converts snake_case → camelCase on every `apiRequest()` response. Direct `fetch()` calls in App.tsx also apply `transformKeys()`.
+- **This is a synchronized contract:** Both sides must stay stable. Changing Jackson naming in backend will break frontend. Changing frontend property names will break the app.
+
+### Security Config Changes
+
+- Added `PATCH` to CORS allowed methods (was missing — PATCH requests like branch updates would fail preflight).
+- Added public GET endpoints: `/api/v1/cities`, `/api/v1/categories`, `/api/v1/categories/*/subcategories` — these are public reference data, users need them even before auth (city dropdown on registration form).
+
+### New Backend Endpoints
+
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/v1/cities` | GET | No | List all ACTIVE cities |
+| `/api/v1/categories` | GET | No | List root categories |
+| `/api/v1/categories/{parentId}/subcategories` | GET | No | List subcategories |
+| `/api/v1/auth/profile` | POST | Yes | Update displayName/email/phone |
+| `/api/v1/businesses/{businessId}/branches` | GET | Yes | List branches for business |
+| `/api/v1/businesses/{businessId}/branches` | POST | Yes | Create branch |
+| `/api/v1/businesses/{businessId}/branches/{branchId}` | PATCH | Yes | Update branch |
+
+### New/Modified Files
+
+**Created:**
+- `CategoryController.java` — GET endpoints for category listing
+- `BranchController.java` — CRUD endpoints for branches
+- `BranchManagementProcessor.java` — Owner-access-gated branch orchestration
+- `UpdateProfileRequest.java` — DTO with displayName, email, phone
+
+**Modified:**
+- `SecurityConfig.java` — Added PATCH to CORS, added public GET endpoints
+- `CorsConfig.java` — Added PATCH to allowed methods (both beans)
+- `CategoryService.java` / `CategoryServiceImpl.java` — Added listRootCategories(), listSubcategories()
+- `CategoryRepository.java` — Added findByParentIsNullAndStatus(), findByParentIdAndStatus()
+- `CityService.java` / `CityServiceImpl.java` — Added listAll()
+- `CityController.java` — Added GET /api/v1/cities list endpoint
+- `BusinessBranchService.java` / `BusinessBranchServiceImpl.java` — Added listByBusiness(), update()
+- `BusinessBranchDto.java` — Added cityId, cityName, address, onlineOnly, status fields
+- `BusinessMapper.java` — Updated toBusinessBranchDto() with city info and all fields
+- `IdentityService.java` / `IdentityServiceImpl.java` — Added updateProfile()
+- `AuthProcessor.java` — Added updateProfile() method
+- `AuthController.java` — Added POST /api/v1/auth/profile endpoint
+
+### How to Test
+
+```bash
+# Start backend
+cd AskBackend && mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# Register a customer
+curl -X POST http://localhost:9090/api/v1/auth/customer/register \
+  -H "Content-Type: application/json" \
+  -d '{"display_name":"Test","email":"test@test.com","password":"test1234","password_confirmation":"test1234","accepted_user_agreement":true,"remember_me":true}'
+
+# Get verification code from stdout (LoggingEmailCodeSender logs it)
+# Then verify
+curl -X POST http://localhost:9090/api/v1/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"auth_challenge_id":"<id>","code":"<6-digit-code>"}'
+
+# Use the access_token from response to test profile update
+curl -X POST http://localhost:9090/api/v1/auth/profile \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"display_name":"New Name"}'
+```
+
+### Pending Backend Work
+- Country entity, table, V4 migration with seed data
+- City entity: add ManyToOne to Country
+- CountryController: GET /api/v1/countries
+- CityController: optional countryId filter on list
+- Rebuild backend JAR after all changes
+
