@@ -101,10 +101,16 @@ public class BusinessMapper {
     }
 
     public BusinessBranchDto toBusinessBranchDto(BusinessBranch entity) {
+        City city = entity.getCity();
         return BusinessBranchDto.builder()
                 .id(entity.getId())
                 .businessId(entity.getBusiness().getId())
+                .cityId(city != null ? city.getId() : null)
+                .cityName(city != null ? city.getName() : null)
                 .name(entity.getName())
+                .address(entity.getAddress())
+                .onlineOnly(entity.getOnlineOnly())
+                .status(entity.getStatus().name())
                 .build();
     }
 

@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${ASK_DB_URL}
+    username: ${ASK_DB_USERNAME}
+    password: ${ASK_DB_PASSWORD}
+
+server:
+  port: ${ASK_SERVER_PORT:8080}
+
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET}
+  verification:
+    email:
+      enabled: ${AUTH_VERIFICATION_EMAIL_ENABLED:true}
+    sms:
+      enabled: ${AUTH_VERIFICATION_SMS_ENABLED:false}
+
+ask:
+  cors:
+    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

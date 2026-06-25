@@ -11,4 +11,6 @@ import org.springframework.stereotype.Repository;
 public interface BusinessBranchRepository extends JpaRepository<BusinessBranch, UUID> {
 
     List<BusinessBranch> findByBusinessIdAndStatus(UUID businessId, RecordStatus status);
+
+    List<BusinessBranch> findByCityIdAndStatus(UUID cityId, RecordStatus status);
 }

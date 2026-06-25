@@ -30,6 +30,7 @@ public enum ErrorCode {
     IMPORT_NAME_REQUIRED("Название товара обязательно"),
     IMPORT_COLUMN_NOT_FOUND("Колонка не найдена: %s"),
     FILE_NOT_XLSX("Поддерживаются только файлы .xlsx"),
+    REQUEST_NOT_FOUND("Запрос не найден"),
     CATEGORY_NOT_FOUND("Категория не найдена"),
     PRODUCT_NOT_FOUND("Товар не найден для этого филиала"),
     SKU_ALREADY_EXISTS("SKU уже используется другим товаром в этом бизнесе"),

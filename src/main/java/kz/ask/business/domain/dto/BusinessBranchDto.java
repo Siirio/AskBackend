@@ -12,5 +12,10 @@ public class BusinessBranchDto {
 
     private UUID id;
     private UUID businessId;
+    private UUID cityId;
+    private String cityName;
     private String name;
+    private String address;
+    private Boolean onlineOnly;
+    private String status;
 }

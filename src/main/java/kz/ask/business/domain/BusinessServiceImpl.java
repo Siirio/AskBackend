@@ -82,4 +82,11 @@ public class BusinessServiceImpl implements BusinessService {
     public Boolean isOwnerOfBusiness(UUID businessId, UUID userId) {
         return businessMemberService.isOwnerOfBusiness(businessId, userId);
     }
+
+    @Override
+    @Transactional
+    public void updateBusiness(UUID businessId, String name) {
+        Business business = businessRepository.getReferenceById(businessId);
+        if (name != null) business.setName(name);
+    }
 }

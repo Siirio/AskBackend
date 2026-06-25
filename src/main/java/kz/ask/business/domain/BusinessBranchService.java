@@ -1,5 +1,6 @@
 package kz.ask.business.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 
@@ -12,4 +13,8 @@ public interface BusinessBranchService {
     BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, Boolean onlineOnly);
 
     BusinessBranchDto findFirstByBusinessId(UUID businessId);
+
+    List<BusinessBranchDto> listByBusiness(UUID businessId);
+
+    BusinessBranchDto update(UUID branchId, String name, String address, UUID cityId, Boolean onlineOnly);
 }
