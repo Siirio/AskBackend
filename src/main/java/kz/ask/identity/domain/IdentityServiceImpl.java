@@ -277,6 +277,15 @@ public class IdentityServiceImpl implements IdentityService {
         return staffActivationSessionTtlSeconds;
     }
 
+    @Override
+    @Transactional
+    public void updateProfile(UUID userId, String displayName, String email, String phone) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        if (displayName != null) user.setDisplayName(displayName);
+        if (email != null) user.setEmail(email);
+        if (phone != null) user.setPhone(phone);
+    }
+
     private String encrypt(String plainText) {
         if (plainText == null) return null;
         try {

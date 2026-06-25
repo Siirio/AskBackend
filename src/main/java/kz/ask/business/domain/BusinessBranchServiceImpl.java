@@ -1,5 +1,6 @@
 package kz.ask.business.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.business.domain.entity.Business;
@@ -59,5 +60,28 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
                 .findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE)
                 .stream().findFirst().orElse(null);
         return branch != null ? businessMapper.toBusinessBranchDto(branch) : null;
+    }
+
+    @Override
+    public List<BusinessBranchDto> listByBusiness(UUID businessId) {
+        return businessBranchRepository.findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE)
+                .stream()
+                .map(businessMapper::toBusinessBranchDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public BusinessBranchDto update(UUID branchId, String name, String address, UUID cityId, Boolean onlineOnly) {
+        BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
+        if (branch == null) return null;
+        if (name != null) branch.setName(name);
+        if (address != null) branch.setAddress(address);
+        if (cityId != null) {
+            cityService.findById(cityId);
+            branch.setCity(cityRepository.getReferenceById(cityId));
+        }
+        if (onlineOnly != null) branch.setOnlineOnly(onlineOnly);
+        return businessMapper.toBusinessBranchDto(branch);
     }
 }

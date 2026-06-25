@@ -59,4 +59,6 @@ public interface IdentityService {
     Long staffSessionTtl(Boolean remembered);
 
     Long staffActivationSessionTtl();
+
+    void updateProfile(UUID userId, String displayName, String email, String phone);
 }

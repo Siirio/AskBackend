@@ -13,6 +13,7 @@ import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
 import kz.ask.identity.api.dto.LoginRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
+import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.application.AuthProcessor;
 import kz.ask.identity.application.LoginProcessor;
@@ -89,5 +90,13 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout(@AuthenticationPrincipal AskPrincipal principal) {
         return ResponseEntity.ok(authProcessor.logout(principal));
+    }
+
+    @Operation(summary = "Update profile", description = "Updates the display name, email, or phone of the authenticated user")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/profile")
+    public ResponseEntity<AuthSessionResponse> updateProfile(@AuthenticationPrincipal AskPrincipal principal,
+                                                              @Valid @RequestBody UpdateProfileRequest req) {
+        return ResponseEntity.ok(authProcessor.updateProfile(principal, req));
     }
 }

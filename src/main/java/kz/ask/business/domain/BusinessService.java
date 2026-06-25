@@ -17,4 +17,6 @@ public interface BusinessService {
     BusinessRegistrationResult findByOwner(UUID userId);
 
     Boolean isOwnerOfBusiness(UUID businessId, UUID userId);
+
+    void updateBusiness(UUID businessId, String name);
 }

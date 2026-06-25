@@ -15,6 +15,7 @@ import kz.ask.identity.api.dto.BusinessRegisterRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
+import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
@@ -135,6 +136,13 @@ public class AuthProcessor {
         AuthSessionResponse resp = buildSessionResponse(null, user, bizResult);
         resp.setAccessToken(null);
         return resp;
+    }
+
+    @Transactional
+    public AuthSessionResponse updateProfile(AskPrincipal principal, UpdateProfileRequest req) {
+        identityService.updateProfile(principal.getUserId(),
+                req.getDisplayName(), req.getEmail(), req.getPhone());
+        return currentSession(principal);
     }
 
     @Transactional
