@@ -234,3 +234,52 @@ Response: `LogoutResponse`.
 - Do not require both phone and email.
 - Do not model registration as a throwaway mock.
 - Do not create tests or run Maven unless explicitly requested.
+
+## 8. Non-Auth Public Endpoints (added 2026-06-25)
+
+These are reference-data endpoints available without authentication.
+
+### GET /api/v1/cities
+List all ACTIVE cities. Used by frontend for city dropdowns (auth registration, search, branch forms).
+
+Response: `Array<{ id: UUID, name: string }>`
+
+### GET /api/v1/categories
+List root categories (parent_id IS NULL, status ACTIVE).
+
+Response: `Array<{ id: UUID, name: string, slug: string, parentId: UUID|null, children: Array<...> }>`
+
+### GET /api/v1/categories/{parentId}/subcategories
+List subcategories of a parent category.
+
+Response: `Array<{ id: UUID, name: string, slug: string, parentId: UUID|null }>`
+
+## 9. Profile Update Endpoint (added 2026-06-25)
+
+### POST /api/v1/auth/profile (authenticated)
+
+Updates the display name, email, and/or phone of the authenticated user. Returns the current session (same format as GET /api/v1/auth/session).
+
+Request:
+```json
+{
+  "display_name": "New Name",    // optional
+  "email": "new@email.com",      // optional
+  "phone": "+77001234567"        // optional
+}
+```
+
+Response: `AuthSessionResponse` (same as verify/session response). `accessToken` is null in update response (session token unchanged).
+
+### UpdateProfileRequest
+
+| # | Field | Type | Required | Comment |
+|---|---|---|---|---|
+| 1 | `displayName` | string | - | New display name. |
+| 2 | `email` | string | - | New email. |
+| 3 | `phone` | string | - | New phone. |
+
+### Behavior notes
+- Only non-null fields are updated (partial update).
+- `currentSession()` is called after update to return fresh user data.
+- `currentSession()` checks user status == ACTIVE — throws UnauthorizedException if user was deactivated.
