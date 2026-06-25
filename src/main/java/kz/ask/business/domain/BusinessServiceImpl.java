@@ -60,6 +60,7 @@ public class BusinessServiceImpl implements BusinessService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BusinessRegistrationResult findByOwner(UUID userId) {
         BusinessMemberDto memberDto = businessMemberService.findByOwner(userId);
         if (memberDto == null) return null;

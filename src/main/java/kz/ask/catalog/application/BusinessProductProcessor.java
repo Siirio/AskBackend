@@ -104,6 +104,7 @@ public class BusinessProductProcessor {
                 .productOfferId(dto.getProductOfferId())
                 .branchId(dto.getBranchId())
                 .categoryId(dto.getCategoryId())
+                .categoryLabel(dto.getCategoryLabel())
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .sku(dto.getSku())

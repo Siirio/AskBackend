@@ -20,8 +20,9 @@ public class PublicSearchController {
     @GetMapping
     public ResponseEntity<List<SearchResultCardResponse>> search(@RequestParam(required = false, name = "q") String query,
                                                                    @RequestParam(required = false, defaultValue = "all") String scope,
+                                                                   @RequestParam(required = false) String category,
                                                                    @RequestParam(required = false) Integer page,
                                                                    @RequestParam(required = false) Integer size) {
-        return ResponseEntity.ok(processor.search(query, scope, page, size));
+        return ResponseEntity.ok(processor.search(query, scope, category, page, size));
     }
 }

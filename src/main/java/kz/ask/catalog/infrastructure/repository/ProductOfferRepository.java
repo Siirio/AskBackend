@@ -25,7 +25,7 @@ public interface ProductOfferRepository extends JpaRepository<ProductOffer, UUID
     @Query(value = """
         select distinct po from ProductOffer po
         join fetch po.product p
-        join fetch p.category c
+        left join fetch p.category c
         join fetch po.branch b
         left join p.tags t
         where po.branch.id = :branchId

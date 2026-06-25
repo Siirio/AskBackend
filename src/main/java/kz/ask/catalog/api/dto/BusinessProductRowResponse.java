@@ -21,6 +21,7 @@ public class BusinessProductRowResponse {
     private UUID productOfferId;
     private UUID branchId;
     private UUID categoryId;
+    private String categoryLabel;
     private String name;
     private String description;
     private String sku;

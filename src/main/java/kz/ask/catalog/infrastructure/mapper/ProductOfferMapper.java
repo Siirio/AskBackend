@@ -78,7 +78,7 @@ public class ProductOfferMapper {
                 .businessId(product.getBusiness().getId())
                 .branchId(offer.getBranch().getId())
                 .categoryId(category != null ? category.getId() : null)
-                .categoryLabel(category != null ? category.getName() : null)
+                .categoryLabel(category != null ? category.getName() : product.getCategoryLabel())
                 .name(product.getName())
                 .description(product.getDescription())
                 .sku(product.getSku())

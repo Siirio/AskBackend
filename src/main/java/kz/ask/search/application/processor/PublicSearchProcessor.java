@@ -19,14 +19,15 @@ public class PublicSearchProcessor {
     private final SearchDocumentRepository searchDocumentRepository;
 
     @Transactional(readOnly = true)
-    public List<SearchResultCardResponse> search(String query, String scope, Integer page, Integer size) {
+    public List<SearchResultCardResponse> search(String query, String scope, String category, Integer page, Integer size) {
         List<SearchDocumentType> documentTypes = resolveDocumentTypes(scope);
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
+        String normalizedCategory = category == null ? "" : category.trim().toLowerCase();
 
         int safeSize = Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page == null ? 0 : page, 0);
 
-        return searchDocumentRepository.search(documentTypes, normalizedQuery, PageRequest.of(safePage, safeSize))
+        return searchDocumentRepository.search(documentTypes, normalizedQuery, normalizedCategory, PageRequest.of(safePage, safeSize))
                 .getContent()
                 .stream()
                 .map(this::toCard)

@@ -82,6 +82,7 @@ public class BusinessServiceProcessor {
                 .serviceBranchOfferId(dto.getServiceBranchOfferId())
                 .branchId(dto.getBranchId())
                 .categoryId(dto.getCategoryId())
+                .categoryLabel(dto.getCategoryLabel())
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .basePrice(dto.getBasePrice())
