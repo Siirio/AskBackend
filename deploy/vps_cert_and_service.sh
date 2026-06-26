@@ -31,6 +31,11 @@ Environment=ASK_SERVER_PORT=8080
 Environment=AUTH_JWT_SECRET=$JWT_SECRET
 Environment=AUTH_VERIFICATION_EMAIL_ENABLED=\${AUTH_VERIFICATION_EMAIL_ENABLED:-false}
 Environment=AUTH_VERIFICATION_SMS_ENABLED=\${AUTH_VERIFICATION_SMS_ENABLED:-false}
+Environment=ASK_MAIL_HOST=\${ASK_MAIL_HOST:-smtp.resend.com}
+Environment=ASK_MAIL_PORT=\${ASK_MAIL_PORT:-587}
+Environment=ASK_MAIL_USERNAME=\${ASK_MAIL_USERNAME:-resend}
+Environment=ASK_MAIL_PASSWORD=\${ASK_MAIL_PASSWORD:-}
+Environment=AUTH_EMAIL_FROM=\${AUTH_EMAIL_FROM:-noreply@ask.kz}
 
 [Install]
 WantedBy=multi-user.target

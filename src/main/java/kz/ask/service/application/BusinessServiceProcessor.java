@@ -11,6 +11,7 @@ import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.api.dto.BusinessServiceListResponse;
 import kz.ask.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.service.api.dto.BusinessServiceUpdateRequest;
+import kz.ask.search.domain.SearchDocumentService;
 import kz.ask.service.domain.ServiceService;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -32,6 +33,7 @@ public class BusinessServiceProcessor {
     private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
     private final ServiceService serviceService;
+    private final SearchDocumentService searchDocumentService;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -60,6 +62,7 @@ public class BusinessServiceProcessor {
 
         categoryService.requireActiveCategory(req.getCategoryId());
         ServiceBranchOfferDto dto = serviceService.createService(branch.getBusinessId(), branchId, req);
+        syncSearchDocument(dto);
         return toRowResponse(dto);
     }
 
@@ -73,7 +76,16 @@ public class BusinessServiceProcessor {
             categoryService.requireActiveCategory(req.getCategoryId());
         }
         ServiceBranchOfferDto dto = serviceService.updateService(serviceOfferingId, branchId, req);
+        syncSearchDocument(dto);
         return toRowResponse(dto);
+    }
+
+    private void syncSearchDocument(ServiceBranchOfferDto dto) {
+        boolean live = Boolean.TRUE.equals(dto.getActive()) && "ACTIVE".equals(dto.getStatus());
+        searchDocumentService.syncServiceDocument(
+                dto.getServiceBranchOfferId(), dto.getBusinessId(), dto.getBranchId(),
+                dto.getName(), dto.getDescription(), dto.getCategoryLabel(),
+                dto.getBasePrice(), live);
     }
 
     private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {

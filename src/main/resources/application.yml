@@ -18,9 +18,9 @@ spring:
   flyway:
     enabled: true
   mail:
-    host: ${ASK_MAIL_HOST:smtp.gmail.com}
+    host: ${ASK_MAIL_HOST:smtp.resend.com}
     port: ${ASK_MAIL_PORT:587}
-    username: ${ASK_MAIL_USERNAME:}
+    username: ${ASK_MAIL_USERNAME:resend}
     password: ${ASK_MAIL_PASSWORD:}
     properties:
       mail.smtp.auth: true

@@ -18,6 +18,8 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
 
     Optional<SearchDocument> findByProductOfferId(UUID productOfferId);
 
+    Optional<SearchDocument> findByServiceBranchOfferId(UUID serviceBranchOfferId);
+
     List<SearchDocument> findByStatus(RecordStatus status);
 
     @Query("""

@@ -10,6 +10,7 @@ import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
 import kz.ask.search.domain.entity.SearchDocument;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.search.infrastructure.repository.SearchDocumentRepository;
+import kz.ask.service.infrastructure.repository.ServiceBranchOfferRepository;
 import kz.ask.shared.domain.enums.RecordStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
 
     private final SearchDocumentRepository searchDocumentRepository;
     private final ProductOfferRepository productOfferRepository;
+    private final ServiceBranchOfferRepository serviceBranchOfferRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
 
@@ -45,6 +47,34 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         document.setBranch(businessBranchRepository.getReferenceById(branchId));
         document.setPrice(price);
         document.setTokens(new ArrayList<>(tags == null ? List.of() : tags));
+        document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
+        if (document.getSource() == null) {
+            document.setSource("CATALOG");
+        }
+
+        searchDocumentRepository.save(document);
+    }
+
+    @Override
+    @Transactional
+    public void syncServiceDocument(UUID serviceBranchOfferId, UUID businessId, UUID branchId,
+                                    String title, String summary, String categoryLabel,
+                                    BigDecimal price, Boolean live) {
+        SearchDocument document = searchDocumentRepository.findByServiceBranchOfferId(serviceBranchOfferId)
+                .orElseGet(() -> {
+                    SearchDocument created = new SearchDocument();
+                    created.setDocumentType(SearchDocumentType.SERVICE);
+                    created.setServiceBranchOffer(serviceBranchOfferRepository.getReferenceById(serviceBranchOfferId));
+                    return created;
+                });
+
+        document.setTitle(title);
+        document.setSummary(summary);
+        document.setCategoryLabel(categoryLabel);
+        document.setBusiness(businessRepository.getReferenceById(businessId));
+        document.setBranch(businessBranchRepository.getReferenceById(branchId));
+        document.setPrice(price);
+        document.setTokens(new ArrayList<>());
         document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
         if (document.getSource() == null) {
             document.setSource("CATALOG");
