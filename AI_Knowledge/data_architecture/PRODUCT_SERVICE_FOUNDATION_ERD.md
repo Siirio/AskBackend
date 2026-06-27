@@ -54,6 +54,7 @@ This document defines the current MVP database foundation for products, services
 ### Search And History
 
 - `search_document`: searchable surface for enabled product offers and active service branch offers.
+- `search_query_alias`: normalized customer wording aliases that expand broad search terms to indexed catalog/service terms.
 - `search_session`: current product/service search lifecycle.
 - `search_snapshot`: saved search context.
 - `search_result_snapshot`: saved product/service result row.
@@ -242,6 +243,17 @@ Do not add business result rows as standalone search results. `business_id` and 
 
 `search_document` must not contain availability confidence fields.
 
+### `search_query_alias`
+
+| Column | Meaning |
+|---|---|
+| `id` | Alias id. |
+| `alias_value` | Normalized customer input term. |
+| `target_query` | Existing indexed term used as an additional search pass. |
+| `status` | Active/disabled state. |
+
+Aliases expand wording only. They do not create standalone business search, stock truth, availability truth, delivery truth, or ranking guarantees.
+
 ### `catalog_import`
 
 | Column | Meaning |
@@ -311,6 +323,7 @@ erDiagram
 
     product_offer ||--o| search_document : indexed_as
     service_branch_offer ||--o| search_document : indexed_as
+    search_query_alias ||--o{ search_document : expands_query_to
     app_user ||--o{ search_session : owns
     search_session ||--o{ search_snapshot : saves
     search_snapshot ||--o{ search_result_snapshot : contains
@@ -356,6 +369,8 @@ Service search indexes:
 - duration;
 - schedule text;
 - active state.
+
+Search query aliases can expand broad customer wording into existing indexed terms before `search_document` lookup. Alias expansion is data-owned through `search_query_alias`, not Java constants.
 
 Distance is calculated from customer coordinates to branch coordinates only when both sides have coordinates.
 

@@ -1,5 +1,12 @@
 # Foundation Changelog
 
+## 2026-06-27 - Public Search Alias Expansion
+
+- Added `search_query_alias` as a data-owned search expansion table for broad customer wording such as `барбершоп` -> `стрижка`.
+- Public search now performs additional deduplicated lookup passes for active aliases while keeping product/service scope filtering.
+- Added staging catalog seed data for `Умные часы Apple Watch SE 44mm` so the simple `Часы` showcase query has a real catalog result.
+- Updated `PRODUCT_SERVICE_FOUNDATION_ERD.md` with the alias table and alias expansion boundary.
+
 ## 2026-06-23 - T11 Business Product Endpoints Actualization
 
 Rebased `feature/T11-product-endpoints` onto current `dev` and fully actualized the implementation to match the latest `03_business_admin_product_endpoints.md` specification. Removed all obsolete role/permission logic inherited from the pre-simplification workflow.
