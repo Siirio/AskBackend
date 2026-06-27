@@ -64,6 +64,7 @@ auth:
       enabled: ${AUTH_VERIFICATION_EMAIL_ENABLED:true}
     sms:
       enabled: ${AUTH_VERIFICATION_SMS_ENABLED:false}
+    staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
   jwt:
     secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
   email:
