@@ -17,4 +17,5 @@ public class AuthChallengeResponse {
     private String channel;
     private String maskedDestination;
     private Instant expiresAt;
+    private String code;
 }

@@ -8,6 +8,9 @@ import lombok.Setter;
 @Setter
 public class BusinessRegistrationPayload {
 
+    private String displayName;
+    private String password;
+    private String role;
     private String businessName;
     private String branchName;
     private UUID branchCityId;
