@@ -17,6 +17,7 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+    locations: classpath:db/migration,classpath:db/testdata
   mail:
     host: ${ASK_MAIL_HOST:smtp.resend.com}
     port: ${ASK_MAIL_PORT:587}
