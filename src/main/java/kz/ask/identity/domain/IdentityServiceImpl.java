@@ -97,8 +97,10 @@ public class IdentityServiceImpl implements IdentityService {
                                             AuthChallengePurpose purpose,
                                             Boolean rememberMe,
                                             String registrationData) {
-        AppUser user = appUserRepository.getReferenceById(userId);
-        expireUserPendingChallenges(user);
+        AppUser user = userId != null ? appUserRepository.getReferenceById(userId) : null;
+        if (user != null) {
+            expireUserPendingChallenges(user);
+        }
         String code = generateCode();
         AuthChallenge challenge = authMapper.toChallengeEntity(
                 user, email, phone, channel, purpose,
