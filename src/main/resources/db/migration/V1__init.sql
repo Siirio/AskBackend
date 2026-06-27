@@ -1,5 +1,5 @@
 -- =============================================================================
--- V1: Initial schema - all core entities
+-- V1: Complete schema + reference data (cities, categories)
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -413,11 +413,9 @@ CREATE TABLE booking (
     provider_note           VARCHAR(255)
 );
 
--- Add FK for booking_id on conversation_link (deferred for dependency order)
 ALTER TABLE conversation_link ADD CONSTRAINT fk_conversation_link_booking
     FOREIGN KEY (booking_id) REFERENCES booking(id);
 
--- Add FK for customer_request_id on conversation_link
 ALTER TABLE conversation_link ADD CONSTRAINT fk_conversation_link_customer_request
     FOREIGN KEY (customer_request_id) REFERENCES customer_request(id);
 
@@ -493,12 +491,23 @@ CREATE TABLE search_document (
     business_id             UUID        REFERENCES business(id),
     branch_id               UUID        REFERENCES business_branch(id),
     price                   NUMERIC,
-    status                  VARCHAR(50)  NOT NULL
+    status                  VARCHAR(50)  NOT NULL,
+    source                  VARCHAR(50),
+    public_note             VARCHAR(500)
 );
 
 CREATE TABLE search_document_token (
     search_document_id UUID         NOT NULL REFERENCES search_document(id),
     token              VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE search_query_alias (
+    id           UUID         PRIMARY KEY,
+    created_at   TIMESTAMPTZ  NOT NULL,
+    updated_at   TIMESTAMPTZ  NOT NULL,
+    alias_value  VARCHAR(255) NOT NULL,
+    target_query VARCHAR(255) NOT NULL,
+    status       VARCHAR(50)  NOT NULL
 );
 
 -- ---------------------------------------------------------------------------
@@ -550,6 +559,8 @@ CREATE INDEX idx_search_session_user ON search_session (user_id);
 
 CREATE INDEX idx_search_result_snapshot_parent ON search_result_snapshot (search_snapshot_id);
 
+CREATE INDEX idx_search_query_alias_value ON search_query_alias (alias_value, status);
+
 CREATE INDEX idx_booking_customer ON booking (customer_id);
 
 CREATE INDEX idx_catalog_import_business ON catalog_import (business_id);
@@ -557,3 +568,21 @@ CREATE INDEX idx_catalog_import_branch ON catalog_import (branch_id);
 CREATE INDEX idx_raw_catalog_row_import ON raw_catalog_row (catalog_import_id);
 CREATE INDEX idx_catalog_import_column_mapping_import ON catalog_import_column_mapping (catalog_import_id);
 CREATE INDEX idx_data_source_business_type ON data_source (business_id, source_type);
+
+-- ---------------------------------------------------------------------------
+-- Reference data: cities
+-- ---------------------------------------------------------------------------
+INSERT INTO city (id, created_at, updated_at, name, country_code, status) VALUES
+  ('00000000-0000-0000-0000-0000000000c1', now(), now(), 'Кызылорда', 'KZ', 'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000c2', now(), now(), 'Алматы',   'KZ', 'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000c3', now(), now(), 'Астана',   'KZ', 'ACTIVE');
+
+-- ---------------------------------------------------------------------------
+-- Reference data: categories
+-- ---------------------------------------------------------------------------
+INSERT INTO category (id, created_at, updated_at, parent_id, name, slug, status) VALUES
+  ('00000000-0000-0000-0000-0000000000a1', now(), now(), null, 'Автозапчасти',    'autoparts',    'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000a2', now(), now(), null, 'Бытовая техника',  'appliances',   'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000a3', now(), now(), null, 'Услуги красоты',   'beauty',       'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000a4', now(), now(), null, 'Ремонт и сервис',  'repair',       'ACTIVE'),
+  ('00000000-0000-0000-0000-0000000000a5', now(), now(), null, 'Строительство',    'construction', 'ACTIVE');
