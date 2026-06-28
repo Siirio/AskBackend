@@ -1,5 +1,6 @@
 package kz.ask.search.api.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -16,6 +17,8 @@ public class SearchResultCardResponse {
     private String name;
     private String supplierName;
     private String branchAddress;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
     private String categoryName;
     private String priceText;
     private String source;

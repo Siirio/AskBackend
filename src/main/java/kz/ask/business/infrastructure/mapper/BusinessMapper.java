@@ -1,5 +1,6 @@
 package kz.ask.business.infrastructure.mapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,13 +38,16 @@ public class BusinessMapper {
     }
 
     public BusinessBranch toBranchEntity(Business business, City city, String name,
-                                          String address, Boolean onlineOnly) {
+                                          String address, Boolean onlineOnly,
+                                          BigDecimal latitude, BigDecimal longitude) {
         BusinessBranch branch = new BusinessBranch();
         branch.setBusiness(business);
         branch.setCity(city);
         branch.setName(name);
         branch.setAddress(address);
         branch.setOnlineOnly(onlineOnly);
+        branch.setLatitude(latitude);
+        branch.setLongitude(longitude);
         branch.setStatus(RecordStatus.ACTIVE);
         return branch;
     }
@@ -109,6 +113,8 @@ public class BusinessMapper {
                 .cityName(city != null ? city.getName() : null)
                 .name(entity.getName())
                 .address(entity.getAddress())
+                .latitude(entity.getLatitude())
+                .longitude(entity.getLongitude())
                 .onlineOnly(entity.getOnlineOnly())
                 .status(entity.getStatus().name())
                 .build();
