@@ -26,7 +26,8 @@ public class BranchManagementProcessor {
     public BranchResponse createBranch(AskPrincipal principal, UUID businessId, CreateBranchRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranchDto dto = businessBranchService.create(
-                businessId, req.getCityId(), req.getName(), req.getAddress(), req.getOnlineOnly());
+                businessId, req.getCityId(), req.getName(), req.getAddress(),
+                req.getOnlineOnly(), req.getLatitude(), req.getLongitude());
         return toResponse(dto);
     }
 
@@ -42,7 +43,8 @@ public class BranchManagementProcessor {
     public BranchResponse updateBranch(AskPrincipal principal, UUID businessId, UUID branchId, UpdateBranchRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranchDto dto = businessBranchService.update(
-                branchId, req.getName(), req.getAddress(), req.getCityId(), req.getOnlineOnly());
+                branchId, req.getName(), req.getAddress(), req.getCityId(),
+                req.getOnlineOnly(), req.getLatitude(), req.getLongitude());
         return toResponse(dto);
     }
 
@@ -61,6 +63,8 @@ public class BranchManagementProcessor {
                 .cityName(dto.getCityName())
                 .name(dto.getName())
                 .address(dto.getAddress())
+                .latitude(dto.getLatitude())
+                .longitude(dto.getLongitude())
                 .onlineOnly(dto.getOnlineOnly())
                 .status(dto.getStatus())
                 .build();

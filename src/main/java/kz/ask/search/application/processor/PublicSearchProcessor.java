@@ -89,6 +89,8 @@ public class PublicSearchProcessor {
                 .name(document.getTitle())
                 .supplierName(document.getBusiness() != null ? document.getBusiness().getName() : null)
                 .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
+                .latitude(document.getBranch() != null ? document.getBranch().getLatitude() : null)
+                .longitude(document.getBranch() != null ? document.getBranch().getLongitude() : null)
                 .categoryName(document.getCategoryLabel())
                 .priceText(document.getPrice() != null ? "от " + document.getPrice().toBigInteger() + " ₸" : null)
                 .source(document.getSource() != null ? document.getSource() : "CATALOG")

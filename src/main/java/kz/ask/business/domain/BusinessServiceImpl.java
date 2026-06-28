@@ -40,7 +40,7 @@ public class BusinessServiceImpl implements BusinessService {
         BusinessDto businessDto = businessMapper.toBusinessDto(business);
 
         BusinessBranchDto branchDto = businessBranchService.create(
-                businessId, branchCityId, branchName, branchAddress, onlineOnly);
+                businessId, branchCityId, branchName, branchAddress, onlineOnly, null, null);
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);
 
