@@ -18,6 +18,7 @@ import kz.ask.request.domain.entity.CustomerRequest;
 import kz.ask.request.domain.entity.RequestTarget;
 import kz.ask.request.domain.entity.SupplierResponse;
 import kz.ask.request.domain.enums.RequestTargetStatus;
+import kz.ask.request.domain.enums.SupplierResponseSource;
 import kz.ask.request.domain.enums.SupplierResponseStatus;
 import kz.ask.request.infrastructure.repository.RequestTargetRepository;
 import kz.ask.request.infrastructure.repository.SupplierResponseRepository;
@@ -149,6 +150,7 @@ public class SupplierTaskProcessor {
         SupplierResponse response = new SupplierResponse();
         response.setRequestTarget(target);
         response.setStatus(status);
+        response.setResponseSource(resolveResponseSource(status));
         response.setPrice(req.getPrice());
         response.setProductHint(req.getProductHint());
         response.setComment(req.getComment());
@@ -193,6 +195,13 @@ public class SupplierTaskProcessor {
             case SUGGEST_OTHER_TIME -> "Предлагает другое время";
             case NO_ITEM -> "Нет в наличии";
         };
+    }
+
+    private SupplierResponseSource resolveResponseSource(SupplierResponseStatus status) {
+        if (status == SupplierResponseStatus.HAS_ITEM || status == SupplierResponseStatus.CAN_PROVIDE) {
+            return SupplierResponseSource.BUSINESS_CONFIRMED;
+        }
+        return SupplierResponseSource.STAFF_REPLY;
     }
 
     private void requireAnyAccess(UUID userId, BusinessBranchDto branch) {

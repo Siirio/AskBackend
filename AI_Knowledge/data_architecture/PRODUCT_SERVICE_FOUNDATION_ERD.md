@@ -41,6 +41,7 @@ This document defines the current MVP database foundation for products, services
 - `catalog_import`: Excel import run with status, counts, and source tracking.
 - `catalog_import_column_mapping`: column-to-target-field mapping per import.
 - `raw_catalog_row`: preserved Excel source row with normalized data and validation results.
+- `autodump_import_session`: future AI-assisted messy-data import container. AI creates draft product/service cards only; business approval is required before product/service rows become searchable.
 
 ### Services
 
@@ -305,6 +306,9 @@ erDiagram
     app_user ||--o{ branch_member : joins_as_staff
     business ||--o{ business_member : has_owner
     business ||--o{ business_branch : has
+    business ||--o| brand_profile : presents_as_brand
+    business ||--o{ brand_page_block : arranges_storefront
+    business ||--o{ brand_drop : announces_event
     business_branch ||--o{ branch_member : staffed_by
     business_branch ||--o{ branch_invite : has_invite
     business_branch ||--o{ business_contact : exposes
@@ -371,6 +375,30 @@ Service search indexes:
 - active state.
 
 Search query aliases can expand broad customer wording into existing indexed terms before `search_document` lookup. Alias expansion is data-owned through `search_query_alias`, not Java constants.
+
+AI intent structuring can convert raw customer wording into structured product/service search context before public search lookup. The structurer does not search the database, choose stores, or invent availability; it only produces query terms, scope, constraints, and ranking hints for backend search.
+
+AI-inferred category must not be used as a raw SQL hard filter. Backend must map AI category, service type, product type, keywords, and synonyms into a `SearchPlan` with item type hard filter, canonical category aliases as soft ranking signals, exact terms, semantic terms, synonyms, related terms, and fallback expansion.
+
+User-selected mode or category can be a hard filter because the user explicitly selected it. AI-inferred `primary_category` is a semantic signal and must not be used as `category_label = :aiCategory` or mandatory `LIKE '%aiCategory%'`.
+
+Structured search must not behave like broad OR search. Backend applies a Search V2 pipeline: AI intent structure, candidate load, semantic hard gate, price/city constraint scoring, result section grouping, and fallback explanations. Concrete product/service type is a hard semantic gate: smartphone queries must not return laptops, headphones, or vacuum cleaners; manicure queries must not return haircuts; female haircut queries must not return manicure, beard, or male haircut. Price can move a semantically relevant item into `OVER_BUDGET`, but price must never make a semantically wrong item relevant.
+
+Structured search responses can expose result sections such as `EXACT`, `OVER_BUDGET`, `WRONG_CITY`, and `SIMILAR`, with score, match reasons, and warnings per card. A fallback item must be labeled as fallback; it must not be hidden behind generic medium confidence.
+
+Search result cards must keep an anti-marketplace shape:
+
+- backend ranks offers by fit to the current intent, not brands by absolute rating;
+- default sort is `intent_match`; price sort is only explicit user choice;
+- card responses expose brand presentation fields and human decision fields, not a public buy-box;
+- internal AI confidence and raw ranking score are backend/debug facts and must not be rendered as customer-facing trust;
+- trust badges are completeness and source badges such as official channel, complete card, pickup, and active drop.
+
+Brand identity belongs to `brand_profile`: logo, cover, color, tone, description, and official links. Branches remain operational records: address, pickup, local availability, contacts, and branch confirmation.
+
+Brand storefront blocks and drops are intent landing content owned by the business. They complement the business website, Instagram, or Telegram; they do not replace external official channels.
+
+AI Autodump Import is documented separately in `AI_AUTODUMP_IMPORT_ARCHITECTURE.md`. Its drafts must publish through the same product/service tables and `search_document` synchronization used by manual business catalog data.
 
 Distance is calculated from customer coordinates to branch coordinates only when both sides have coordinates.
 

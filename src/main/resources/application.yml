@@ -74,3 +74,14 @@ auth:
 ask:
   cors:
     allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  ai:
+    search:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_SEARCH_MODEL:deepseek-v4-flash}
+      max-tokens: ${DEEPSEEK_SEARCH_MAX_TOKENS:1800}
+    autodump:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
+      max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}

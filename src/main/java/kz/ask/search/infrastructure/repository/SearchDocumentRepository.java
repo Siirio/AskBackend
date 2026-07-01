@@ -23,6 +23,17 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
     List<SearchDocument> findByStatus(RecordStatus status);
 
     @Query("""
+            SELECT DISTINCT d FROM SearchDocument d
+            LEFT JOIN FETCH d.business
+            LEFT JOIN FETCH d.branch b
+            LEFT JOIN FETCH b.city
+            LEFT JOIN FETCH d.tokens
+            WHERE d.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
+            AND d.documentType IN :documentTypes
+            """)
+    List<SearchDocument> findActiveCandidates(@Param("documentTypes") List<SearchDocumentType> documentTypes);
+
+    @Query("""
             SELECT DISTINCT d FROM SearchDocument d LEFT JOIN d.tokens t
             WHERE d.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
             AND d.documentType IN :documentTypes
@@ -35,7 +46,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                  OR LOWER(d.branch.name) LIKE CONCAT('%', :normalizedQuery, '%')
                  OR LOWER(t) LIKE CONCAT('%', :normalizedQuery, '%'))
             AND (:normalizedCategory IS NULL OR :normalizedCategory = ''
-                 OR LOWER(d.categoryLabel) = :normalizedCategory)
+                 OR LOWER(d.categoryLabel) LIKE CONCAT('%', :normalizedCategory, '%'))
             """)
     Page<SearchDocument> search(@Param("documentTypes") List<SearchDocumentType> documentTypes,
                                  @Param("normalizedQuery") String normalizedQuery,

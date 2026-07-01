@@ -84,8 +84,15 @@ public class BusinessServiceProcessor {
         boolean live = Boolean.TRUE.equals(dto.getActive()) && "ACTIVE".equals(dto.getStatus());
         searchDocumentService.syncServiceDocument(
                 dto.getServiceBranchOfferId(), dto.getBusinessId(), dto.getBranchId(),
-                dto.getName(), dto.getDescription(), dto.getCategoryLabel(),
+                dto.getName(), serviceSearchSummary(dto), dto.getCategoryLabel(),
                 dto.getBasePrice(), live);
+    }
+
+    private String serviceSearchSummary(ServiceBranchOfferDto dto) {
+        return String.join(" ",
+                dto.getDescription() == null ? "" : dto.getDescription(),
+                dto.getScheduleText() == null ? "" : dto.getScheduleText(),
+                dto.getDurationMinutes() == null ? "" : dto.getDurationMinutes() + " минут").trim();
     }
 
     private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {

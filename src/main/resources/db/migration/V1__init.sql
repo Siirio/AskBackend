@@ -94,6 +94,46 @@ CREATE TABLE business (
     status      VARCHAR(50)  NOT NULL
 );
 
+CREATE TABLE brand_profile (
+    id             UUID        NOT NULL PRIMARY KEY,
+    created_at     TIMESTAMPTZ NOT NULL,
+    updated_at     TIMESTAMPTZ NOT NULL,
+    business_id    UUID        NOT NULL UNIQUE REFERENCES business(id),
+    brand_color    VARCHAR(255),
+    logo_url       VARCHAR(255),
+    cover_url      VARCHAR(255),
+    tone_of_voice  VARCHAR(255),
+    description    TEXT,
+    instagram_url  VARCHAR(255),
+    telegram_url   VARCHAR(255),
+    website_url    VARCHAR(255)
+);
+
+CREATE TABLE brand_page_block (
+    id             UUID        NOT NULL PRIMARY KEY,
+    created_at     TIMESTAMPTZ NOT NULL,
+    updated_at     TIMESTAMPTZ NOT NULL,
+    business_id    UUID        NOT NULL REFERENCES business(id),
+    block_type     VARCHAR(50) NOT NULL,
+    display_order  INTEGER     NOT NULL,
+    config_json    TEXT,
+    enabled        BOOLEAN     NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE brand_drop (
+    id             UUID         NOT NULL PRIMARY KEY,
+    created_at     TIMESTAMPTZ  NOT NULL,
+    updated_at     TIMESTAMPTZ  NOT NULL,
+    business_id    UUID         NOT NULL REFERENCES business(id),
+    name           VARCHAR(255) NOT NULL,
+    description    TEXT,
+    start_date     TIMESTAMPTZ,
+    end_date       TIMESTAMPTZ,
+    type           VARCHAR(50)  NOT NULL,
+    status         VARCHAR(50)  NOT NULL,
+    cover_url      VARCHAR(255)
+);
+
 CREATE TABLE business_branch (
     id          UUID        NOT NULL PRIMARY KEY,
     created_at  TIMESTAMPTZ NOT NULL,
@@ -387,6 +427,7 @@ CREATE TABLE supplier_response (
     updated_at        TIMESTAMPTZ NOT NULL,
     request_target_id UUID        NOT NULL REFERENCES request_target(id),
     status            VARCHAR(50)  NOT NULL,
+    response_source   VARCHAR(50)  NOT NULL DEFAULT 'BUSINESS_CONFIRMED',
     price             NUMERIC,
     product_hint      VARCHAR(255),
     comment           VARCHAR(255)
@@ -527,6 +568,10 @@ CREATE INDEX idx_auth_session_token     ON auth_session (token_hash);
 
 CREATE INDEX idx_business_branch_business ON business_branch (business_id);
 CREATE INDEX idx_business_branch_city     ON business_branch (city_id);
+
+CREATE INDEX idx_brand_profile_business ON brand_profile (business_id);
+CREATE INDEX idx_brand_page_block_business_order ON brand_page_block (business_id, display_order);
+CREATE INDEX idx_brand_drop_business_status ON brand_drop (business_id, status);
 
 CREATE INDEX idx_business_member_user     ON business_member (user_id);
 CREATE INDEX idx_business_member_business ON business_member (business_id);

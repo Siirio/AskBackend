@@ -12,6 +12,9 @@ import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.CityDto;
 import kz.ask.business.domain.dto.DataSourceDto;
 import kz.ask.business.domain.entity.BranchInvite;
+import kz.ask.business.domain.entity.BrandDrop;
+import kz.ask.business.domain.entity.BrandPageBlock;
+import kz.ask.business.domain.entity.BrandProfile;
 import kz.ask.business.domain.entity.BranchMember;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
@@ -20,8 +23,14 @@ import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.entity.City;
 import kz.ask.business.domain.entity.DataSource;
 import kz.ask.business.domain.enums.BranchMemberRole;
+import kz.ask.business.domain.enums.BrandDropStatus;
+import kz.ask.business.domain.enums.BrandDropType;
+import kz.ask.business.domain.enums.BrandPageBlockType;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.business.domain.enums.ContactType;
+import kz.ask.business.domain.dto.BrandDropDto;
+import kz.ask.business.domain.dto.BrandPageBlockDto;
+import kz.ask.business.domain.dto.BrandProfileDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.stereotype.Component;
@@ -69,6 +78,51 @@ public class BusinessMapper {
         return contact;
     }
 
+    public BrandProfile toBrandProfileEntity(Business business) {
+        BrandProfile profile = new BrandProfile();
+        profile.setBusiness(business);
+        return profile;
+    }
+
+    public void updateBrandProfile(BrandProfile profile, String brandColor, String logoUrl, String coverUrl,
+                                    String toneOfVoice, String description, String instagramUrl,
+                                    String telegramUrl, String websiteUrl) {
+        profile.setBrandColor(brandColor);
+        profile.setLogoUrl(logoUrl);
+        profile.setCoverUrl(coverUrl);
+        profile.setToneOfVoice(toneOfVoice);
+        profile.setDescription(description);
+        profile.setInstagramUrl(instagramUrl);
+        profile.setTelegramUrl(telegramUrl);
+        profile.setWebsiteUrl(websiteUrl);
+    }
+
+    public BrandPageBlock toBrandPageBlockEntity(Business business, BrandPageBlockType blockType,
+                                                  Integer displayOrder, String configJson, Boolean enabled) {
+        BrandPageBlock block = new BrandPageBlock();
+        block.setBusiness(business);
+        block.setBlockType(blockType);
+        block.setDisplayOrder(displayOrder);
+        block.setConfigJson(configJson);
+        block.setEnabled(enabled);
+        return block;
+    }
+
+    public BrandDrop toBrandDropEntity(Business business, String name, String description,
+                                        java.time.Instant startDate, java.time.Instant endDate,
+                                        BrandDropType type, BrandDropStatus status, String coverUrl) {
+        BrandDrop drop = new BrandDrop();
+        drop.setBusiness(business);
+        drop.setName(name);
+        drop.setDescription(description);
+        drop.setStartDate(startDate);
+        drop.setEndDate(endDate);
+        drop.setType(type);
+        drop.setStatus(status);
+        drop.setCoverUrl(coverUrl);
+        return drop;
+    }
+
     public BranchMember toBranchMemberEntity(BusinessBranch branch, AppUser user,
                                               BranchMemberRole role) {
         BranchMember member = new BranchMember();
@@ -97,6 +151,48 @@ public class BusinessMapper {
         return BusinessDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
+                .build();
+    }
+
+    public BrandProfileDto toBrandProfileDto(BrandProfile entity) {
+        Business business = entity.getBusiness();
+        return BrandProfileDto.builder()
+                .id(entity.getId())
+                .businessId(business.getId())
+                .businessName(business.getName())
+                .brandColor(entity.getBrandColor())
+                .logoUrl(entity.getLogoUrl())
+                .coverUrl(entity.getCoverUrl())
+                .toneOfVoice(entity.getToneOfVoice())
+                .description(entity.getDescription())
+                .instagramUrl(entity.getInstagramUrl())
+                .telegramUrl(entity.getTelegramUrl())
+                .websiteUrl(entity.getWebsiteUrl())
+                .build();
+    }
+
+    public BrandPageBlockDto toBrandPageBlockDto(BrandPageBlock entity) {
+        return BrandPageBlockDto.builder()
+                .id(entity.getId())
+                .businessId(entity.getBusiness().getId())
+                .blockType(entity.getBlockType().name())
+                .displayOrder(entity.getDisplayOrder())
+                .configJson(entity.getConfigJson())
+                .enabled(entity.getEnabled())
+                .build();
+    }
+
+    public BrandDropDto toBrandDropDto(BrandDrop entity) {
+        return BrandDropDto.builder()
+                .id(entity.getId())
+                .businessId(entity.getBusiness().getId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
+                .type(entity.getType().name())
+                .status(entity.getStatus().name())
+                .coverUrl(entity.getCoverUrl())
                 .build();
     }
 

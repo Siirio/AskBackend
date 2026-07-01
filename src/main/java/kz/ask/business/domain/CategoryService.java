@@ -12,4 +12,6 @@ public interface CategoryService {
     List<CategoryResponse> listRootCategories();
 
     List<CategoryResponse> listSubcategories(UUID parentId);
+
+    UUID resolveServiceImportCategoryId(String preferredName);
 }

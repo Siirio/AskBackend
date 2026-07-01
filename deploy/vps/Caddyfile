@@ -1,0 +1,7 @@
+api.ask.com.kz {
+	reverse_proxy app-prod:8080
+}
+
+api-stage.ask.com.kz {
+	reverse_proxy app-stage:8080
+}

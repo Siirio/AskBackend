@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
+    private static final String GENERAL_CATEGORY_SLUG = "general";
+
     private final CategoryRepository categoryRepository;
 
     @Override
@@ -41,6 +43,23 @@ public class CategoryServiceImpl implements CategoryService {
                 .stream()
                 .map(this::toCategoryResponse)
                 .toList();
+    }
+
+    @Override
+    public UUID resolveServiceImportCategoryId(String preferredName) {
+        if (preferredName != null && !preferredName.isBlank()) {
+            var preferred = categoryRepository.findByNameIgnoreCase(preferredName.trim());
+            if (preferred.isPresent() && preferred.get().getStatus() == RecordStatus.ACTIVE) {
+                return preferred.get().getId();
+            }
+        }
+        return categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE)
+                .stream()
+                .filter(category -> GENERAL_CATEGORY_SLUG.equals(category.getSlug()))
+                .findFirst()
+                .or(() -> categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE).stream().findFirst())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND))
+                .getId();
     }
 
     private CategoryResponse toCategoryResponse(Category category) {

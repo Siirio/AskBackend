@@ -10,6 +10,9 @@ This is the backend-facing extraction from the current AskFrontend `EXPECTED_UX_
 - Backend must not return services in product search or products in service search.
 - Business pages can open from product cards, service cards, responses, history, chat, or recommendations, but not as a standalone primary search type.
 - The customer writes a natural-language query and may narrow it with product or service categories.
+- Backend may structure the raw natural-language query through AI before search. This structured intent is internal backend search context; it must preserve the raw query and must not invent products, businesses, stock, delivery, or service-slot truth.
+- AI-inferred category is not a hard backend filter. Backend maps it to canonical aliases and ranking signals. User-selected mode/category can be a hard filter; AI category should improve ranking and recall without killing results when wording differs from stored `category_label`.
+- Structured search must apply semantic hard gates before ranking. For example, a smartphone query cannot return laptops, headphones, or vacuum cleaners; a manicure query cannot return haircuts; a female haircut query cannot return manicure or beard services. Budget and city constraints can create fallback sections, but they must not make the wrong product or service type visible.
 - Categories scope search. They are not a marketplace-style catalog picker.
 - Raw query must be preserved.
 - One submitted search session has one locked scope: `PRODUCT` or `SERVICE`. Scope can be changed before submit, but not inside an already submitted search session.
@@ -50,6 +53,8 @@ Backend must support the frontend distinction between an auto supplier check and
 
 Product result DTOs use the current MVP model only: business/branch context, product display data, price when known, display state, calculated distance when possible, and contact actions.
 
+Structured product search can return sections: `EXACT`, `OVER_BUDGET`, `WRONG_CITY`, and `SIMILAR`. Cards can include `sectionType`, `score`, `matchReasons`, and `warnings` so the frontend can explain why a result is shown instead of labeling every fallback as medium confidence.
+
 Product visibility is controlled by enabled/disabled/deleted business actions. If a business keeps a product enabled, it is treated as current for search display. If the customer needs confirmation, use clarify/request/chat flow.
 
 Backend model: `ProductOffer.enabled` is the live-search toggle. Do not add stock status, stock quantity, availability confidence, or freshness fields for MVP product visibility.
@@ -72,6 +77,8 @@ Service result cards need:
 Services on MVP are request-to-book, not guaranteed slot booking. The customer chooses desired time, Ask sends a structured service request, and the business confirms, declines, or proposes another time.
 
 Service result DTOs use the current MVP model only: business/branch context, service display data, price when known, approximate duration, display state, calculated distance when possible, and contact actions.
+
+Structured service search follows the same section model as product search. A service outside budget or city may be shown only as a clearly labeled fallback if it still passes the semantic service-type gate.
 
 Service visibility is controlled by active/inactive service toggles and branch ownership.
 
@@ -131,6 +138,7 @@ Business cabinet MVP sections:
 - Products;
 - Services;
 - Company or branch profile.
+- Future AI Autodump Import preview for branch-scoped messy product/service data.
 
 The cabinet is production-facing onboarding, not a throwaway mock:
 
@@ -139,6 +147,7 @@ The cabinet is production-facing onboarding, not a throwaway mock:
 - services added by businesses must persist;
 - enabled products and services become searchable for customers;
 - disabled or deleted products and services must not appear in live client search.
+- AI Autodump generated cards must stay as drafts until the business previews and approves them. Only approved/published cards can create product/service records and become searchable.
 
 Each registration currently creates one concrete branch/store profile. A higher-level multi-branch business management model can be added later, but current registration must be treated as onboarding a specific establishment/branch.
 
@@ -428,3 +437,34 @@ Note: for MVP, direct staff creation (`POST /staff`) is the primary path. Invite
 - Customer search history and snapshots live for a limited time, for example 10 days.
 - Business operational history is separate and longer-lived.
 - Business data must not be wiped after testing or demo usage once real onboarding starts.
+
+## Anti-Marketplace Search Card Contract
+
+`SearchResultCardResponse` is an offer-fit card, not a marketplace product tile.
+
+Card brand layer:
+
+- `brandId`
+- `businessName`
+- `brandLogoUrl`
+- `brandCoverUrl`
+- `brandColor`
+- `brandDescriptor`
+- `badges`
+
+Card decision layer:
+
+- `matchReasons`
+- `availabilityStatus`
+- `confirmationStatus`
+- `pickupOptions`
+- `branchContext`
+- `distanceText`
+- `requiresSupplierCheck`
+- `availableActions`
+
+Frontend must render human-readable match reasons and trust/completeness badges. It must not render raw `score` or internal AI confidence as customer-facing proof.
+
+Default sort remains `intent_match`. Cheapest-first, rating-first, buy-box, and hidden-score ranking are not Ask defaults.
+
+Supplier response source must distinguish `AUTO_REPLY`, `STAFF_REPLY`, `BUSINESS_CONFIRMED`, `DATA_UPDATED`, and `SUPPLIER_CHECK_CONFIRMED`.

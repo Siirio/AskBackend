@@ -1,7 +1,5 @@
 package kz.ask.identity.infrastructure.sms;
 
-import kz.ask.shared.error.ErrorCode;
-import kz.ask.shared.error.ExternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,6 +14,5 @@ public class NoopSmsCodeSender implements SmsCodeSender {
     @Override
     public void sendCode(String phone, String code) {
         log.info("SMS disabled. Code for {} would be: {}", phone, code);
-        throw new ExternalServiceException(ErrorCode.DELIVERY_FAILED);
     }
 }

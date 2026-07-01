@@ -39,9 +39,14 @@ public class SecurityConfig {
                     "/api/v1/cities/resolve",
                     "/api/v1/cities",
                     "/api/v1/categories",
-                    "/api/v1/categories/*/subcategories"
+                    "/api/v1/categories/*/subcategories",
+                    "/api/v1/businesses/*/brand-profile",
+                    "/api/v1/businesses/*/storefront",
+                    "/api/v1/businesses/*/drops"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST,
+                    "/api/v1/search",
+                    "/api/v1/search/intent-structure",
                     "/api/v1/auth/login",
                     "/api/v1/auth/customer/login/start",
                     "/api/v1/auth/customer/register",

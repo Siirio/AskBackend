@@ -48,6 +48,21 @@ For later sessions, read only the documents relevant to the task, plus any file 
 - Chat is always available from product, service, request, booking, and business-context screens through contextual contact actions.
 - Business onboarding is production-facing: registration creates a real branch/store profile and its real products/services must persist in the real database. Do not design it as mock-only onboarding.
 
+## Anti-Marketplace Guardrails (2026-07-01)
+
+Ask is NOT a marketplace. It is an **intent layer** that routes qualified demand to brands without commoditizing them.
+
+- **Default search sort is intent_match, never price_asc.** Price is a filter factor, not the ranking king.
+- **No buy-box logic.** Never collapse different brands into one SKU comparison. Always show WHY this brand matches this specific intent.
+- **No uniform commodity cards.** Every result card has a standardized decision layer (price, availability, branch, pickup) AND a brand expression layer (style, tone, photos, story).
+- **No public "rating" score.** Visible signals are badges: data freshness, confirmation speed, card quality, business activity. Internal ranking signals are separate.
+- **Auto-reply does NOT count as confirmation.** Only real business confirmation advances status.
+- **Brand profile data model:** BrandProfile (color, logo, cover, tone, links), BrandPageBlock (ordered storefront blocks), BrandKit within Business aggregate.
+- **Drops are brand events, not discounts.** Drop types: NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER.
+- **User preference profile is optional and transparent.** Sizes, style, budget, city, favorite brands — editable, not creepy tracking.
+- **Chat: open for extension, closed for core chaos.** Brands can add links, quick replies, FAQs, AI assistant. Cannot break user flow, spam, or change system statuses.
+- **Standardize decision data, preserve brand identity.** Availability, price, branch, confirmation = standardized. Style, visual, tone, story, drops = brand-owned.
+
 ## When To Challenge
 
 Flag the risk before editing if a request would:

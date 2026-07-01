@@ -191,6 +191,68 @@ Search documents index only product offers and service branch offers. Search res
 
 Search ranking should be smart and practical. It can use query matching, category, result attributes, enabled state, price, and distance when distance is known. The public contract should stay focused on the visible product/service result and its branch context.
 
+### Anti-Marketplace Ranking (2026-07-01)
+
+Default sort is **intent_match**, never price_asc. The intent_match score combines:
+- Query relevance (category + tag + description match)
+- Style vector proximity (when style preferences are known)
+- Availability signal (in stock > needs confirmation > unknown)
+- Distance (when coordinates available)
+- Data freshness (recently updated > stale)
+- Business activity level (active > dormant)
+- Card completeness (well-filled > minimal)
+
+Price is a filter factor, not the default sort king. Available sort options: intent_match, availability, distance, price_asc, price_desc, business_activity, card_quality.
+
+**Critical:** Backend computes raw scores internally. Frontend receives human-readable match reasons ("В бюджете, oversized fit, самовывоз сегодня"), NEVER raw confidence percentages.
+
+### Brand-Aware Result Cards
+
+Search results carry two layers:
+1. **Standardized decision layer:** price/range, availability, branch/city, pickup, timelines, confirmation status, match_reason (human-readable string from backend).
+2. **Brand expression reference:** brandId, brandProfile snapshot (color, logo, cover) — enough for frontend to render brand identity without extra round-trips.
+
+Full brand expression (storefront blocks, collections, drops) lives on the Brand Profile endpoint, not in search result DTOs.
+
+### Supplier Quality Signals (Internal)
+
+Backend tracks per-business quality signals for ranking, NOT for public display:
+- `data_freshness_score` — how recently data was updated
+- `card_completeness_score` — how well-filled the business profile and product cards are
+- `confirmation_accuracy` — ratio of HAS_ITEM responses that were actually available
+- `response_time_trend` — median time to first response (not used as primary rank)
+- `activity_level` — frequency of logins, updates, responses
+
+These produce visible badges: "Данные обновлены сегодня", "Быстро подтверждает наличие", "Хорошо заполненная карточка", "Активный бизнес".
+
+Auto-reply (AI bot response) does NOT advance confirmation status. Statuses: AUTO_REPLY, BUSINESS_CONFIRMED, DATA_RECENTLY_UPDATED, NEEDS_CONFIRMATION.
+
+### Brand Profile & Storefront (New Data Model)
+
+`BrandProfile` (part of Business aggregate):
+- brandColor, logoUrl, coverUrl
+- toneOfVoice, description
+- links: instagram, telegram, website
+
+`BrandPageBlock` (ordered, toggleable):
+- blockType: HERO, COLLECTION, PRODUCTS, ABOUT, DROP, CONTACTS, BRANCHES
+- displayOrder, configJson (block-specific configuration)
+
+`Drop` (time-limited brand event):
+- name, description, startDate, endDate
+- type: NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER
+- status: UPCOMING, ACTIVE, ENDED
+
+### User Preference Profile (New Data Model)
+
+`UserPreferenceProfile`:
+- sizes (string array), preferredCategories (UUID array)
+- budgetRange (min/max), cityId, district
+- styleTags (string array), favoriteBrands (UUID array)
+- excludeMassMarket (boolean), preferPickup (boolean), showOnlyInStock (boolean)
+
+Optional, transparent, user-editable. Used to boost intent_match scoring, not as hard filter.
+
 `distanceMeters` is calculated only when:
 
 - customer geolocation is provided;

@@ -35,7 +35,12 @@ public enum ErrorCode {
     PRODUCT_NOT_FOUND("Товар не найден для этого филиала"),
     SKU_ALREADY_EXISTS("SKU уже используется другим товаром в этом бизнесе"),
     PRODUCT_NAME_BLANK("Название товара не может быть пустым"),
-    OPERATOR_FORBIDDEN_ACTION("Оператору не разрешено выполнять действие: %s");
+    OPERATOR_FORBIDDEN_ACTION("Оператору не разрешено выполнять действие: %s"),
+    AI_SEARCH_API_KEY_MISSING("DEEPSEEK_API_KEY is required for AI structured search"),
+    AI_INTENT_STRUCTURE_FAILED("AI intent structure request failed"),
+    AUTODUMP_SESSION_NOT_FOUND("AI Autodump сессия не найдена"),
+    AUTODUMP_DRAFT_NOT_FOUND("AI Autodump черновик не найден"),
+    AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена");
 
     private final String template;
 

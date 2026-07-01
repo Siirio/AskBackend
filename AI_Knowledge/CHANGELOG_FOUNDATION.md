@@ -1,5 +1,32 @@
 # Foundation Changelog
 
+## 2026-07-01 - Anti-Marketplace Brand And Decision Card Contract
+
+- Search result cards now carry a brand layer and a decision layer instead of marketplace ranking proof.
+- Added brand profile, storefront block, and brand drop foundations for business-owned presentation.
+- Supplier responses now carry source type so auto reply, staff reply, business confirmation, data update, and supplier check confirmation can stay separate.
+- Default public search intent remains `intent_match`; cheapest-first, rating-first, and public hidden-score ranking are not default Ask behavior.
+
+## 2026-06-30 - DeepSeek Structured Search And AI Autodump Architecture
+
+- Added backend AI intent structuring endpoints for local structured search: `POST /api/v1/search/intent-structure` and `POST /api/v1/search`.
+- Structured search now uses a provider-backed intent structurer before public search and then searches using scope, semantic query, keywords, synonyms, must-have terms, and fallback expansion terms.
+- Reworked structured search so AI-inferred category is mapped to a `SearchPlan` with canonical aliases and Java scoring instead of becoming a SQL category hard filter.
+- Added Search V2 semantic hard gates, budget parsing, city/budget fallback warnings, result sections, match reasons, and per-card score/confidence. Structured search must not return the whole active catalog just because category, supplier, or price loosely matches.
+- Added `V5__search_v2_semantic_tags.sql` to enrich already-seeded local/staging search documents with concrete semantic tags such as smartphone, laptop, vacuum, manicure, haircut, gender qualifier, and feature phrase tags.
+- Added reusable search term enrichment for sports nutrition imports so queries like `спортпит` and `креатин` map to concrete indexed product tokens instead of relying on literal Excel/category wording only.
+- Added `V7__search_v2_sports_nutrition_tokens.sql` to backfill sports nutrition tokens and query aliases into existing local search documents.
+- Added Search V2 package-weight constraints so requests such as `батончик > 900 грамм` compare indexed package sizes like `2 кг` as grams instead of requiring the literal text `900 грамм`.
+- Added bike-rental term enrichment and `V8__general_service_category_and_bike_tokens.sql` so `велики`, `велосипед`, and `прокат велосипедов` can find service documents created from AI Autodump.
+- Added a root `Общее` category and changed AI service import category fallback to use it when the AI category does not match an existing active category, instead of defaulting unknown services to beauty or repair.
+- AI Autodump service publish now maps duration and schedule text from drafts into `ServiceBranchOffer` and search summaries, preserving inputs like `1 час` for rental/service cards.
+- Search document token enrichment now drops index tokens longer than the `search_document_token.token` 255-character storage limit so large CSV rows or descriptions cannot break publish.
+- Configured the AI search client for DeepSeek Chat Completions through `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_SEARCH_MODEL`, and `DEEPSEEK_SEARCH_MAX_TOKENS`.
+- Kept legacy `GET /api/v1/search` available for literal search compatibility.
+- Added `AI_AUTODUMP_IMPORT_ARCHITECTURE.md` as the real backend/database direction for messy data import: raw dump -> import session -> AI job -> draft product/service cards -> business preview/edit -> approve -> publish into searchable catalog.
+- Implemented AI Autodump publish so approved drafts create real product/service branch offers and sync `search_document` instead of only marking drafts as published.
+- Updated backend ERD and UX contract with the boundary that AI creates drafts or internal search context only; it must not publish live records or invent availability truth.
+
 ## 2026-06-27 - Public Search Alias Expansion
 
 - Added `search_query_alias` as a data-owned search expansion table for broad customer wording such as `барбершоп` -> `стрижка`.

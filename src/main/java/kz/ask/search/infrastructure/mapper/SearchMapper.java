@@ -10,6 +10,7 @@ import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.catalog.domain.entity.Product;
 import kz.ask.catalog.domain.entity.ProductOffer;
+import kz.ask.search.domain.SearchTermEnricher;
 import kz.ask.search.domain.entity.SearchDocument;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.shared.domain.enums.RecordStatus;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
 public class SearchMapper {
 
     private final ObjectMapper objectMapper;
+    private final SearchTermEnricher searchTermEnricher;
 
     public SearchDocument toSearchDocument(ProductOffer offer, Product product, Business business,
                                             BusinessBranch branch) {
@@ -53,7 +55,7 @@ public class SearchMapper {
         tokens.addAll(chars.values());
         addTokens(tokens, business.getName());
         addTokens(tokens, branch.getName());
-        doc.setTokens(tokens.stream().distinct().collect(Collectors.toList()));
+        doc.setTokens(searchTermEnricher.enrichIndexTerms(tokens).stream().distinct().collect(Collectors.toList()));
 
         return doc;
     }

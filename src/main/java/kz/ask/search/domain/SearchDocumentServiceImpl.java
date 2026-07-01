@@ -25,6 +25,7 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
     private final ServiceBranchOfferRepository serviceBranchOfferRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
+    private final SearchTermEnricher searchTermEnricher;
 
     @Override
     @Transactional
@@ -46,7 +47,13 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         document.setBusiness(businessRepository.getReferenceById(businessId));
         document.setBranch(businessBranchRepository.getReferenceById(branchId));
         document.setPrice(price);
-        document.setTokens(new ArrayList<>(tags == null ? List.of() : tags));
+        List<String> sourceTerms = new ArrayList<>();
+        sourceTerms.add(title);
+        sourceTerms.add(summary);
+        sourceTerms.add(categoryLabel);
+        sourceTerms.add(sku);
+        sourceTerms.addAll(tags == null ? List.of() : tags);
+        document.setTokens(searchTermEnricher.enrichIndexTerms(sourceTerms));
         document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
         if (document.getSource() == null) {
             document.setSource("CATALOG");
@@ -74,7 +81,11 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         document.setBusiness(businessRepository.getReferenceById(businessId));
         document.setBranch(businessBranchRepository.getReferenceById(branchId));
         document.setPrice(price);
-        document.setTokens(new ArrayList<>());
+        List<String> sourceTerms = new ArrayList<>();
+        sourceTerms.add(title);
+        sourceTerms.add(summary);
+        sourceTerms.add(categoryLabel);
+        document.setTokens(searchTermEnricher.enrichIndexTerms(sourceTerms));
         document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
         if (document.getSource() == null) {
             document.setSource("CATALOG");
