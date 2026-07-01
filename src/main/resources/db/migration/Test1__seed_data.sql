@@ -1,3 +1,81 @@
+-- =============================================================================
+-- V4: Seed data for staging/local development
+-- =============================================================================
+
+-- Business
+INSERT INTO business (id, created_at, updated_at, name, legal_name, bin, status) VALUES
+  ('00000000-0000-0000-0000-000000000b01', now(), now(), 'TechStore KZ', 'TOO TechStore Kazakhstan', '123456789012', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000b02', now(), now(), 'BeautyLab Almaty', 'IP BeautyLab', '987654321098', 'ACTIVE');
+
+-- Branches
+INSERT INTO business_branch (id, created_at, updated_at, business_id, city_id, name, address, online_only, status) VALUES
+  ('00000000-0000-0000-0000-000000000d01', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000c2', 'TechStore Almaty', 'ул. Толе би, 92', false, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000d02', now(), now(), '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-0000000000c2', 'BeautyLab центр', 'пр. Абая, 45', false, 'ACTIVE');
+
+-- Products
+INSERT INTO product (id, created_at, updated_at, business_id, category_id, category_label, name, description, sku, status) VALUES
+  ('00000000-0000-0000-0000-000000000e01', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000a2', 'Бытовая техника', 'iPhone 15 Pro 256GB', 'Смартфон Apple iPhone 15 Pro, 256GB, Natural Titanium', 'IP15P-256-NT', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000e02', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000a2', 'Бытовая техника', 'Samsung Galaxy S24 Ultra', 'Смартфон Samsung Galaxy S24 Ultra, 512GB, Titanium Gray', 'SGS24U-512-TG', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000e03', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000a2', 'Бытовая техника', 'MacBook Pro 14 M4', 'Ноутбук Apple MacBook Pro 14, M4, 16GB RAM, 512GB SSD', 'MBP14-M4-16-512', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000e04', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000a2', 'Бытовая техника', 'Sony WH-1000XM5', 'Наушники Sony WH-1000XM5, беспроводные, с шумоподавлением, черные', 'SONY-WH1000XM5-BLK', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000e05', now(), now(), '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-0000000000a2', 'Бытовая техника', 'Dyson V15 Detect', 'Пылесос Dyson V15 Detect, беспроводной, с лазерной подсветкой', 'DYSON-V15-DETECT', 'ACTIVE');
+
+-- Service offerings
+INSERT INTO service_offering (id, created_at, updated_at, business_id, category_id, name, description, status) VALUES
+  ('00000000-0000-0000-0000-000000000f01', now(), now(), '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-0000000000a3', 'Стрижка женская', 'Модельная женская стрижка с укладкой', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000f02', now(), now(), '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-0000000000a3', 'Маникюр классический', 'Классический маникюр с покрытием гель-лак', 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000f03', now(), now(), '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-0000000000a3', 'Окрашивание волос', 'Окрашивание волос любой сложности, подбор цвета', 'ACTIVE');
+
+-- Product offers
+INSERT INTO product_offer (id, created_at, updated_at, product_id, branch_id, price, enabled, status) VALUES
+  ('00000000-0000-0000-0000-000000000001', now(), now(), '00000000-0000-0000-0000-000000000e01', '00000000-0000-0000-0000-000000000d01', 650000, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000002', now(), now(), '00000000-0000-0000-0000-000000000e02', '00000000-0000-0000-0000-000000000d01', 580000, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000003', now(), now(), '00000000-0000-0000-0000-000000000e03', '00000000-0000-0000-0000-000000000d01', 890000, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000004', now(), now(), '00000000-0000-0000-0000-000000000e04', '00000000-0000-0000-0000-000000000d01', 145000, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000005', now(), now(), '00000000-0000-0000-0000-000000000e05', '00000000-0000-0000-0000-000000000d01', 320000, true, 'ACTIVE');
+
+-- Service branch offers
+INSERT INTO service_branch_offer (id, created_at, updated_at, service_offering_id, branch_id, service_mode, base_price, duration_minutes, active, status) VALUES
+  ('00000000-0000-0000-0000-000000000006', now(), now(), '00000000-0000-0000-0000-000000000f01', '00000000-0000-0000-0000-000000000d02', 'ON_SITE', 8000, 60, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000007', now(), now(), '00000000-0000-0000-0000-000000000f02', '00000000-0000-0000-0000-000000000d02', 'ON_SITE', 6000, 90, true, 'ACTIVE'),
+  ('00000000-0000-0000-0000-000000000008', now(), now(), '00000000-0000-0000-0000-000000000f03', '00000000-0000-0000-0000-000000000d02', 'ON_SITE', 15000, 120, true, 'ACTIVE');
+
+-- Search documents (so search returns results)
+INSERT INTO search_document (id, created_at, updated_at, document_type, product_offer_id, service_branch_offer_id, title, summary, category_label, sku, business_id, branch_id, price, status, source) VALUES
+  ('00000000-0000-0000-0000-000000001001', now(), now(), 'PRODUCT', '00000000-0000-0000-0000-000000000001', null, 'iPhone 15 Pro 256GB', 'Смартфон Apple iPhone 15 Pro, 256GB, Natural Titanium', 'Бытовая техника', 'IP15P-256-NT', '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-000000000d01', 650000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001002', now(), now(), 'PRODUCT', '00000000-0000-0000-0000-000000000002', null, 'Samsung Galaxy S24 Ultra', 'Смартфон Samsung Galaxy S24 Ultra, 512GB, Titanium Gray', 'Бытовая техника', 'SGS24U-512-TG', '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-000000000d01', 580000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001003', now(), now(), 'PRODUCT', '00000000-0000-0000-0000-000000000003', null, 'MacBook Pro 14 M4', 'Ноутбук Apple MacBook Pro 14, M4, 16GB RAM, 512GB SSD', 'Бытовая техника', 'MBP14-M4-16-512', '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-000000000d01', 890000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001004', now(), now(), 'PRODUCT', '00000000-0000-0000-0000-000000000004', null, 'Sony WH-1000XM5', 'Наушники Sony WH-1000XM5, беспроводные, с шумоподавлением, черные', 'Бытовая техника', 'SONY-WH1000XM5-BLK', '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-000000000d01', 145000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001005', now(), now(), 'PRODUCT', '00000000-0000-0000-0000-000000000005', null, 'Dyson V15 Detect', 'Пылесос Dyson V15 Detect, беспроводной, с лазерной подсветкой', 'Бытовая техника', 'DYSON-V15-DETECT', '00000000-0000-0000-0000-000000000b01', '00000000-0000-0000-0000-000000000d01', 320000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001006', now(), now(), 'SERVICE', null, '00000000-0000-0000-0000-000000000006', 'Стрижка женская', 'Модельная женская стрижка с укладкой', 'Услуги красоты', null, '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-000000000d02', 8000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001007', now(), now(), 'SERVICE', null, '00000000-0000-0000-0000-000000000007', 'Маникюр классический', 'Классический маникюр с покрытием гель-лак', 'Услуги красоты', null, '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-000000000d02', 6000, 'ACTIVE', 'CATALOG'),
+  ('00000000-0000-0000-0000-000000001008', now(), now(), 'SERVICE', null, '00000000-0000-0000-0000-000000000008', 'Окрашивание волос', 'Окрашивание волос любой сложности, подбор цвета', 'Услуги красоты', null, '00000000-0000-0000-0000-000000000b02', '00000000-0000-0000-0000-000000000d02', 15000, 'ACTIVE', 'CATALOG');
+
+-- Search document tokens for full-text search
+INSERT INTO search_document_token (search_document_id, token) VALUES
+  ('00000000-0000-0000-0000-000000001001', 'iphone'),
+  ('00000000-0000-0000-0000-000000001001', 'смартфон'),
+  ('00000000-0000-0000-0000-000000001001', 'apple'),
+  ('00000000-0000-0000-0000-000000001001', '256gb'),
+  ('00000000-0000-0000-0000-000000001002', 'samsung'),
+  ('00000000-0000-0000-0000-000000001002', 'смартфон'),
+  ('00000000-0000-0000-0000-000000001002', 'galaxy'),
+  ('00000000-0000-0000-0000-000000001002', '512gb'),
+  ('00000000-0000-0000-0000-000000001003', 'macbook'),
+  ('00000000-0000-0000-0000-000000001003', 'ноутбук'),
+  ('00000000-0000-0000-0000-000000001003', 'apple'),
+  ('00000000-0000-0000-0000-000000001003', 'm4'),
+  ('00000000-0000-0000-0000-000000001004', 'наушники'),
+  ('00000000-0000-0000-0000-000000001004', 'sony'),
+  ('00000000-0000-0000-0000-000000001004', 'беспроводные'),
+  ('00000000-0000-0000-0000-000000001005', 'пылесос'),
+  ('00000000-0000-0000-0000-000000001005', 'dyson'),
+  ('00000000-0000-0000-0000-000000001006', 'стрижка'),
+  ('00000000-0000-0000-0000-000000001006', 'женская'),
+  ('00000000-0000-0000-0000-000000001007', 'маникюр'),
+  ('00000000-0000-0000-0000-000000001007', 'гель'),
+  ('00000000-0000-0000-0000-000000001008', 'окрашивание'),
+  ('00000000-0000-0000-0000-000000001008', 'волосы');
 ﻿-- =============================================================================
 -- V6: Rich Test Data вЂ” Maximum Variability
 -- =============================================================================
@@ -340,3 +418,203 @@ INSERT INTO service_branch_offer (id, created_at, updated_at, service_offering_i
 ('00000000-0000-0000-0000-f00000000072', now(), now(), '00000000-0000-0000-0000-100000000f35', '00000000-0000-0000-0000-100000000d05', 'ON_SITE', 5000, 60, true, 'ACTIVE'),
 ('00000000-0000-0000-0000-f00000000073', now(), now(), '00000000-0000-0000-0000-100000000f36', '00000000-0000-0000-0000-100000000d05', 'ON_SITE', 2200, 90, true, 'ACTIVE'),
 ('00000000-0000-0000-0000-f00000000074', now(), now(), '00000000-0000-0000-0000-100000000f37', '00000000-0000-0000-0000-100000000d05', 'ON_SITE', 12000, 180, true, 'ACTIVE');
+INSERT INTO search_document_token (search_document_id, token)
+SELECT token_data.search_document_id, token_data.token
+FROM (
+    VALUES
+        ('00000000-0000-0000-0000-000000001001'::uuid, 'смартфон'),
+        ('00000000-0000-0000-0000-000000001001'::uuid, 'телефон'),
+        ('00000000-0000-0000-0000-000000001001'::uuid, 'iphone'),
+        ('00000000-0000-0000-0000-000000001002'::uuid, 'смартфон'),
+        ('00000000-0000-0000-0000-000000001002'::uuid, 'телефон'),
+        ('00000000-0000-0000-0000-000000001002'::uuid, 'galaxy'),
+        ('00000000-0000-0000-0000-000000001003'::uuid, 'ноутбук'),
+        ('00000000-0000-0000-0000-000000001003'::uuid, 'macbook'),
+        ('00000000-0000-0000-0000-000000001004'::uuid, 'наушники'),
+        ('00000000-0000-0000-0000-000000001004'::uuid, 'наушник'),
+        ('00000000-0000-0000-0000-000000001005'::uuid, 'пылесос'),
+        ('00000000-0000-0000-0000-000000001005'::uuid, 'dyson'),
+        ('00000000-0000-0000-0000-000000001005'::uuid, 'лазерная подсветка'),
+        ('00000000-0000-0000-0000-000000001006'::uuid, 'стрижка'),
+        ('00000000-0000-0000-0000-000000001006'::uuid, 'женская'),
+        ('00000000-0000-0000-0000-000000001006'::uuid, 'женск'),
+        ('00000000-0000-0000-0000-000000001007'::uuid, 'маникюр'),
+        ('00000000-0000-0000-0000-000000001007'::uuid, 'ногти'),
+        ('00000000-0000-0000-0000-000000001007'::uuid, 'гель-лак'),
+        ('00000000-0000-0000-0000-000000001008'::uuid, 'окрашивание'),
+        ('00000000-0000-0000-0000-000000001008'::uuid, 'волосы')
+) AS token_data(search_document_id, token)
+WHERE EXISTS (
+    SELECT 1
+    FROM search_document document
+    WHERE document.id = token_data.search_document_id
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM search_document_token existing_token
+    WHERE existing_token.search_document_id = token_data.search_document_id
+    AND existing_token.token = token_data.token
+);
+WITH sport_documents AS (
+    SELECT id
+    FROM search_document
+    WHERE status = 'ACTIVE'
+      AND document_type = 'PRODUCT'
+      AND (
+        LOWER(COALESCE(title, '')) LIKE ANY (ARRAY[
+            '%спортпит%', '%спортивное питание%', '%креатин%', '%протеин%', '%гейнер%',
+            '%предтреник%', '%предтренировочный%', '%батончик%', '%аминокислот%', '%bcaa%',
+            '%eaa%', '%витамин%', '%creatine%', '%protein%', '%gainer%', '%preworkout%'
+        ])
+        OR LOWER(COALESCE(summary, '')) LIKE ANY (ARRAY[
+            '%спортпит%', '%спортивное питание%', '%креатин%', '%протеин%', '%гейнер%',
+            '%предтреник%', '%предтренировочный%', '%батончик%', '%аминокислот%', '%bcaa%',
+            '%eaa%', '%витамин%', '%creatine%', '%protein%', '%gainer%', '%preworkout%'
+        ])
+        OR LOWER(COALESCE(category_label, '')) LIKE ANY (ARRAY[
+            '%спортпит%', '%спортивное питание%', '%креатин%', '%протеин%', '%гейнер%',
+            '%предтреник%', '%предтренировочный%', '%батончик%', '%аминокислот%', '%bcaa%',
+            '%eaa%', '%витамин%', '%creatine%', '%protein%', '%gainer%', '%preworkout%'
+        ])
+      )
+),
+sport_tokens AS (
+    SELECT id AS search_document_id, token
+    FROM sport_documents
+    CROSS JOIN (VALUES
+        ('спортпит'), ('спортивное питание'), ('sports nutrition'), ('добавки'), ('бад')
+    ) AS tokens(token)
+),
+specific_tokens AS (
+    SELECT document.id AS search_document_id, tokens.token
+    FROM search_document document
+    CROSS JOIN (VALUES
+        ('креатин', ARRAY['%креатин%', '%creatine%', '%моногидрат%']),
+        ('creatine', ARRAY['%креатин%', '%creatine%', '%моногидрат%']),
+        ('моногидрат', ARRAY['%креатин%', '%creatine%', '%моногидрат%']),
+        ('протеин', ARRAY['%протеин%', '%protein%', '%whey%']),
+        ('protein', ARRAY['%протеин%', '%protein%', '%whey%']),
+        ('сывороточный протеин', ARRAY['%протеин%', '%protein%', '%whey%']),
+        ('гейнер', ARRAY['%гейнер%', '%gainer%']),
+        ('gainer', ARRAY['%гейнер%', '%gainer%']),
+        ('предтреник', ARRAY['%предтреник%', '%предтренировочный%', '%preworkout%']),
+        ('предтренировочный комплекс', ARRAY['%предтреник%', '%предтренировочный%', '%preworkout%']),
+        ('preworkout', ARRAY['%предтреник%', '%предтренировочный%', '%preworkout%']),
+        ('батончик', ARRAY['%батончик%', '%protein bar%']),
+        ('батончики', ARRAY['%батончик%', '%protein bar%']),
+        ('protein bar', ARRAY['%батончик%', '%protein bar%']),
+        ('аминокислоты', ARRAY['%аминокислот%', '%bcaa%', '%eaa%']),
+        ('bcaa', ARRAY['%аминокислот%', '%bcaa%', '%eaa%']),
+        ('eaa', ARRAY['%аминокислот%', '%bcaa%', '%eaa%']),
+        ('витамины', ARRAY['%витамин%', '%vitamins%']),
+        ('витамин', ARRAY['%витамин%', '%vitamins%']),
+        ('vitamins', ARRAY['%витамин%', '%vitamins%'])
+    ) AS tokens(token, patterns)
+    WHERE document.status = 'ACTIVE'
+      AND document.document_type = 'PRODUCT'
+      AND (
+        LOWER(COALESCE(document.title, '')) LIKE ANY (tokens.patterns)
+        OR LOWER(COALESCE(document.summary, '')) LIKE ANY (tokens.patterns)
+        OR LOWER(COALESCE(document.category_label, '')) LIKE ANY (tokens.patterns)
+      )
+)
+INSERT INTO search_document_token (search_document_id, token)
+SELECT token_data.search_document_id, token_data.token
+FROM (
+    SELECT search_document_id, token FROM sport_tokens
+    UNION
+    SELECT search_document_id, token FROM specific_tokens
+) token_data
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM search_document_token existing_token
+    WHERE existing_token.search_document_id = token_data.search_document_id
+      AND existing_token.token = token_data.token
+);
+
+INSERT INTO search_query_alias (id, created_at, updated_at, alias_value, target_query, status)
+SELECT alias_data.id, now(), now(), alias_data.alias_value, alias_data.target_query, 'ACTIVE'
+FROM (
+    VALUES
+        ('00000000-0000-0000-0000-00000000a601'::uuid, 'спортпит', 'спортивное питание'),
+        ('00000000-0000-0000-0000-00000000a602'::uuid, 'спортпит', 'креатин'),
+        ('00000000-0000-0000-0000-00000000a603'::uuid, 'спортпит', 'протеин'),
+        ('00000000-0000-0000-0000-00000000a604'::uuid, 'спортивное питание', 'спортпит'),
+        ('00000000-0000-0000-0000-00000000a605'::uuid, 'креатин', 'creatine'),
+        ('00000000-0000-0000-0000-00000000a606'::uuid, 'creatine', 'креатин')
+) AS alias_data(id, alias_value, target_query)
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM search_query_alias existing_alias
+    WHERE existing_alias.alias_value = alias_data.alias_value
+      AND existing_alias.target_query = alias_data.target_query
+);
+INSERT INTO category (id, created_at, updated_at, parent_id, name, slug, status)
+SELECT '00000000-0000-0000-0000-0000000000af', now(), now(), null, 'Общее', 'general', 'ACTIVE'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM category
+    WHERE slug = 'general'
+);
+
+WITH general_category AS (
+    SELECT id
+    FROM category
+    WHERE slug = 'general'
+    LIMIT 1
+)
+UPDATE service_offering service
+SET category_id = (SELECT id FROM general_category)
+WHERE service.category_id IN (
+    SELECT id
+    FROM category
+    WHERE slug = 'beauty'
+)
+AND (
+    lower(coalesce(service.name, '')) LIKE '%велик%'
+    OR lower(coalesce(service.name, '')) LIKE '%велосипед%'
+    OR lower(coalesce(service.description, '')) LIKE '%велик%'
+    OR lower(coalesce(service.description, '')) LIKE '%велосипед%'
+);
+
+UPDATE search_document document
+SET category_label = 'Общее'
+WHERE document.document_type = 'SERVICE'
+AND (
+    lower(coalesce(document.title, '')) LIKE '%велик%'
+    OR lower(coalesce(document.title, '')) LIKE '%велосипед%'
+    OR lower(coalesce(document.summary, '')) LIKE '%велик%'
+    OR lower(coalesce(document.summary, '')) LIKE '%велосипед%'
+);
+
+INSERT INTO search_document_token (search_document_id, token)
+SELECT token_data.search_document_id, token_data.token
+FROM (
+    SELECT document.id AS search_document_id, tokens.token
+    FROM search_document document
+    CROSS JOIN (
+        VALUES
+            ('велики'),
+            ('велик'),
+            ('велосипед'),
+            ('велосипеды'),
+            ('прокат велосипедов'),
+            ('аренда велосипедов'),
+            ('прокат великов'),
+            ('bike rental'),
+            ('bicycle rental')
+    ) AS tokens(token)
+    WHERE document.document_type = 'SERVICE'
+    AND (
+        lower(coalesce(document.title, '')) LIKE '%велик%'
+        OR lower(coalesce(document.title, '')) LIKE '%велосипед%'
+        OR lower(coalesce(document.summary, '')) LIKE '%велик%'
+        OR lower(coalesce(document.summary, '')) LIKE '%велосипед%'
+    )
+) AS token_data
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM search_document_token existing_token
+    WHERE existing_token.search_document_id = token_data.search_document_id
+    AND existing_token.token = token_data.token
+);
