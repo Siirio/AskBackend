@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: ask-backend
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: ${ASK_DB_URL:jdbc:postgresql://localhost:5432/ask}
+    username: ${ASK_DB_USERNAME:postgres}
+    password: ${ASK_DB_PASSWORD:admin}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${ASK_MAIL_HOST:smtp.resend.com}
+    port: ${ASK_MAIL_PORT:587}
+    username: ${ASK_MAIL_USERNAME:resend}
+    password: ${ASK_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+server:
+  port: ${ASK_SERVER_PORT:8080}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+auth:
+  challenge:
+    ttl: ${AUTH_CHALLENGE_TTL:300}
+    code-length: ${AUTH_CHALLENGE_CODE_LENGTH:6}
+    max-attempts: ${AUTH_CHALLENGE_MAX_ATTEMPTS:5}
+  customer:
+    session:
+      ttl: ${AUTH_CUSTOMER_SESSION_TTL:86400}
+    remembered-session:
+      ttl: ${AUTH_CUSTOMER_REMEMBERED_SESSION_TTL:2592000}
+  business:
+    session:
+      ttl: ${AUTH_BUSINESS_SESSION_TTL:86400}
+    remembered-session:
+      ttl: ${AUTH_BUSINESS_REMEMBERED_SESSION_TTL:2592000}
+  staff:
+    session:
+      ttl: ${AUTH_STAFF_SESSION_TTL:86400}
+    remembered-session:
+      ttl: ${AUTH_STAFF_REMEMBERED_SESSION_TTL:2592000}
+    activation-session:
+      ttl: ${AUTH_STAFF_ACTIVATION_SESSION_TTL:300}
+    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
+  verification:
+    email:
+      enabled: ${AUTH_VERIFICATION_EMAIL_ENABLED:true}
+    sms:
+      enabled: ${AUTH_VERIFICATION_SMS_ENABLED:false}
+    staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
+  jwt:
+    secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
+  email:
+    from: ${AUTH_EMAIL_FROM:noreply@ask.kz}
+
+ask:
+  cors:
+    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  ai:
+    search:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_SEARCH_MODEL:deepseek-v4-flash}
+      max-tokens: ${DEEPSEEK_SEARCH_MAX_TOKENS:1800}
+    autodump:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
+      max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}

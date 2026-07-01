@@ -1,0 +1,129 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app-prod
+      - app-stage
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ask
+
+  db-prod:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ask_prod
+      POSTGRES_USER: ask_prod
+      POSTGRES_PASSWORD: ${ASK_PROD_DB_PASSWORD:?ASK_PROD_DB_PASSWORD must be set}
+    volumes:
+      - pg_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ask_prod -d ask_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ask
+
+  db-stage:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ask_stage
+      POSTGRES_USER: ask_stage
+      POSTGRES_PASSWORD: ${ASK_STAGE_DB_PASSWORD:?ASK_STAGE_DB_PASSWORD must be set}
+    volumes:
+      - pg_stage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ask_stage -d ask_stage"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ask
+
+  app-prod:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      ASK_DB_URL: jdbc:postgresql://db-prod:5432/ask_prod
+      ASK_DB_USERNAME: ask_prod
+      ASK_DB_PASSWORD: ${ASK_PROD_DB_PASSWORD:?ASK_PROD_DB_PASSWORD must be set}
+      ASK_SERVER_PORT: 8080
+      AUTH_JWT_SECRET: ${AUTH_PROD_JWT_SECRET:?AUTH_PROD_JWT_SECRET must be set}
+      AUTH_STAFF_TEMP_PASSWORD_KEY: ${AUTH_PROD_STAFF_TEMP_PASSWORD_KEY:?AUTH_PROD_STAFF_TEMP_PASSWORD_KEY must be set}
+      AUTH_VERIFICATION_EMAIL_ENABLED: ${AUTH_PROD_VERIFICATION_EMAIL_ENABLED:-true}
+      AUTH_VERIFICATION_SMS_ENABLED: ${AUTH_PROD_VERIFICATION_SMS_ENABLED:-false}
+      AUTH_VERIFICATION_STAGING_BYPASS: "false"
+      ASK_MAIL_HOST: ${ASK_MAIL_HOST:-smtp.resend.com}
+      ASK_MAIL_PORT: ${ASK_MAIL_PORT:-587}
+      ASK_MAIL_USERNAME: ${ASK_MAIL_USERNAME:-resend}
+      ASK_MAIL_PASSWORD: ${ASK_MAIL_PASSWORD:-}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-noreply@ask.com.kz}
+      ASK_CORS_ORIGINS: https://ask.com.kz
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_SEARCH_MODEL: ${DEEPSEEK_SEARCH_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_SEARCH_MAX_TOKENS: ${DEEPSEEK_SEARCH_MAX_TOKENS:-1800}
+      DEEPSEEK_AUTODUMP_MODEL: ${DEEPSEEK_AUTODUMP_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_AUTODUMP_MAX_TOKENS: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:-4000}
+    networks:
+      - ask
+
+  app-stage:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db-stage:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      ASK_DB_URL: jdbc:postgresql://db-stage:5432/ask_stage
+      ASK_DB_USERNAME: ask_stage
+      ASK_DB_PASSWORD: ${ASK_STAGE_DB_PASSWORD:?ASK_STAGE_DB_PASSWORD must be set}
+      ASK_SERVER_PORT: 8080
+      AUTH_JWT_SECRET: ${AUTH_STAGE_JWT_SECRET:?AUTH_STAGE_JWT_SECRET must be set}
+      AUTH_STAFF_TEMP_PASSWORD_KEY: ${AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY:?AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY must be set}
+      AUTH_VERIFICATION_EMAIL_ENABLED: ${AUTH_STAGE_VERIFICATION_EMAIL_ENABLED:-false}
+      AUTH_VERIFICATION_SMS_ENABLED: ${AUTH_STAGE_VERIFICATION_SMS_ENABLED:-false}
+      AUTH_VERIFICATION_STAGING_BYPASS: ${AUTH_STAGE_VERIFICATION_STAGING_BYPASS:-true}
+      ASK_MAIL_HOST: ${ASK_MAIL_HOST:-smtp.resend.com}
+      ASK_MAIL_PORT: ${ASK_MAIL_PORT:-587}
+      ASK_MAIL_USERNAME: ${ASK_MAIL_USERNAME:-resend}
+      ASK_MAIL_PASSWORD: ${ASK_MAIL_PASSWORD:-}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-noreply@ask.com.kz}
+      ASK_CORS_ORIGINS: https://stage.ask.com.kz
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_SEARCH_MODEL: ${DEEPSEEK_SEARCH_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_SEARCH_MAX_TOKENS: ${DEEPSEEK_SEARCH_MAX_TOKENS:-1800}
+      DEEPSEEK_AUTODUMP_MODEL: ${DEEPSEEK_AUTODUMP_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_AUTODUMP_MAX_TOKENS: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:-4000}
+    networks:
+      - ask
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_prod:
+  pg_stage:
+
+networks:
+  ask:

@@ -1,10 +1,10 @@
 # Ask
 
-Ask is a request-routing, availability, catalog, and service discovery platform.
+Ask is a local search platform for products and services across city businesses.
 
-The first useful version is simple: a customer describes what they need, Ask routes the request to relevant suppliers, and suppliers answer manually with availability, price, address, contact options, or clarification. That manual MVP is valuable because it reduces the customer's search effort before deep integrations exist.
+The primary user flow is search-first: a customer searches for a product or service, Ask shows matching catalog/service results when the data exists, and the customer immediately understands which business can help. If exact product/service data is missing or the customer wants confirmation, Ask can send a fallback request to suitable sellers or service providers.
 
-The long-term product is broader. Ask should become a reliable availability layer between customers and stores or service providers. That requires supplier onboarding, catalog import, data normalization, Smart Search, clear response rules, provider outreach, and integration boundaries for systems that suppliers already use.
+The product is broader than request routing. Ask should become a reliable local product and service search layer between customers and stores or service providers. That requires business onboarding, product/service catalogs, Excel/CSV import, data normalization, Smart Search, search indexing, clear response rules, provider outreach, and integration boundaries for systems that suppliers already use.
 
 ## The Problem
 
@@ -16,27 +16,30 @@ Ask should connect those two sides without pretending that perfect data exists o
 
 ## Why Ask Is Not Just Another Marketplace
 
-A classic marketplace usually starts with a controlled catalog. Ask starts from availability and demand:
+A classic marketplace usually starts with a tightly controlled catalog. Ask starts from local product/service search:
 
-- the customer asks in natural language;
-- Ask finds the right supplier or provider path;
-- the supplier can answer manually at first;
+- the customer searches in natural language;
+- Ask finds products and services from known business data first;
+- if data is insufficient, Ask routes a confirmation request to suitable suppliers;
 - catalog and integration quality improves over time;
-- automatic replies become valid only when real data supports them.
+- automatic availability, stock, delivery, and slot truth become valid only when real integration or supplier data supports them.
 
-Ask should not force every supplier into complete catalog migration before the product is useful. It should let the MVP work manually while building toward better data.
+Ask should not force every supplier into perfect catalog migration before the product is useful. It should still build toward catalog/search as the core product and keep manual requests as a fallback for missing, stale, or uncertain data.
 
 ## Product Direction
 
 Ask grows in layers:
 
-1. Manual request routing.
-2. Stable supplier, branch, contact, category, and response models.
-3. Product catalog import from Excel, CSV, MoySklad, POS, e-commerce, or other sources.
-4. Data normalization for product names, categories, attributes, prices, branches, and freshness.
-5. Smart Search over rough customer queries, categories, attributes, aliases, and availability signals.
-6. Integration-backed automatic availability where real provider data exists.
-7. Service discovery for appointments, schedules, free windows, specialists, branches, confirmations, and cancellations.
+1. Business/store registration and stable business ownership.
+2. Product and service domain models.
+3. Product/service CRUD for businesses.
+4. Product catalog import from Excel, CSV, MoySklad, POS, e-commerce, or other sources.
+5. Searchable entity contracts, search indexing, and Smart Search over rough customer queries, categories, attributes, and aliases.
+6. Search results that show where a known product or service is available when data supports it.
+7. Product request fallback when exact data is missing, stale, or requires supplier confirmation.
+8. Supplier replies, request-scoped chat, and contact actions.
+9. Integration-backed stock, delivery, schedule, or availability truth only where real provider data exists.
+10. Service discovery for appointments, schedules, free windows, specialists, branches, confirmations, and cancellations.
 
 ## Target Product Architecture
 
@@ -52,7 +55,7 @@ Web UI
   -> AskBackend API
 ```
 
-Frontend implementations may have different visual UI and platform behavior, but they should not duplicate heavy business logic. Backend owns request routing, data truth, catalog processing, service-provider data, permissions, and integration boundaries. Client layers adapt backend DTOs into view models and handle platform-specific presentation.
+Frontend implementations may have different visual UI and platform behavior, but they should not duplicate heavy business logic. Backend owns search data truth, catalog processing, service-provider data, request fallback, permissions, and integration boundaries. Client layers adapt backend DTOs into view models and handle platform-specific presentation.
 
 ## Backend Architecture Direction
 
@@ -65,7 +68,7 @@ Avoid a structure that grows into broad technical buckets such as one global `co
 Prefer feature/domain-based packaging:
 
 ```text
-src/main/java/com/ask/
+src/main/java/kz/ask/
   request/
     api/
       RequestController.java
@@ -114,39 +117,40 @@ Inside each module, keep clean boundaries: `api` receives HTTP/API input, `appli
 
 Product sellers usually already have product data in files or systems. The backend must support practical import paths, especially Excel and CSV, so sellers do not have to manually recreate catalogs from scratch. Catalog work should include file upload, column mapping, validation, normalization, duplicate handling, category/attribute mapping, branch-level data, import history, and data-quality feedback.
 
-Services have a different operational shape. Service providers need to manage offerings, schedules, free windows, discounts, conditions, specialists, branches, confirmations, and cancellations. Doing that only inside a mobile app can become overloaded and inconvenient. The planned direction is a web cabinet for service providers, so they can manage larger service datasets and availability more comfortably.
+Catalog is now part of the core search strategy, not a distant optional add-on. If a product or service already exists in Ask data, the backend should be able to return it through search before creating a manual request.
+
+Services have a different operational shape. Service providers need to manage offerings, approximate duration, schedule text or future schedule patterns, conditions, branches, confirmations, and cancellations. Doing that only inside a mobile app can become overloaded and inconvenient. The planned direction is a web cabinet for service providers, so they can manage larger service datasets more comfortably.
 
 Current product surface direction:
 
 - mobile application has two sides: customer and seller/supplier;
 - website is primarily for establishments that provide services and need a larger workspace for managing service offerings, schedules, windows, discounts, and conditions;
 - product-catalog bulk import must support Excel and CSV workflows;
+- customer search should show known products/services first and use requests only when data is insufficient;
 - future web surfaces may also support bulk product catalog operations if that becomes the most usable supplier workflow, but this should remain API-backed and not become a separate backend.
 
 ## Current Foundation Scope
 
-This repository is a foundation for future Ask backend and AI-assisted development. It preserves the product vision, architecture rules, workflow rules, and implementation pipeline that new developers and Codex agents should load before coding.
+This repository is a foundation for future Ask backend and AI-assisted development. It preserves the product vision, backend code rules, data architecture, client contract expectations, and first-session Codex setup notes that new developers and Codex agents should load before coding.
 
 It is not an old prototype dump and not a local-machine-specific Codex export.
 
 ## Important Documents
 
-- `FIRST_READ_THIS.md`: start here when a new person or Codex agent opens the repo.
-- `ARCHITECTURE_NARRATIVE.md`: technical story and architecture direction.
-- `AGENTS.md`: rules for AI agents and developers.
-- `CODEX_PLAYBOOK.md`: compact task router for backend, frontend, catalog, services, integrations, and MCP usage.
-- `IMPLEMENTATION_PIPELINE.md`: how to keep extending this foundation safely.
-- `SELF_AWARE_ORIGIN.md`: how to reason about foundation decisions without over-citing old context.
-- `FOUNDATION_AUDIT.md`: what kind of material belongs in the foundation and what should be excluded.
-- `skills/`: focused skill docs that can become installable Codex skills if needed.
-- `mcp/README.md` and `plugins/README.md`: tool guidance without secrets or machine-specific config.
-- `DEPRECATED_WEB_STAGING_NOTES.md`: archive-only notes about old browser-staging lessons.
-- `CHANGELOG_FOUNDATION.md`: what changed in this foundation.
+- `AGENTS.md`: short agent workflow, first-session pointer, task routing, and product guardrails.
+- `AI_Knowledge/first_steps/FIRST_READ_THIS.md`: start here when a new person or Codex agent opens the repo.
+- `AI_Knowledge/first_steps/IMPLEMENTATION_PIPELINE.md`: how to keep extending this foundation safely.
+- `AI_Knowledge/CODE_RULES.md`: project-specific backend code architecture, folder creation, DTO, entity, Lombok, and verification rules.
+- `AI_Knowledge/data_architecture/ARCHITECTURE_NARRATIVE.md`: technical story and architecture direction.
+- `AI_Knowledge/data_architecture/PRODUCT_SERVICE_FOUNDATION_ERD.md`: MVP entity strategy, ERD, table connections, booking, messaging, and product/service search boundaries.
+- `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md`: backend-facing contract extracted from the UX/UI flow.
+- `codex/CODEX_INFRASTRUCTURE.md`: expected Codex plugins, MCP servers, and routing behavior without local config.
+- `AI_Knowledge/CHANGELOG_FOUNDATION.md`: what changed in this foundation.
 
 ## Non-Goals
 
 - Do not hardcode Ask around one city, one store, one Excel file, one frontend, one old prototype, or one provider.
-- Do not claim catalog, inventory, service slots, delivery, or logistics facts unless a supplier or real integration provides them.
+- Do not claim inventory, service slots, delivery, logistics, or guaranteed availability facts unless a supplier or real integration provides them.
 - Do not copy local Codex configs, tokens, auth files, sqlite state, generated caches, plugin caches, or runtime paths into this repo.
 - Do not make browser web staging the architecture of the future backend.
 

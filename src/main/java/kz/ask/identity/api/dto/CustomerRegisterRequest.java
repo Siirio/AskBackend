@@ -1,0 +1,46 @@
+package kz.ask.identity.api.dto;
+
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CustomerRegisterRequest {
+
+    private String displayName;
+    @Email
+    private String email;
+    private String phone;
+    @NotBlank
+    @Size(min = 8, max = 128)
+    private String password;
+    @NotBlank
+    private String passwordConfirmation;
+    private Boolean acceptedUserAgreement;
+    private Boolean rememberMe;
+
+    @AssertTrue(message = "Exactly one of email or phone must be provided")
+    public boolean hasSingleContact() {
+        return (email != null && !email.isBlank()) ^ (phone != null && !phone.isBlank());
+    }
+
+    @AssertTrue(message = "Password and confirmation must match")
+    public boolean passwordsMatch() {
+        return password != null && password.equals(passwordConfirmation);
+    }
+
+    @AssertTrue(message = "User agreement must be accepted")
+    public boolean agreementAccepted() {
+        return acceptedUserAgreement != null && acceptedUserAgreement;
+    }
+}

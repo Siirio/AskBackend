@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${ASK_DB_NAME:-ask}
+      POSTGRES_USER: ${ASK_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${ASK_DB_PASSWORD:-admin}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ask-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ASK_DB_USERNAME:-postgres} -d ${ASK_DB_NAME:-ask}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "${ASK_SERVER_PORT:-8080}:8080"
+    environment:
+      ASK_DB_URL: jdbc:postgresql://db:5432/${ASK_DB_NAME:-ask}
+      ASK_DB_USERNAME: ${ASK_DB_USERNAME:-postgres}
+      ASK_DB_PASSWORD: ${ASK_DB_PASSWORD:-admin}
+      ASK_SERVER_PORT: "8080"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me-in-production-use-at-least-256-bits}
+      AUTH_CHALLENGE_TTL: ${AUTH_CHALLENGE_TTL:-300}
+      AUTH_VERIFICATION_EMAIL_ENABLED: ${AUTH_VERIFICATION_EMAIL_ENABLED:-true}
+      AUTH_VERIFICATION_SMS_ENABLED: ${AUTH_VERIFICATION_SMS_ENABLED:-false}
+      ASK_MAIL_HOST: ${ASK_MAIL_HOST:-smtp.gmail.com}
+      ASK_MAIL_PORT: ${ASK_MAIL_PORT:-587}
+      ASK_MAIL_USERNAME: ${ASK_MAIL_USERNAME:-}
+      ASK_MAIL_PASSWORD: ${ASK_MAIL_PASSWORD:-}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-noreply@ask.kz}
+      ASK_CORS_ORIGINS: ${ASK_CORS_ORIGINS:-http://localhost:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ask-network
+
+volumes:
+  pgdata:
+
+networks:
+  ask-network:
