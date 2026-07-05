@@ -20,6 +20,8 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
 
     Optional<SearchDocument> findByServiceBranchOfferId(UUID serviceBranchOfferId);
 
+    Optional<SearchDocument> findByBrandDropId(UUID brandDropId);
+
     List<SearchDocument> findByStatus(RecordStatus status);
 
     @Query("""
@@ -34,7 +36,10 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
     List<SearchDocument> findActiveCandidates(@Param("documentTypes") List<SearchDocumentType> documentTypes);
 
     @Query("""
-            SELECT DISTINCT d FROM SearchDocument d LEFT JOIN d.tokens t
+            SELECT DISTINCT d FROM SearchDocument d
+            LEFT JOIN d.tokens t
+            LEFT JOIN d.business business
+            LEFT JOIN d.branch branch
             WHERE d.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
             AND d.documentType IN :documentTypes
             AND (:normalizedQuery IS NULL OR :normalizedQuery = ''
@@ -42,8 +47,8 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                  OR LOWER(d.summary) LIKE CONCAT('%', :normalizedQuery, '%')
                  OR LOWER(d.categoryLabel) LIKE CONCAT('%', :normalizedQuery, '%')
                  OR LOWER(d.sku) LIKE CONCAT('%', :normalizedQuery, '%')
-                 OR LOWER(d.business.name) LIKE CONCAT('%', :normalizedQuery, '%')
-                 OR LOWER(d.branch.name) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(business.name) LIKE CONCAT('%', :normalizedQuery, '%')
+                 OR LOWER(branch.name) LIKE CONCAT('%', :normalizedQuery, '%')
                  OR LOWER(t) LIKE CONCAT('%', :normalizedQuery, '%'))
             AND (:normalizedCategory IS NULL OR :normalizedCategory = ''
                  OR LOWER(d.categoryLabel) LIKE CONCAT('%', :normalizedCategory, '%'))

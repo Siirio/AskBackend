@@ -11,7 +11,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(name = "auth.verification.email.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "auth.verification.test-mode", havingValue = "false", matchIfMissing = true)
 public class SmtpEmailCodeSender implements EmailCodeSender {
 
     private static final Logger log = LoggerFactory.getLogger(SmtpEmailCodeSender.class);

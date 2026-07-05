@@ -35,6 +35,41 @@ For later sessions, read only the documents relevant to the task, plus any file 
 - Use Dashboard or lifecycle tooling only for substantial starts, architectural pivots, and completion records.
 - If a likely Codex tool is not visible, use `tool_search` before assuming it is unavailable.
 
+## Search Infrastructure
+
+- **PostgreSQL = source of truth**: businesses, branches, products, services, contacts, drops, storefronts, raw imports, approvals.
+- **Meilisearch = fast search projection**: denormalized search index for typo-tolerant, faceted, geo-aware, hybrid (full-text + semantic) search.
+- **AI = query structuring helper**: understands raw query, produces SearchPlan JSON. AI never selects businesses or invents availability.
+- **Backend Search Orchestrator**: validates SearchPlan, queries Meilisearch, hydrates from PostgreSQL, applies hard gates/ranking, creates snapshot.
+- Meilisearch index is rebuildable from PostgreSQL at any time. PostgreSQL is never bypassed for authority.
+
+## SearchPlan JSON Contract
+
+AI returns structured plan, not final results:
+
+```json
+{
+  "scope": "PRODUCT",
+  "rawQuery": "винтажные levi's джинсы 90s рядом",
+  "mustHave": ["джинсы", "levis"],
+  "softSignals": ["винтаж", "90s", "рядом"],
+  "categoryHints": ["clothing", "second_hand"],
+  "attributeHints": { "brand": ["Levi's"], "style": ["vintage", "90s"] },
+  "locationIntent": { "nearMe": true },
+  "rankingHints": ["intent_match", "distance", "fresh_drop"]
+}
+```
+
+Backend validates, queries Meilisearch, hydrates from PostgreSQL, applies hard gates and ranking.
+
+## Contact Privacy
+
+- `contact_hash` / HMAC — for dedupe and safe matching only. Hash is never reversible.
+- Encrypted contact value or public URL — for actual contact resolution.
+- Frontend receives `contactActionId`, not raw phone/username.
+- Backend resolves `contactActionId` → redirect/deep-link or returns safe display value.
+- `BusinessExternalLink`: provider=`2GIS/INSTAGRAM/TELEGRAM/SITE/WHATSAPP`, publicUrl/deepLink, source, confidence, visibility.
+
 ## Product Guardrails
 
 - AskBackend is one backend for Android, iOS, and future web clients.
@@ -47,6 +82,7 @@ For later sessions, read only the documents relevant to the task, plus any file 
 - New task contracts describe product visibility through enabled/disabled/deleted actions and service visibility through active/inactive actions. Do not model separate availability scoring, inventory-count tracking, or freshness tracking in MVP docs.
 - Chat is always available from product, service, request, booking, and business-context screens through contextual contact actions.
 - Business onboarding is production-facing: registration creates a real branch/store profile and its real products/services must persist in the real database. Do not design it as mock-only onboarding.
+- Drops/events are searchable index signals. If a user searches for something covered by a drop, results show product/drop cards.
 
 ## Anti-Marketplace Guardrails (2026-07-01)
 

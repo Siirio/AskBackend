@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
+import kz.ask.business.domain.entity.BrandDrop;
 import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
@@ -41,6 +42,10 @@ public class SearchDocument extends BaseUuidV7Entity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_branch_offer_id")
     private ServiceBranchOffer serviceBranchOffer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_drop_id")
+    private BrandDrop brandDrop;
 
     @Column(nullable = false)
     private String title;

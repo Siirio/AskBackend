@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import kz.ask.business.domain.enums.BrandPageBlockType;
+import kz.ask.business.domain.enums.StorefrontPageStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,4 +36,8 @@ public class BrandPageBlock extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     private Boolean enabled;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private StorefrontPageStatus pageStatus;
 }

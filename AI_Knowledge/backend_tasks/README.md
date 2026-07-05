@@ -127,3 +127,8 @@ Content-Type: application/json
 |04|`04_business_admin_service_endpoints.md`|Спецификация|
 |05|`05_identity_auth_and_session_endpoints.md`|Реализовано|
 |06|`06_product_excel_import_endpoints.md`|Спецификация|
+|07|`07_meilisearch_search_engine_integration.md`|Спецификация|
+|08|`08_public_business_candidate_ingestion.md`|Спецификация|
+|09|`09_contact_action_privacy_and_redirects.md`|Спецификация|
+|10|`10_brand_storefront_builder_backend.md`|Спецификация|
+|11|`11_drops_events_search_indexing.md`|Спецификация|

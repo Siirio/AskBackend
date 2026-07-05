@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(name = "auth.verification.sms.enabled", havingValue = "false")
+@ConditionalOnProperty(name = "auth.verification.test-mode", havingValue = "false", matchIfMissing = true)
 public class NoopSmsCodeSender implements SmsCodeSender {
 
     private static final Logger log = LoggerFactory.getLogger(NoopSmsCodeSender.class);

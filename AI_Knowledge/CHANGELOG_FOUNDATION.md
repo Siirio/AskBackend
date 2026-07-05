@@ -1,5 +1,65 @@
 # Foundation Changelog
 
+## 2026-07-04 — Freshness Audit: Meilisearch, Contact Privacy, Storefront, Drops, Public Ingestion
+
+Deep audit of all MD files against the current Ask product direction. Five new backend task specs created (07-11), AGENTS.md and ARCHITECTURE_NARRATIVE.md updated with search infrastructure, contact privacy architecture, storefront builder, drops-as-search-signals, and public business ingestion pipeline.
+
+### Search Infrastructure (Task 07)
+
+- Documented three-layer search: PostgreSQL (source of truth) → Meilisearch (fast search projection) → AI (query structuring into SearchPlan JSON).
+- Meilisearch index `ask_products_services` schema: 20 fields including `_geo` for geo-search, computed `freshnessScore`/`activityLevel`/`hasActiveDrop`.
+- Search Orchestrator `POST /api/v1/search/v2`: raw query → AI intent structurer → SearchPlan → Meilisearch query → PostgreSQL hydration → SearchResponse with sections (exact_products, similar_products, fresh_drops, suitable_storefronts, over_budget, needs_confirmation).
+- Sync: direct on CRUD for MVP, outbox pattern for production. Full rebuild via `POST /api/v1/admin/search/rebuild-index`.
+- SearchResultCard DTO: component type (ProductCard/ServiceCard/DropCard/BusinessCandidateCard), matchReasons (max 4), badges, availability, hasActiveDrop.
+
+### Contact Privacy Architecture (Task 09)
+
+- HMAC-SHA256 for dedup only (mathematically irreversible). AES-256-GCM encrypted vault for contact storage.
+- contactActionId pattern: frontend receives one-time/short-lived tokens, backend resolves to redirect/deep-link/display value.
+- ContactResolveResponse: actionType (REDIRECT/DISPLAY/DEEP_LINK/CHAT), provider, deepLink/redirectUrl/displayValue.
+- BusinessContact extended: contact_hash, encrypted_value, display_value, visibility (PUBLIC/AFTER_CONTACT/INTERNAL).
+- BusinessExternalLink entity: provider (TWO_GIS/INSTAGRAM/TELEGRAM/SITE/WHATSAPP), confidence (VERIFIED/LIKELY/UNVERIFIED), visibility.
+- Migration plan for existing contacts: compute hash, encrypt value, create external links for social contacts.
+
+### Storefront Builder (Task 10)
+
+- Constrained Canva-like builder (Puck recommended, MIT), NOT free-form Webflow.
+- BrandProfile: brandColor, logoUrl, coverUrl, toneOfVoice, description, social links.
+- StorefrontBlock types: HERO, PRODUCTS, DROPS, ABOUT, LOOKBOOK, BRANCHES, CONTACTS, FAQ, PROMO, WHY_THIS_MATCHES.
+- Each block has blockType, displayOrder, configJson, enabled.
+- Draft/published versioning: PUT draft saves, POST publish copies draft → published. Clients see only published.
+- Brand color from BrandProfile used as search result card accent. Color/logo changes trigger Meilisearch re-sync.
+
+### Drops As Search Signals (Task 11)
+
+- Drop entity: name, description, type (NEW_COLLECTION/LIMITED_RELEASE/RESTOCK/CAPSULE/SEASONAL/COLLAB/PREORDER), status (UPCOMING/ACTIVE/ENDED/CANCELLED), startDate, endDate, coverUrl, productIds, tags.
+- Drops indexed in Meilisearch as type=DROP. Appear in `fresh_drops` search section as DropCard.
+- Active drops boost ranking: hasActiveDrop=true → +10% freshnessScore. Query keywords "новый"/"дроп"/"коллекция"/"релиз" → drops ranked higher.
+- UPCOMING and ACTIVE indexed; ENDED and CANCELLED removed from index.
+- Drop does not require linked products — can be an announcement.
+
+### Public Business Candidate Ingestion (Task 08)
+
+- Discovery pipeline: 2GIS, Instagram, Telegram, public websites → BusinessExternalLink + BusinessCandidate.
+- BusinessCandidate: PENDING_REVIEW → admin approve → Business created. Not visible in client search until approved.
+- Admin endpoints: ingest signals, list candidates, approve/reject.
+- Privacy rule: only public business signals, no scraping of private profiles or full history.
+
+### AGENTS.md And Architecture Docs Updated
+
+- Backend AGENTS.md: added Search Infrastructure, SearchPlan JSON Contract, Contact Privacy sections.
+- ARCHITECTURE_NARRATIVE.md: added Search Infrastructure (three-layer diagram, Meilisearch schema, SearchPlan flow) and Contact Privacy And Actions (HMAC/vault architecture, BusinessExternalLink entity table).
+- Visual style direction corrected: dark graphite (#070807), warm ivory (#f4eee6), orange accent (#ff5a1f). Old teal (#0d9b7c) references removed.
+- Task README updated: tasks 07-11 added with status "Спецификация".
+
+### Files Created (5)
+
+`07_meilisearch_search_engine_integration.md`, `08_public_business_candidate_ingestion.md`, `09_contact_action_privacy_and_redirects.md`, `10_brand_storefront_builder_backend.md`, `11_drops_events_search_indexing.md`.
+
+### Files Deleted (7)
+
+`anti_marketplace_gap_analysis.md`, `ASK_FRONTEND_REDESIGN_REWORK_PROMPT.md` (absorbed into reference stack), `AskFrontend/ARCHITECTURE_DOCUMENTATION.md`, `AI_AUTODUMP_IMPORT_ARCHITECTURE.md` (has _ACTUALIZED version), `AskMvp/` (separate prototype), `ASK_PROJECT_KNOWLEDGE_DUMP_2026-06-29.md`, `.playwright-mcp/figma-gap-analysis.md`.
+
 ## 2026-07-01 - Anti-Marketplace Brand And Decision Card Contract
 
 - Search result cards now carry a brand layer and a decision layer instead of marketplace ranking proof.

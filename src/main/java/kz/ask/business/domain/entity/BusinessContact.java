@@ -11,6 +11,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import kz.ask.business.domain.enums.ContactVisibility;
 import kz.ask.business.domain.enums.ContactType;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
@@ -35,6 +36,19 @@ public class BusinessContact extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     private String contactValue;
+
+    @Column(name = "contact_hash")
+    private String contactHash;
+
+    @Column(name = "encrypted_value", columnDefinition = "TEXT")
+    private String encryptedValue;
+
+    @Column(name = "display_value")
+    private String displayValue;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ContactVisibility visibility;
 
     @Column(name = "is_primary", nullable = false)
     private Boolean primaryContact;

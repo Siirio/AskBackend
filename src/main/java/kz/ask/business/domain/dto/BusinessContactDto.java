@@ -11,4 +11,8 @@ import lombok.Setter;
 public class BusinessContactDto {
 
     private UUID id;
+    private UUID businessId;
+    private String contactType;
+    private String displayValue;
+    private String visibility;
 }
