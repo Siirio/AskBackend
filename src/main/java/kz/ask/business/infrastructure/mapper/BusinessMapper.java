@@ -18,6 +18,7 @@ import kz.ask.business.domain.entity.BrandProfile;
 import kz.ask.business.domain.entity.BranchMember;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
+import kz.ask.business.domain.entity.BusinessCard;
 import kz.ask.business.domain.entity.BusinessContact;
 import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.entity.City;
@@ -27,10 +28,13 @@ import kz.ask.business.domain.enums.BrandDropStatus;
 import kz.ask.business.domain.enums.BrandDropType;
 import kz.ask.business.domain.enums.BrandPageBlockType;
 import kz.ask.business.domain.enums.BusinessMemberRole;
+import kz.ask.business.domain.enums.ContactVisibility;
 import kz.ask.business.domain.enums.ContactType;
+import kz.ask.business.domain.enums.StorefrontPageStatus;
 import kz.ask.business.domain.dto.BrandDropDto;
 import kz.ask.business.domain.dto.BrandPageBlockDto;
 import kz.ask.business.domain.dto.BrandProfileDto;
+import kz.ask.business.domain.dto.BusinessCardDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.stereotype.Component;
@@ -73,6 +77,8 @@ public class BusinessMapper {
         contact.setBranch(branch);
         contact.setContactType(type);
         contact.setContactValue(value);
+        contact.setDisplayValue(value);
+        contact.setVisibility(ContactVisibility.AFTER_CONTACT);
         contact.setPrimaryContact(true);
         contact.setStatus(RecordStatus.ACTIVE);
         return contact;
@@ -98,19 +104,22 @@ public class BusinessMapper {
     }
 
     public BrandPageBlock toBrandPageBlockEntity(Business business, BrandPageBlockType blockType,
-                                                  Integer displayOrder, String configJson, Boolean enabled) {
+                                                  Integer displayOrder, String configJson, Boolean enabled,
+                                                  StorefrontPageStatus pageStatus) {
         BrandPageBlock block = new BrandPageBlock();
         block.setBusiness(business);
         block.setBlockType(blockType);
         block.setDisplayOrder(displayOrder);
         block.setConfigJson(configJson);
         block.setEnabled(enabled);
+        block.setPageStatus(pageStatus);
         return block;
     }
 
     public BrandDrop toBrandDropEntity(Business business, String name, String description,
                                         java.time.Instant startDate, java.time.Instant endDate,
-                                        BrandDropType type, BrandDropStatus status, String coverUrl) {
+                                        BrandDropType type, BrandDropStatus status, String coverUrl,
+                                        List<String> tags, List<java.util.UUID> productIds) {
         BrandDrop drop = new BrandDrop();
         drop.setBusiness(business);
         drop.setName(name);
@@ -120,6 +129,8 @@ public class BusinessMapper {
         drop.setType(type);
         drop.setStatus(status);
         drop.setCoverUrl(coverUrl);
+        drop.setTags(tags == null ? List.of() : tags);
+        drop.setProductIds(productIds == null ? List.of() : productIds);
         return drop;
     }
 
@@ -179,6 +190,8 @@ public class BusinessMapper {
                 .displayOrder(entity.getDisplayOrder())
                 .configJson(entity.getConfigJson())
                 .enabled(entity.getEnabled())
+                .pageStatus(entity.getPageStatus().name())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
@@ -193,6 +206,9 @@ public class BusinessMapper {
                 .type(entity.getType().name())
                 .status(entity.getStatus().name())
                 .coverUrl(entity.getCoverUrl())
+                .productCount(entity.getProductIds().size())
+                .tags(entity.getTags())
+                .productIds(entity.getProductIds())
                 .build();
     }
 
@@ -221,6 +237,10 @@ public class BusinessMapper {
     public BusinessContactDto toBusinessContactDto(BusinessContact entity) {
         return BusinessContactDto.builder()
                 .id(entity.getId())
+                .businessId(entity.getBusiness().getId())
+                .contactType(entity.getContactType().name())
+                .displayValue(entity.getDisplayValue())
+                .visibility(entity.getVisibility().name())
                 .build();
     }
 
@@ -270,6 +290,16 @@ public class BusinessMapper {
         return CityDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
+                .build();
+    }
+
+    public BusinessCardDto toBusinessCardDto(BusinessCard entity) {
+        return BusinessCardDto.builder()
+                .id(entity.getId())
+                .businessId(entity.getBusiness().getId())
+                .blocks(entity.getBlocks())
+                .publishedAt(entity.getPublishedAt())
+                .status(entity.getStatus().name())
                 .build();
     }
 }

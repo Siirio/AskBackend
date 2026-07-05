@@ -5,8 +5,11 @@ import jakarta.validation.Valid;
 import java.util.List;
 import kz.ask.search.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.api.dto.SearchResultCardResponse;
+import kz.ask.search.api.dto.SearchV2Request;
+import kz.ask.search.api.dto.SearchV2Response;
 import kz.ask.search.api.dto.StructuredSearchResponse;
 import kz.ask.search.application.processor.PublicSearchProcessor;
+import kz.ask.search.application.processor.SearchV2Processor;
 import kz.ask.search.application.processor.StructuredSearchProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +27,7 @@ public class PublicSearchController {
 
     private final PublicSearchProcessor processor;
     private final StructuredSearchProcessor structuredSearchProcessor;
+    private final SearchV2Processor searchV2Processor;
 
     @GetMapping
     public ResponseEntity<List<SearchResultCardResponse>> search(@RequestParam(required = false, name = "q") String query,
@@ -44,5 +48,10 @@ public class PublicSearchController {
                                                                      @RequestParam(required = false) Integer page,
                                                                      @RequestParam(required = false) Integer size) {
         return ResponseEntity.ok(structuredSearchProcessor.search(request, page, size));
+    }
+
+    @PostMapping("/v2")
+    public ResponseEntity<SearchV2Response> searchV2(@Valid @RequestBody SearchV2Request request) {
+        return ResponseEntity.ok(searchV2Processor.search(request));
     }
 }

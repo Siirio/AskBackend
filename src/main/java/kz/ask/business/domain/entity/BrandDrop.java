@@ -1,6 +1,8 @@
 package kz.ask.business.domain.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -9,6 +11,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import kz.ask.business.domain.enums.BrandDropStatus;
 import kz.ask.business.domain.enums.BrandDropType;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
@@ -44,4 +49,14 @@ public class BrandDrop extends BaseUuidV7Entity {
     private BrandDropStatus status;
 
     private String coverUrl;
+
+    @ElementCollection
+    @CollectionTable(name = "brand_drop_tag", joinColumns = @JoinColumn(name = "brand_drop_id"))
+    @Column(name = "tag", nullable = false)
+    private List<String> tags = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "brand_drop_product", joinColumns = @JoinColumn(name = "brand_drop_id"))
+    @Column(name = "product_id", nullable = false)
+    private List<UUID> productIds = new ArrayList<>();
 }

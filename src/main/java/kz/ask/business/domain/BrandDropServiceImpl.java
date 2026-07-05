@@ -10,6 +10,8 @@ import kz.ask.business.domain.enums.BrandDropType;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.infrastructure.repository.BrandDropRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
+import kz.ask.shared.error.ErrorCode;
+import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +46,8 @@ public class BrandDropServiceImpl implements BrandDropService {
     @Override
     @Transactional
     public BrandDropDto create(UUID businessId, String name, String description, Instant startDate,
-                               Instant endDate, String type, String status, String coverUrl) {
+                               Instant endDate, String type, String status, String coverUrl,
+                               List<String> tags, List<UUID> productIds) {
         BrandDrop drop = businessMapper.toBrandDropEntity(
                 businessRepository.getReferenceById(businessId),
                 name,
@@ -53,7 +56,64 @@ public class BrandDropServiceImpl implements BrandDropService {
                 endDate,
                 BrandDropType.valueOf(type),
                 BrandDropStatus.valueOf(status),
-                coverUrl);
+                coverUrl,
+                tags,
+                productIds);
         return businessMapper.toBrandDropDto(brandDropRepository.save(drop));
+    }
+
+    @Override
+    @Transactional
+    public BrandDropDto update(UUID businessId, UUID dropId, String name, String description, Instant startDate,
+                               Instant endDate, String type, String status, String coverUrl,
+                               List<String> tags, List<UUID> productIds) {
+        BrandDrop drop = requireDrop(businessId, dropId);
+        if (name != null) {
+            drop.setName(name);
+        }
+        if (description != null) {
+            drop.setDescription(description);
+        }
+        if (startDate != null) {
+            drop.setStartDate(startDate);
+        }
+        if (endDate != null) {
+            drop.setEndDate(endDate);
+        }
+        if (type != null) {
+            drop.setType(BrandDropType.valueOf(type));
+        }
+        if (status != null) {
+            drop.setStatus(BrandDropStatus.valueOf(status));
+        }
+        if (coverUrl != null) {
+            drop.setCoverUrl(coverUrl);
+        }
+        if (tags != null) {
+            drop.setTags(tags);
+        }
+        if (productIds != null) {
+            drop.setProductIds(productIds);
+        }
+        return businessMapper.toBrandDropDto(brandDropRepository.save(drop));
+    }
+
+    @Override
+    @Transactional
+    public BrandDropDto cancel(UUID businessId, UUID dropId) {
+        BrandDrop drop = requireDrop(businessId, dropId);
+        drop.setStatus(BrandDropStatus.CANCELLED);
+        return businessMapper.toBrandDropDto(brandDropRepository.save(drop));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID businessId, UUID dropId) {
+        brandDropRepository.delete(requireDrop(businessId, dropId));
+    }
+
+    private BrandDrop requireDrop(UUID businessId, UUID dropId) {
+        return brandDropRepository.findByIdAndBusinessId(dropId, businessId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.DROP_NOT_FOUND));
     }
 }

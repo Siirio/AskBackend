@@ -6,7 +6,11 @@ public enum BrandPageBlockType {
     PRODUCTS,
     ABOUT,
     DROP,
+    DROPS,
     CONTACTS,
     BRANCHES,
-    LOOKBOOK
+    LOOKBOOK,
+    FAQ,
+    PROMO,
+    WHY_THIS_MATCHES
 }

@@ -46,6 +46,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/search",
+                    "/api/v1/search/v2",
                     "/api/v1/search/intent-structure",
                     "/api/v1/auth/login",
                     "/api/v1/auth/customer/login/start",

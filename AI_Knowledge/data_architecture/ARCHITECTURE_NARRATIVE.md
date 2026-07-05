@@ -187,6 +187,76 @@ The current code and `V1__init.sql` intentionally do not contain:
 
 Search documents index only product offers and service branch offers. Search result snapshots may store `business_id` and `branch_id` only as context for a product/service row.
 
+## Search Infrastructure (2026-07-04)
+
+Ask uses a three-layer search architecture:
+
+```text
+PostgreSQL
+  = truth: businesses, branches, products, services, contacts, drops, storefronts, raw imports, approvals
+
+Meilisearch
+  = fast denormalized search index: searchable cards/signals
+  = typo tolerance, ranking, filters/facets/sorting, geo-search, hybrid/semantic search
+  = index is rebuildable from PostgreSQL at any time
+
+AI (DeepSeek or equivalent)
+  = understands raw query and creates SearchPlan JSON
+  = never selects businesses, never invents availability
+```
+
+### Search Flow
+
+```text
+Customer submits raw query
+  → AI structures intent into SearchPlan JSON
+  → Backend Search Orchestrator validates SearchPlan
+  → Meilisearch queried with structured filters
+  → Results hydrated from PostgreSQL (authority data)
+  → Hard gates applied (city, budget, scope)
+  → Ranking applied (intent_match, distance, freshness, drops)
+  → Snapshot created
+  → Frontend renders sections + cards + match reasons
+```
+
+### SearchPlan JSON Contract
+
+AI returns structured plan. Backend validates and executes:
+
+```json
+{
+  "scope": "PRODUCT",
+  "rawQuery": "винтажные levi's джинсы 90s рядом",
+  "mustHave": ["джинсы", "levis"],
+  "softSignals": ["винтаж", "90s", "рядом"],
+  "categoryHints": ["clothing", "second_hand"],
+  "attributeHints": { "brand": ["Levi's"], "style": ["vintage", "90s"] },
+  "locationIntent": { "nearMe": true },
+  "rankingHints": ["intent_match", "distance", "fresh_drop"]
+}
+```
+
+### Meilisearch Index Schema
+
+Search document in Meilisearch mirrors PostgreSQL `search_document` but denormalized for fast retrieval:
+
+- `id`, `type` (PRODUCT/SERVICE/DROP), `businessId`, `branchId`
+- `title`, `summary`, `tags`, `categoryLabel`
+- `price`, `brandColor`, `brandLogoUrl`
+- `_geo` (lat/lng for geo-search)
+- `attributes` (custom key-value for faceting)
+- `freshnessScore`, `activityLevel`, `hasActiveDrop`
+
+Meilisearch settings: `filterableAttributes` (type, businessId, categoryLabel, price, city), `sortableAttributes` (price, freshnessScore, _geo), `searchableAttributes` (title, summary, tags, attributes).
+
+### Public Business Discovery (Astana Import)
+
+Separate ingestion layer for public business signals:
+- Sources: Instagram, Telegram, 2GIS, public websites
+- Only public business signals — no private scraping, no copying full history
+- Output: `BusinessExternalLink` records, business candidates, catalog hints
+- Backend-owned pipeline, not frontend-driven
+
 ## Search And Distance
 
 Search ranking should be smart and practical. It can use query matching, category, result attributes, enabled state, price, and distance when distance is known. The public contract should stay focused on the visible product/service result and its branch context.
@@ -260,6 +330,27 @@ Optional, transparent, user-editable. Used to boost intent_match scoring, not as
 - backend calculates distance from customer coordinates to branch coordinates.
 
 If coordinates are missing, return `distanceMeters=null`.
+
+## Contact Privacy And Actions (2026-07-04)
+
+Contact data requires privacy by design:
+
+- **`contact_hash` / HMAC** — for deduplication and safe matching only. Hash is mathematically one-way, never reversible.
+- **Encrypted contact vault** — actual contact value stored AES-encrypted. Decrypted only server-side on authorized action.
+- **`contactActionId`** — what frontend receives. A one-time or short-lived token that backend resolves to a redirect/deep-link or safe display value.
+- **Public URL / deep-link** — for Instagram, Telegram, 2GIS, WhatsApp, website. Stored in `BusinessExternalLink` with provider type, source, confidence, visibility.
+
+Frontend never receives raw phone/username unless backend explicitly marks it as public display value. Contact hash is internal infrastructure — never shown to users.
+
+### BusinessExternalLink
+
+| Field | Type | Purpose |
+|---|---|---|
+| `provider` | enum | `2GIS`, `INSTAGRAM`, `TELEGRAM`, `SITE`, `WHATSAPP` |
+| `publicUrl` | String | Publicly visible link/deep-link |
+| `source` | String | How this link was discovered |
+| `confidence` | enum | `VERIFIED`, `LIKELY`, `UNVERIFIED` |
+| `visibility` | enum | `PUBLIC`, `AFTER_CONTACT`, `INTERNAL` |
 
 ## Data Truth
 

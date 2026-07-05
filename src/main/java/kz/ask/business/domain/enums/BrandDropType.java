@@ -4,6 +4,7 @@ public enum BrandDropType {
     NEW_COLLECTION,
     LIMITED_RELEASE,
     RESTOCK,
+    CAPSULE,
     COLLAB,
     PREORDER,
     SEASONAL,

@@ -1,6 +1,7 @@
 package kz.ask.business.domain.dto;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,4 +18,7 @@ public class BrandDropDto {
     private String type;
     private String status;
     private String coverUrl;
+    private Integer productCount;
+    private List<String> tags;
+    private List<UUID> productIds;
 }

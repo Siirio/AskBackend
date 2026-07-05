@@ -50,8 +50,8 @@ public class AuthProcessor {
     private final SmsCodeSender smsSender;
     private final ObjectMapper objectMapper;
 
-    @Value("${auth.verification.staging-bypass:false}")
-    private Boolean stagingBypass;
+    @Value("${auth.verification.test-mode:false}")
+    private Boolean testMode;
 
     @Transactional
     public AuthChallengeResponse startCustomerLogin(CustomerLoginStartRequest req) {
@@ -164,7 +164,7 @@ public class AuthProcessor {
         String destination = email != null && !email.isBlank() ? email : phone;
         AuthChallengeDto challenge = identityService.createChallenge(
                 userId, email, phone, channel, AuthChallengePurpose.LOGIN, rememberMe, null);
-        if (Boolean.TRUE.equals(stagingBypass)) {
+        if (Boolean.TRUE.equals(testMode)) {
             return buildChallengeResponse(challenge, destination, role.name(), challenge.getCodePlain());
         }
         sendCode(channel, destination, challenge.getCodePlain());
@@ -180,7 +180,7 @@ public class AuthProcessor {
         String destination = email != null && !email.isBlank() ? email : phone;
         AuthChallengeDto challenge = identityService.createChallenge(
                 userId, email, phone, channel, AuthChallengePurpose.REGISTER, rememberMe, registrationData);
-        if (Boolean.TRUE.equals(stagingBypass)) {
+        if (Boolean.TRUE.equals(testMode)) {
             return buildChallengeResponse(challenge, destination, role.name(), challenge.getCodePlain());
         }
         sendCode(channel, destination, challenge.getCodePlain());

@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(name = "auth.verification.email.enabled", havingValue = "false")
+@ConditionalOnProperty(name = "auth.verification.test-mode", havingValue = "true")
 public class LoggingEmailCodeSender implements EmailCodeSender {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingEmailCodeSender.class);

@@ -11,14 +11,15 @@ auth:
   jwt:
     secret: ${AUTH_JWT_SECRET}
   verification:
-    email:
-      enabled: ${AUTH_VERIFICATION_EMAIL_ENABLED:true}
-    sms:
-      enabled: ${AUTH_VERIFICATION_SMS_ENABLED:false}
+    test-mode: ${AUTH_VERIFICATION_TEST_MODE:false}
 
 ask:
   cors:
     allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173}
+  contact:
+    hmac-secret: ${ASK_CONTACT_HMAC_SECRET}
+    encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY}
+    action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
 
 management:
   endpoints:

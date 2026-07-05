@@ -1,6 +1,8 @@
 package kz.ask.business.api.dto;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,4 +16,6 @@ public class BrandDropRequest {
     private String type;
     private String status;
     private String coverUrl;
+    private List<String> tags;
+    private List<UUID> productIds;
 }

@@ -452,7 +452,7 @@ public class PublicSearchProcessor {
         if (plan.getItemType() != null) {
             return List.of(plan.getItemType());
         }
-        return List.of(SearchDocumentType.PRODUCT, SearchDocumentType.SERVICE);
+        return List.of(SearchDocumentType.PRODUCT, SearchDocumentType.SERVICE, SearchDocumentType.DROP);
     }
 
     private List<String> collectCategoryInputs(JsonNode intentStructure, SearchIntentStructureRequest request) {
@@ -756,7 +756,7 @@ public class PublicSearchProcessor {
         if ("service".equalsIgnoreCase(scope)) {
             return List.of(SearchDocumentType.SERVICE);
         }
-        return List.of(SearchDocumentType.PRODUCT, SearchDocumentType.SERVICE);
+        return List.of(SearchDocumentType.PRODUCT, SearchDocumentType.SERVICE, SearchDocumentType.DROP);
     }
 
     private SearchResultCardResponse toCard(SearchDocument document) {
@@ -766,6 +766,8 @@ public class PublicSearchProcessor {
                 .id(document.getId())
                 .type(document.getDocumentType().name())
                 .name(document.getTitle())
+                .price(document.getPrice())
+                .businessId(document.getBusiness() != null ? document.getBusiness().getId() : null)
                 .supplierName(document.getBusiness() != null ? document.getBusiness().getName() : null)
                 .brandId(document.getBusiness() != null ? document.getBusiness().getId() : null)
                 .businessName(document.getBusiness() != null ? document.getBusiness().getName() : null)
@@ -774,12 +776,14 @@ public class PublicSearchProcessor {
                 .brandCoverUrl(brandProfile != null ? brandProfile.getCoverUrl() : null)
                 .brandDescriptor(resolveBrandDescriptor(brandProfile, document))
                 .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
+                .branchName(document.getBranch() != null ? document.getBranch().getName() : null)
                 .branchContext(resolveBranchContext(document))
                 .categoryName(document.getCategoryLabel())
                 .availabilityStatus("NEEDS_CONFIRMATION")
                 .confirmationStatus("NOT_CONFIRMED")
                 .pickupOptions(resolvePickupOptions(document))
                 .distanceText(null)
+                .distanceMeters(null)
                 .priceText(document.getPrice() != null ? "от " + document.getPrice().toBigInteger() + " ₸" : null)
                 .source(document.getSource() != null ? document.getSource() : "CATALOG")
                 .sourceType(document.getSource() != null ? document.getSource() : "CATALOG")
@@ -791,6 +795,7 @@ public class PublicSearchProcessor {
                 .badges(resolveBadges(brandProfile, document, drops))
                 .warnings(List.of())
                 .requiresSupplierCheck(true)
+                .hasActiveDrop(!drops.isEmpty())
                 .contactActions(List.of("CHAT", "MAP", "REQUEST"))
                 .availableActions(List.of("CHAT", "MAP", "REQUEST"))
                 .build();
@@ -804,6 +809,8 @@ public class PublicSearchProcessor {
                 .id(document.getId())
                 .type(document.getDocumentType().name())
                 .name(document.getTitle())
+                .price(document.getPrice())
+                .businessId(document.getBusiness() != null ? document.getBusiness().getId() : null)
                 .supplierName(document.getBusiness() != null ? document.getBusiness().getName() : null)
                 .brandId(document.getBusiness() != null ? document.getBusiness().getId() : null)
                 .businessName(document.getBusiness() != null ? document.getBusiness().getName() : null)
@@ -812,12 +819,14 @@ public class PublicSearchProcessor {
                 .brandCoverUrl(brandProfile != null ? brandProfile.getCoverUrl() : null)
                 .brandDescriptor(resolveBrandDescriptor(brandProfile, document))
                 .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
+                .branchName(document.getBranch() != null ? document.getBranch().getName() : null)
                 .branchContext(resolveBranchContext(document))
                 .categoryName(document.getCategoryLabel())
                 .availabilityStatus("NEEDS_CONFIRMATION")
                 .confirmationStatus("NOT_CONFIRMED")
                 .pickupOptions(resolvePickupOptions(document))
                 .distanceText(null)
+                .distanceMeters(null)
                 .priceText(document.getPrice() != null ? "от " + document.getPrice().toBigInteger() + " ₸" : null)
                 .source(document.getSource() != null ? document.getSource() : "CATALOG")
                 .sourceType(document.getSource() != null ? document.getSource() : "CATALOG")
@@ -829,6 +838,7 @@ public class PublicSearchProcessor {
                 .badges(resolveBadges(brandProfile, document, drops))
                 .warnings(scored.getWarnings())
                 .requiresSupplierCheck(true)
+                .hasActiveDrop(!drops.isEmpty())
                 .contactActions(List.of("CHAT", "MAP", "REQUEST"))
                 .availableActions(List.of("CHAT", "MAP", "REQUEST"))
                 .build();
