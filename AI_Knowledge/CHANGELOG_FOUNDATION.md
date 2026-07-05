@@ -1,5 +1,11 @@
 # Foundation Changelog
 
+## 2026-07-05 - Business Cabinet Save And Import Fixes
+
+- Business registration/auth payloads stay camelCase on the frontend so the shared API adapter sends the backend's expected snake_case once, avoiding malformed keys such as double-underscored confirmation fields.
+- Product and service creation must send a real category UUID from backend categories; frontend forms no longer fall back to `"default"`.
+- Added branch-scoped multipart AI Autodump file upload at `POST /api/v1/business-admin/branches/{branchId}/autodump-sessions/files` for `.txt`, `.md`, and `.pdf` files. Existing Excel upload remains at `POST /api/v1/business-admin/branches/{branchId}/product-imports` for `.xlsx`.
+
 ## 2026-07-04 — Freshness Audit: Meilisearch, Contact Privacy, Storefront, Drops, Public Ingestion
 
 Deep audit of all MD files against the current Ask product direction. Five new backend task specs created (07-11), AGENTS.md and ARCHITECTURE_NARRATIVE.md updated with search infrastructure, contact privacy architecture, storefront builder, drops-as-search-signals, and public business ingestion pipeline.

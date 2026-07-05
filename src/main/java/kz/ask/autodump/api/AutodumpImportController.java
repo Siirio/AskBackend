@@ -13,6 +13,7 @@ import kz.ask.autodump.domain.dto.DraftItemDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +22,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/business-admin/branches/{branchId}/autodump-sessions")
@@ -36,6 +39,15 @@ public class AutodumpImportController {
             @PathVariable UUID branchId,
             @Valid @RequestBody CreateAutodumpSessionRequest request) {
         CreateAutodumpSessionResponse response = processor.createSession(principal, branchId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CreateAutodumpSessionResponse> createSessionFromFile(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @PathVariable UUID branchId,
+            @RequestParam("file") MultipartFile file) {
+        CreateAutodumpSessionResponse response = processor.createSessionFromFile(principal, branchId, file);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

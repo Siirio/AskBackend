@@ -339,6 +339,8 @@ Base path: `/api/v1/business-admin/branches/{branchId}/autodump-imports`
 
 Access: `verifyBranchAccess()` — owner of business OR staff of branch (same pattern as `ProductImportProcessor`).
 
+Current MVP code path uses `/api/v1/business-admin/branches/{branchId}/autodump-sessions`; `POST /files` accepts multipart `.txt`, `.md`, and `.pdf` uploads and converts them to raw text before the same draft-generation flow.
+
 | Method | Path | Purpose | Auth |
 |--------|------|---------|------|
 | `POST` | `/text` | Create session from pasted text, auto-start AI extraction | Owner/Staff |
