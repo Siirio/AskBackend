@@ -44,6 +44,7 @@ public enum ErrorCode {
     CONTACT_ACTION_EXPIRED("Контактное действие истекло"),
     AI_SEARCH_API_KEY_MISSING("DEEPSEEK_API_KEY is required for AI structured search"),
     AI_INTENT_STRUCTURE_FAILED("AI intent structure request failed"),
+    AUTODUMP_INPUT_READ_FAILED("Не удалось прочитать файл импорта"),
     AUTODUMP_SESSION_NOT_FOUND("AI Autodump сессия не найдена"),
     AUTODUMP_DRAFT_NOT_FOUND("AI Autodump черновик не найден"),
     AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена");

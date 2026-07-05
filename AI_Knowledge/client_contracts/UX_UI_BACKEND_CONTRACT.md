@@ -148,6 +148,7 @@ The cabinet is production-facing onboarding, not a throwaway mock:
 - enabled products and services become searchable for customers;
 - disabled or deleted products and services must not appear in live client search.
 - AI Autodump generated cards must stay as drafts until the business previews and approves them. Only approved/published cards can create product/service records and become searchable.
+- Branch imports support `.xlsx` through product import and `.txt`, `.md`, `.pdf` through AI Autodump file sessions. Unsupported frontend file formats must be rejected before upload with a clear unsupported-format message.
 
 Each registration currently creates one concrete branch/store profile. A higher-level multi-branch business management model can be added later, but current registration must be treated as onboarding a specific establishment/branch.
 

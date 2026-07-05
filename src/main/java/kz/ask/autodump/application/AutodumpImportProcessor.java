@@ -2,7 +2,9 @@ package kz.ask.autodump.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,8 +51,12 @@ import kz.ask.shared.error.ExternalServiceException;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @RequiredArgsConstructor
@@ -151,6 +157,18 @@ public class AutodumpImportProcessor {
                 .aiJobId(aiJob.getId())
                 .draftsCreated(draftsCreated)
                 .build();
+    }
+
+    @Transactional
+    public CreateAutodumpSessionResponse createSessionFromFile(AskPrincipal principal, UUID branchId,
+                                                               MultipartFile file) {
+        String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        String rawText = extractRawText(file, filename);
+        return createSession(principal, branchId, CreateAutodumpSessionRequest.builder()
+                .sourceType(sourceTypeForFilename(filename))
+                .inputSummary(file.getOriginalFilename())
+                .rawText(rawText)
+                .build());
     }
 
     public AutodumpSessionStatusResponse getSessionStatus(AskPrincipal principal, UUID branchId, UUID sessionId) {
@@ -422,6 +440,32 @@ public class AutodumpImportProcessor {
         } catch (IllegalArgumentException e) {
             return SourceType.OTHER;
         }
+    }
+
+    private String extractRawText(MultipartFile file, String filename) {
+        try {
+            if (filename.endsWith(".txt") || filename.endsWith(".md")) {
+                return new String(file.getBytes(), StandardCharsets.UTF_8);
+            }
+            if (filename.endsWith(".pdf")) {
+                try (PDDocument document = Loader.loadPDF(file.getBytes())) {
+                    return new PDFTextStripper().getText(document);
+                }
+            }
+        } catch (IOException e) {
+            throw new ExternalServiceException(ErrorCode.AUTODUMP_INPUT_READ_FAILED);
+        }
+        throw new ExternalServiceException(ErrorCode.AUTODUMP_INPUT_READ_FAILED);
+    }
+
+    private String sourceTypeForFilename(String filename) {
+        if (filename.endsWith(".txt") || filename.endsWith(".md")) {
+            return SourceType.PASTE_TEXT.name();
+        }
+        if (filename.endsWith(".pdf")) {
+            return SourceType.PRICE_LIST.name();
+        }
+        return SourceType.OTHER.name();
     }
 
     private AutodumpSessionStatusResponse buildStatusResponse(ImportSessionDto session, List<DraftItemDto> drafts) {
