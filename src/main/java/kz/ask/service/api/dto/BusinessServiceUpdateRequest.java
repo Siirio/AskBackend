@@ -23,9 +23,9 @@ public class BusinessServiceUpdateRequest {
 
     private BigDecimal basePrice;
 
-    private Integer durationMinutes;
-
     private String scheduleText;
 
     private Boolean active;
+
+    private String imageUrl;
 }

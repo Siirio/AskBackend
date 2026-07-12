@@ -1,5 +1,6 @@
 package kz.ask.business.domain;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessBranchDto;
@@ -44,7 +45,8 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
 
     @Override
     @Transactional
-    public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, Boolean onlineOnly) {
+    public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, Boolean onlineOnly,
+                                     BigDecimal latitude, BigDecimal longitude) {
         Business business = businessRepository.getReferenceById(businessId);
         City city = null;
         if (cityId != null) {
@@ -52,7 +54,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
             city = cityRepository.getReferenceById(cityId);
         }
         BusinessBranch entity = businessBranchRepository.save(
-                businessMapper.toBranchEntity(business, city, name, address, onlineOnly));
+                businessMapper.toBranchEntity(business, city, name, address, onlineOnly, latitude, longitude));
         return businessMapper.toBusinessBranchDto(entity);
     }
 
@@ -76,7 +78,8 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
 
     @Override
     @Transactional
-    public BusinessBranchDto update(UUID branchId, String name, String address, UUID cityId, Boolean onlineOnly) {
+    public BusinessBranchDto update(UUID branchId, String name, String address, UUID cityId, Boolean onlineOnly,
+                                     BigDecimal latitude, BigDecimal longitude) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null) return null;
         if (name != null) branch.setName(name);
@@ -86,6 +89,8 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
             branch.setCity(cityRepository.getReferenceById(cityId));
         }
         if (onlineOnly != null) branch.setOnlineOnly(onlineOnly);
+        if (latitude != null) branch.setLatitude(latitude);
+        if (longitude != null) branch.setLongitude(longitude);
         return businessMapper.toBusinessBranchDto(branch);
     }
 }

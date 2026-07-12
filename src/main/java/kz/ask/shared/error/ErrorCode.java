@@ -18,6 +18,7 @@ public enum ErrorCode {
     CHALLENGE_INVALID_CODE("Неверный код подтверждения: %s"),
     REGISTRATION_PAYLOAD_ERROR("Ошибка данных регистрации"),
     CITY_NOT_FOUND("Город не найден"),
+    BUSINESS_NOT_FOUND("Бизнес не найден"),
     BRANCH_NOT_FOUND("Филиал не найден"),
     STAFF_NOT_FOUND("Сотрудник не найден"),
     ACCESS_DENIED("Доступ запрещен"),
@@ -47,7 +48,8 @@ public enum ErrorCode {
     AUTODUMP_INPUT_READ_FAILED("Не удалось прочитать файл импорта"),
     AUTODUMP_SESSION_NOT_FOUND("AI Autodump сессия не найдена"),
     AUTODUMP_DRAFT_NOT_FOUND("AI Autodump черновик не найден"),
-    AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена");
+    AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена"),
+    CONVERSATION_NOT_FOUND("Чат не найден");
 
     private final String template;
 

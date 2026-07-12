@@ -37,8 +37,6 @@ public class ServiceBranchOffer extends BaseUuidV7Entity {
 
     private BigDecimal basePrice;
 
-    private Integer durationMinutes;
-
     private String scheduleText;
 
     @Column(nullable = false)

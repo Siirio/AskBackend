@@ -13,6 +13,5 @@ public class AuthUserResponse {
     private UUID userId;
     private String displayName;
     private String email;
-    private String phone;
     private String status;
 }

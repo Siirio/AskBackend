@@ -3,6 +3,7 @@ package kz.ask.identity.infrastructure.repository;
 import java.util.Optional;
 import java.util.UUID;
 import kz.ask.identity.domain.entity.AppUser;
+import kz.ask.identity.domain.enums.AppRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,9 +12,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
     Optional<AppUser> findByEmailIgnoreCase(String email);
 
-    Optional<AppUser> findByPhone(String phone);
+    Optional<AppUser> findByEmailIgnoreCaseAndRole(String email, AppRole role);
 
     boolean existsByEmailIgnoreCase(String email);
 
-    boolean existsByPhone(String phone);
+    boolean existsByEmailIgnoreCaseAndRole(String email, AppRole role);
 }

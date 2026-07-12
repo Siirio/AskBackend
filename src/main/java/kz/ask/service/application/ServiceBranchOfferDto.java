@@ -25,9 +25,9 @@ public class ServiceBranchOfferDto {
     private String name;
     private String description;
     private BigDecimal basePrice;
-    private Integer durationMinutes;
     private String scheduleText;
     private Boolean active;
     private String status;
+    private String imageUrl;
     private Instant updatedAt;
 }

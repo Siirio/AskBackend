@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface AutodumpImportErrorRepository extends JpaRepository<AutodumpImportError, UUID> {
 
     List<AutodumpImportError> findByImportSessionIdOrderByCreatedAt(UUID importSessionId);
+
+    void deleteAllByImportSessionId(UUID importSessionId);
 }

@@ -28,7 +28,7 @@ spring:
       mail.smtp.starttls.enable: true
 
 server:
-  port: ${ASK_SERVER_PORT:8080}
+  port: ${ASK_SERVER_PORT:2020}
 
 springdoc:
   api-docs:
@@ -62,6 +62,10 @@ auth:
     temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
   verification:
     test-mode: ${AUTH_VERIFICATION_TEST_MODE:true}
+  oauth2:
+    google:
+      client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
+      client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
   jwt:
     secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
   email:
@@ -74,6 +78,8 @@ ask:
     hmac-secret: ${ASK_CONTACT_HMAC_SECRET:change-me-contact-hmac-secret-32chr}
     encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY:change-me-contact-encryption-key-32chr}
     action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
+  chat:
+    upload-dir: ${ASK_CHAT_UPLOAD_DIR:uploads/chat}
   ai:
     search:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
@@ -85,3 +91,5 @@ ask:
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}
+    indexer:
+      interval-ms: ${ASK_INDEXER_INTERVAL_MS:60000}

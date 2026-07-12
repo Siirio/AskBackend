@@ -13,11 +13,4 @@ public interface SearchDocumentService {
     void syncServiceDocument(UUID serviceBranchOfferId, UUID businessId, UUID branchId,
                              String title, String summary, String categoryLabel,
                              BigDecimal price, Boolean live);
-
-    void syncDropDocument(UUID dropId, UUID businessId, String title, String summary,
-                          List<String> tags, Boolean live);
-
-    void archiveDropDocument(UUID dropId);
-
-    void deleteDropDocument(UUID dropId);
 }

@@ -1,6 +1,8 @@
 package kz.ask.business.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,4 +15,8 @@ public class CreateBranchRequest {
     private String address;
     private UUID cityId;
     private Boolean onlineOnly;
+    @NotNull
+    private BigDecimal latitude;
+    @NotNull
+    private BigDecimal longitude;
 }

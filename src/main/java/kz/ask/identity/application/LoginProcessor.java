@@ -57,7 +57,7 @@ public class LoginProcessor {
     }
 
     private BusinessRegistrationResult resolveBusiness(AppUserDto user) {
-        if (user.getRole() == AppRole.BUSINESS) {
+        if (isBusinessRole(user.getRole())) {
             return businessService.findByOwner(user.getId());
         }
         return null;
@@ -123,7 +123,6 @@ public class LoginProcessor {
                 .userId(user.getId())
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
-                .phone(user.getPhone())
                 .status(user.getStatus().name())
                 .build();
     }
@@ -136,5 +135,11 @@ public class LoginProcessor {
             return "OWNER_BRANCHES";
         }
         return "BRANCH_WORKSPACE";
+    }
+
+    private boolean isBusinessRole(AppRole role) {
+        return role == AppRole.BUSINESS_OWNER
+                || role == AppRole.BUSINESS_MANAGER
+                || role == AppRole.BUSINESS_WORKER;
     }
 }

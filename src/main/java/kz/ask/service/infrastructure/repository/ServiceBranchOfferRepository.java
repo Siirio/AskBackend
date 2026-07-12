@@ -1,5 +1,6 @@
 package kz.ask.service.infrastructure.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ServiceBranchOfferRepository extends JpaRepository<ServiceBranchOffer, UUID> {
+
+    List<ServiceBranchOffer> findByServiceOfferingId(UUID serviceOfferingId);
 
     @Query("""
         select sbo from ServiceBranchOffer sbo

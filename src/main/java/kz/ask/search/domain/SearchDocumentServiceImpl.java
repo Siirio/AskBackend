@@ -2,15 +2,18 @@ package kz.ask.search.domain;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import kz.ask.business.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
-import kz.ask.business.infrastructure.repository.BrandDropRepository;
+import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
 import kz.ask.search.domain.entity.SearchDocument;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.search.infrastructure.repository.SearchDocumentRepository;
+import kz.ask.service.domain.entity.ServiceBranchOffer;
 import kz.ask.service.infrastructure.repository.ServiceBranchOfferRepository;
 import kz.ask.shared.domain.enums.RecordStatus;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +29,6 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
     private final ServiceBranchOfferRepository serviceBranchOfferRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
-    private final BrandDropRepository brandDropRepository;
     private final SearchTermEnricher searchTermEnricher;
 
     @Override
@@ -61,6 +63,8 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
             document.setSource("CATALOG");
         }
 
+        syncAttributesFromProduct(productOfferId, document);
+
         searchDocumentRepository.save(document);
     }
 
@@ -93,52 +97,31 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
             document.setSource("CATALOG");
         }
 
+        syncAttributesFromServiceOffering(serviceBranchOfferId, document);
+
         searchDocumentRepository.save(document);
     }
 
-    @Override
-    @Transactional
-    public void syncDropDocument(UUID dropId, UUID businessId, String title, String summary,
-                                 List<String> tags, Boolean live) {
-        SearchDocument document = searchDocumentRepository.findByBrandDropId(dropId)
-                .orElseGet(() -> {
-                    SearchDocument created = new SearchDocument();
-                    created.setDocumentType(SearchDocumentType.DROP);
-                    created.setBrandDrop(brandDropRepository.getReferenceById(dropId));
-                    return created;
+    private void syncAttributesFromProduct(UUID productOfferId, SearchDocument document) {
+        productOfferRepository.findById(productOfferId)
+                .map(ProductOffer::getProduct)
+                .ifPresent(product -> {
+                    Map<String, Object> attrs = product.getAttributes();
+                    if (attrs != null && !attrs.isEmpty()) {
+                        document.setAttributes(new HashMap<>(attrs));
+                    }
                 });
-
-        document.setTitle(title);
-        document.setSummary(summary);
-        document.setCategoryLabel("DROP");
-        document.setBusiness(businessRepository.getReferenceById(businessId));
-        document.setBranch(null);
-        document.setPrice(null);
-        List<String> sourceTerms = new ArrayList<>();
-        sourceTerms.add(title);
-        sourceTerms.add(summary);
-        sourceTerms.add("дроп");
-        sourceTerms.add("коллекция");
-        sourceTerms.addAll(tags == null ? List.of() : tags);
-        document.setTokens(searchTermEnricher.enrichIndexTerms(sourceTerms));
-        document.setStatus(Boolean.TRUE.equals(live) ? RecordStatus.ACTIVE : RecordStatus.ARCHIVED);
-        document.setSource("DROP");
-
-        searchDocumentRepository.save(document);
     }
 
-    @Override
-    @Transactional
-    public void archiveDropDocument(UUID dropId) {
-        searchDocumentRepository.findByBrandDropId(dropId).ifPresent(document -> {
-            document.setStatus(RecordStatus.ARCHIVED);
-            searchDocumentRepository.save(document);
-        });
+    private void syncAttributesFromServiceOffering(UUID serviceBranchOfferId, SearchDocument document) {
+        serviceBranchOfferRepository.findById(serviceBranchOfferId)
+                .map(ServiceBranchOffer::getServiceOffering)
+                .ifPresent(serviceOffering -> {
+                    Map<String, Object> attrs = serviceOffering.getAttributes();
+                    if (attrs != null && !attrs.isEmpty()) {
+                        document.setAttributes(new HashMap<>(attrs));
+                    }
+                });
     }
 
-    @Override
-    @Transactional
-    public void deleteDropDocument(UUID dropId) {
-        searchDocumentRepository.findByBrandDropId(dropId).ifPresent(searchDocumentRepository::delete);
-    }
 }

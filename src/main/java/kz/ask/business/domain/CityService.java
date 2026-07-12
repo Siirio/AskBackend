@@ -8,7 +8,7 @@ public interface CityService {
 
     CityDto findById(UUID cityId);
 
-    CityDto findOrCreateByName(String name);
+    CityDto findByName(String name);
 
     List<CityDto> listAll();
 }

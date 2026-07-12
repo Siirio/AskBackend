@@ -8,5 +8,6 @@ public enum ContactType {
     WEBSITE,
     SITE,
     TWO_GIS,
-    INSTAGRAM
+    INSTAGRAM,
+    ASK_CHAT
 }

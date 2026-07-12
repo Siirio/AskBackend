@@ -13,6 +13,7 @@ public class ScoredSearchDocument {
     private Integer score;
     private String sectionType;
     private String confidenceCode;
-    private List<String> matchReasons;
     private List<String> warnings;
+    private Integer distanceMeters;
+    private String distanceText;
 }

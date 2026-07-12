@@ -10,11 +10,11 @@ import kz.ask.identity.domain.enums.AuthChallengePurpose;
 
 public interface IdentityService {
 
-    AppUserDto createUser(String email, String phone, String displayName, String password, AppRole role);
+    AppUserDto createUser(String email, String displayName, String password, AppRole role);
 
     AppUserDto createStaffUser(String email, String displayName, String tempPassword);
 
-    AuthChallengeDto createChallenge(UUID userId, String email, String phone,
+    AuthChallengeDto createChallenge(UUID userId, String email,
                                      AuthChallengeChannel channel,
                                      AuthChallengePurpose purpose,
                                      Boolean rememberMe,
@@ -42,23 +42,21 @@ public interface IdentityService {
 
     AppUserDto findActiveByEmail(String email);
 
-    AppUserDto findActiveByPhone(String phone);
-
     AppUserDto findByEmail(String email);
+
+    AppUserDto findByEmailAndRole(String email, AppRole role);
 
     Boolean emailExists(String email);
 
-    Boolean phoneExists(String phone);
+    Boolean emailExistsForRole(String email, AppRole role);
 
     Boolean verifyPassword(String rawPassword, String encodedPassword);
 
     String maskEmail(String email);
 
-    String maskPhone(String phone);
-
     Long staffSessionTtl(Boolean remembered);
 
     Long staffActivationSessionTtl();
 
-    void updateProfile(UUID userId, String displayName, String email, String phone);
+    void updateProfile(UUID userId, String displayName, String email);
 }

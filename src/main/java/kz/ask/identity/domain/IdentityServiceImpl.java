@@ -82,9 +82,9 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AppUserDto createUser(String email, String phone, String displayName, String password, AppRole role) {
+    public AppUserDto createUser(String email, String displayName, String password, AppRole role) {
         AppUser user = authMapper.toAppUserEntity(
-                blankToNull(email), blankToNull(phone), displayName,
+                blankToNull(email), displayName,
                 hashPassword(password), role, UserStatus.PENDING);
         AppUser saved = appUserRepository.save(user);
         return authMapper.toAppUserDto(saved);
@@ -92,7 +92,7 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AuthChallengeDto createChallenge(UUID userId, String email, String phone,
+    public AuthChallengeDto createChallenge(UUID userId, String email,
                                             AuthChallengeChannel channel,
                                             AuthChallengePurpose purpose,
                                             Boolean rememberMe,
@@ -103,7 +103,7 @@ public class IdentityServiceImpl implements IdentityService {
         }
         String code = generateCode();
         AuthChallenge challenge = authMapper.toChallengeEntity(
-                user, email, phone, channel, purpose,
+                user, email, channel, purpose,
                 hashCode(code), challengeMaxAttempts, challengeTtlSeconds,
                 Boolean.TRUE.equals(rememberMe), registrationData);
         AuthChallenge saved = authChallengeRepository.save(challenge);
@@ -237,21 +237,16 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public AppUserDto findActiveByPhone(String phone) {
-        return appUserRepository.findByPhone(phone)
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(authMapper::toAppUserDto)
-                .orElse(null);
-    }
-
     public Boolean emailExists(String email) {
         return appUserRepository.existsByEmailIgnoreCase(email);
     }
 
-    public Boolean phoneExists(String phone) {
-        return appUserRepository.existsByPhone(phone);
+    @Override
+    public Boolean emailExistsForRole(String email, AppRole role) {
+        return appUserRepository.existsByEmailIgnoreCaseAndRole(email, role);
     }
 
+    @Override
     public String maskEmail(String email) {
         if (email == null) return null;
         int at = email.indexOf('@');
@@ -259,14 +254,16 @@ public class IdentityServiceImpl implements IdentityService {
         return email.charAt(0) + "***" + email.charAt(at - 1) + email.substring(at);
     }
 
-    public String maskPhone(String phone) {
-        if (phone == null || phone.length() < 4) return phone;
-        return "***" + phone.substring(phone.length() - 4);
-    }
-
     @Override
     public AppUserDto findByEmail(String email) {
         return appUserRepository.findByEmailIgnoreCase(email)
+                .map(authMapper::toAppUserDto)
+                .orElse(null);
+    }
+
+    @Override
+    public AppUserDto findByEmailAndRole(String email, AppRole role) {
+        return appUserRepository.findByEmailIgnoreCaseAndRole(email, role)
                 .map(authMapper::toAppUserDto)
                 .orElse(null);
     }
@@ -283,11 +280,10 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public void updateProfile(UUID userId, String displayName, String email, String phone) {
+    public void updateProfile(UUID userId, String displayName, String email) {
         AppUser user = appUserRepository.getReferenceById(userId);
         if (displayName != null) user.setDisplayName(displayName);
         if (email != null) user.setEmail(email);
-        if (phone != null) user.setPhone(phone);
     }
 
     private String encrypt(String plainText) {

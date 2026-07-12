@@ -37,30 +37,30 @@ For later sessions, read only the documents relevant to the task, plus any file 
 
 ## Search Infrastructure
 
-- **PostgreSQL = source of truth**: businesses, branches, products, services, contacts, drops, storefronts, raw imports, approvals.
-- **Meilisearch = fast search projection**: denormalized search index for typo-tolerant, faceted, geo-aware, hybrid (full-text + semantic) search.
-- **AI = query structuring helper**: understands raw query, produces SearchPlan JSON. AI never selects businesses or invents availability.
-- **Backend Search Orchestrator**: validates SearchPlan, queries Meilisearch, hydrates from PostgreSQL, applies hard gates/ranking, creates snapshot.
-- Meilisearch index is rebuildable from PostgreSQL at any time. PostgreSQL is never bypassed for authority.
+- **PostgreSQL = source of truth and search engine**: businesses, branches, products, services, contacts, UniqueOffers, raw imports, approvals. Search runs directly against PostgreSQL via `SearchDocument` table with in-memory scoring.
+- **DeepSeek AI = query structuring helper**: receives raw user query (any language, slang, typos), returns `AiStructuredQuery` JSON with searchTerms, categoryHints, brands, priceRange, intent. AI never selects businesses or invents availability.
+- **UnifiedSearchProcessor**: single search endpoint (`POST /api/v1/search/unified`) queries PRODUCT + SERVICE documents together, scores in-memory, applies UniqueOffer boosting. No separate scope toggle — AI determines intent.
+- **UniqueOffer boosting**: active UniqueOffers linked to a product/service's business add +25 score. DISCOUNT offers compute effective price (percent or amount). Non-DISCOUNT offers display the offer name as label.
+- **Scoring**: TITLE_MATCH(30) + BODY_MATCH(15) + TOKEN_MATCH(20) + CATEGORY_MATCH(10) + BRAND_MATCH(10) + OFFER_BOOST(25) - PRICE_OVER_BUDGET(40). Results sorted by score descending.
+- Fallback when API key is unset: simple text matching without AI structuring.
+- Meilisearch integration is deferred (PostgreSQL-only search is sufficient for MVP). If added later, it would be a rebuildable projection, never the authority.
 
-## SearchPlan JSON Contract
+## AiStructuredQuery Contract
 
-AI returns structured plan, not final results:
+DeepSeek AI returns structured query intent, not final results:
 
 ```json
 {
-  "scope": "PRODUCT",
-  "rawQuery": "винтажные levi's джинсы 90s рядом",
-  "mustHave": ["джинсы", "levis"],
-  "softSignals": ["винтаж", "90s", "рядом"],
-  "categoryHints": ["clothing", "second_hand"],
-  "attributeHints": { "brand": ["Levi's"], "style": ["vintage", "90s"] },
-  "locationIntent": { "nearMe": true },
-  "rankingHints": ["intent_match", "distance", "fresh_drop"]
+  "intent": "goods",
+  "searchTerms": ["джинсы", "levis", "винтаж"],
+  "categoryHints": ["Одежда", "Секонд-хенд"],
+  "priceRange": { "min": null, "max": 40000 },
+  "brands": ["Levi's"],
+  "originalQuery": "винтажные levi's джинсы 90s рядом"
 }
 ```
 
-Backend validates, queries Meilisearch, hydrates from PostgreSQL, applies hard gates and ranking.
+Backend validates and uses for in-memory scoring — no external search engine dependency.
 
 ## Contact Privacy
 
@@ -82,7 +82,7 @@ Backend validates, queries Meilisearch, hydrates from PostgreSQL, applies hard g
 - New task contracts describe product visibility through enabled/disabled/deleted actions and service visibility through active/inactive actions. Do not model separate availability scoring, inventory-count tracking, or freshness tracking in MVP docs.
 - Chat is always available from product, service, request, booking, and business-context screens through contextual contact actions.
 - Business onboarding is production-facing: registration creates a real branch/store profile and its real products/services must persist in the real database. Do not design it as mock-only onboarding.
-- Drops/events are searchable index signals. If a user searches for something covered by a drop, results show product/drop cards.
+- UniqueOffers boost linked products/services in search results (+25 score). DISCOUNT offers compute effective price; non-DISCOUNT offers display as brand signals. UniqueOffers are NOT standalone search results.
 
 ## Anti-Marketplace Guardrails (2026-07-01)
 
@@ -93,11 +93,11 @@ Ask is NOT a marketplace. It is an **intent layer** that routes qualified demand
 - **No uniform commodity cards.** Every result card has a standardized decision layer (price, availability, branch, pickup) AND a brand expression layer (style, tone, photos, story).
 - **No public "rating" score.** Visible signals are badges: data freshness, confirmation speed, card quality, business activity. Internal ranking signals are separate.
 - **Auto-reply does NOT count as confirmation.** Only real business confirmation advances status.
-- **Brand profile data model:** BrandProfile (color, logo, cover, tone, links), BrandPageBlock (ordered storefront blocks), BrandKit within Business aggregate.
-- **Drops are brand events, not discounts.** Drop types: NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER.
+- **Brand profile data model:** BrandProfile (color, logo, cover, tone, links) within Business aggregate. Storefront builder (BrandPageBlock, BusinessCard) was removed in V2 restructuring.
+- **UniqueOffers are brand signals and ranking boosters, not standalone cards.** Types: DISCOUNT, NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER. Statuses: UPCOMING, ACTIVE, ENDED, CANCELLED. Linked to products, services, and branches via M2M join tables.
 - **User preference profile is optional and transparent.** Sizes, style, budget, city, favorite brands — editable, not creepy tracking.
 - **Chat: open for extension, closed for core chaos.** Brands can add links, quick replies, FAQs, AI assistant. Cannot break user flow, spam, or change system statuses.
-- **Standardize decision data, preserve brand identity.** Availability, price, branch, confirmation = standardized. Style, visual, tone, story, drops = brand-owned.
+- **Standardize decision data, preserve brand identity.** Availability, price, branch, confirmation = standardized. Style, visual, tone, story, UniqueOffers = brand-owned.
 
 ## When To Challenge
 

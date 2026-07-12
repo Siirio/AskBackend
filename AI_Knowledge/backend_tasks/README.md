@@ -132,3 +132,4 @@ Content-Type: application/json
 |09|`09_contact_action_privacy_and_redirects.md`|Спецификация|
 |10|`10_brand_storefront_builder_backend.md`|Спецификация|
 |11|`11_drops_events_search_indexing.md`|Спецификация|
+|12|`12_backend_restructuring_v2.md`|В реализации|

@@ -15,11 +15,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class AuthMapper {
 
-    public AppUser toAppUserEntity(String email, String phone, String displayName,
+    public AppUser toAppUserEntity(String email, String displayName,
                                     String passwordHash, AppRole role, UserStatus status) {
         AppUser user = new AppUser();
         user.setEmail(email);
-        user.setPhone(phone);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
         user.setRole(role);
@@ -34,14 +33,14 @@ public class AuthMapper {
         user.setEmail(email);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
-        user.setRole(AppRole.BUSINESS);
+        user.setRole(AppRole.BUSINESS_WORKER);
         user.setStatus(UserStatus.PENDING_ACTIVATION);
         user.setMustChangePassword(true);
         user.setTempPasswordEncrypted(tempPasswordEncrypted);
         return user;
     }
 
-    public AuthChallenge toChallengeEntity(AppUser user, String email, String phone,
+    public AuthChallenge toChallengeEntity(AppUser user, String email,
                                            AuthChallengeChannel channel,
                                            AuthChallengePurpose purpose, String codeHash,
                                            Integer maxAttempts, Integer challengeTtlSeconds,
@@ -49,7 +48,6 @@ public class AuthMapper {
         AuthChallenge challenge = new AuthChallenge();
         challenge.setUser(user);
         challenge.setEmail(email);
-        challenge.setPhone(phone);
         challenge.setChannel(channel);
         challenge.setPurpose(purpose);
         challenge.setCodeHash(codeHash);
@@ -79,7 +77,6 @@ public class AuthMapper {
         return AppUserDto.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
-                .phone(entity.getPhone())
                 .displayName(entity.getDisplayName())
                 .passwordHash(entity.getPasswordHash())
                 .role(entity.getRole())
@@ -95,7 +92,6 @@ public class AuthMapper {
                 .id(entity.getId())
                 .userId(entity.getUser() != null ? entity.getUser().getId() : null)
                 .email(entity.getEmail())
-                .phone(entity.getPhone())
                 .channel(entity.getChannel())
                 .purpose(entity.getPurpose())
                 .codeHash(entity.getCodeHash())

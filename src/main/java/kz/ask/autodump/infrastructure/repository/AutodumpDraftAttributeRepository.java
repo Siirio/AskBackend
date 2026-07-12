@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface AutodumpDraftAttributeRepository extends JpaRepository<AutodumpDraftAttribute, UUID> {
 
     List<AutodumpDraftAttribute> findByDraftItemId(UUID draftItemId);
+
+    void deleteAllByDraftItemIdIn(List<UUID> draftItemIds);
 }

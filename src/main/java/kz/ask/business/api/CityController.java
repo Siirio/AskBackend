@@ -19,7 +19,7 @@ public class CityController {
 
     @GetMapping("/resolve")
     public ResponseEntity<CityDto> resolve(@RequestParam String name) {
-        return ResponseEntity.ok(cityService.findOrCreateByName(name));
+        return ResponseEntity.ok(cityService.findByName(name));
     }
 
     @GetMapping
