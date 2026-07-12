@@ -24,8 +24,8 @@ public class BusinessServiceRowResponse {
     private String name;
     private String description;
     private BigDecimal basePrice;
-    private Integer durationMinutes;
     private String scheduleText;
     private Boolean active;
     private Instant updatedAt;
+    private String imageUrl;
 }

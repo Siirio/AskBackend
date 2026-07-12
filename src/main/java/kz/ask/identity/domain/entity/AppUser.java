@@ -21,8 +21,6 @@ public class AppUser extends BaseUuidV7Entity {
 
     private String email;
 
-    private String phone;
-
     @Column(nullable = false)
     private String displayName;
 

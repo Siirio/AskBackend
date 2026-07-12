@@ -17,7 +17,6 @@ public class AuthChallengeDto {
     private UUID id;
     private UUID userId;
     private String email;
-    private String phone;
     private AuthChallengeChannel channel;
     private AuthChallengePurpose purpose;
     private String codeHash;

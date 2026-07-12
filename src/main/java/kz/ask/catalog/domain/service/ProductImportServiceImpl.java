@@ -57,7 +57,7 @@ public class ProductImportServiceImpl implements ProductImportService {
         String originalFilename = file.getOriginalFilename() != null
             ? file.getOriginalFilename() : "import.xlsx";
 
-        ExcelParseResult result = excelParser.parse(file.getInputStream());
+        ExcelParseResult result = excelParser.parse(file.getInputStream(), originalFilename);
 
         if (result.columns().isEmpty()) {
             throw new ValidationException(ErrorCode.IMPORT_EMPTY_FILE);

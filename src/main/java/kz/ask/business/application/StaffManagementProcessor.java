@@ -7,9 +7,12 @@ import kz.ask.business.api.dto.StaffResponse;
 import kz.ask.business.api.dto.UpdateStaffRequest;
 import kz.ask.business.domain.BranchMemberService;
 import kz.ask.business.domain.BusinessBranchService;
+import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.dto.BranchMemberDto;
+import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.enums.BranchMemberRole;
+import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
@@ -27,14 +30,18 @@ public class StaffManagementProcessor {
 
     private final IdentityService identityService;
     private final BusinessService businessService;
+    private final BusinessMemberService businessMemberService;
     private final BranchMemberService branchMemberService;
     private final BusinessBranchService businessBranchService;
 
     @Transactional
     public StaffResponse createStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       CreateStaffRequest req) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
+
+        BranchMemberRole memberRole = resolveBranchMemberRole(req.getRole());
+        requireCanAssignRole(principal.getUserId(), businessId, memberRole);
 
         if (identityService.findByEmail(req.getEmail()) != null) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_EXISTS);
@@ -42,13 +49,17 @@ public class StaffManagementProcessor {
 
         String tempPassword = generateTempPassword();
         AppUserDto user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword);
-        BranchMemberDto member = branchMemberService.addMember(branchId, user.getId(), BranchMemberRole.STAFF);
+
+        BusinessMemberRole bizRole = mapToBusinessRole(memberRole);
+        businessMemberService.createMember(businessId, user.getId(), bizRole);
+
+        BranchMemberDto member = branchMemberService.addMember(branchId, user.getId(), memberRole);
 
         return buildStaffResponse(member, tempPassword);
     }
 
     public List<StaffResponse> listStaff(AskPrincipal principal, UUID businessId, UUID branchId) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         List<BranchMemberDto> members = branchMemberService.findByBranch(branchId);
         return members.stream().map(m -> buildStaffResponse(m, null)).toList();
@@ -57,7 +68,7 @@ public class StaffManagementProcessor {
     @Transactional
     public StaffResponse updateStaff(AskPrincipal principal, UUID businessId, UUID branchId,
                                       UUID staffId, UpdateStaffRequest req) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         BranchMemberDto member = requireBranchMember(staffId, branchId);
 
@@ -65,12 +76,18 @@ public class StaffManagementProcessor {
             identityService.updateUserStatus(member.getUserId(), req.getStatus());
         }
 
+        if (req.getRole() != null) {
+            BranchMemberRole newRole = resolveBranchMemberRole(req.getRole());
+            requireCanAssignRole(principal.getUserId(), businessId, newRole);
+            branchMemberService.updateMemberRole(staffId, newRole);
+        }
+
         return buildStaffResponse(member, null);
     }
 
     @Transactional
     public StaffResponse resetPassword(AskPrincipal principal, UUID businessId, UUID branchId, UUID staffId) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         BranchMemberDto member = requireBranchMember(staffId, branchId);
 
@@ -80,10 +97,38 @@ public class StaffManagementProcessor {
         return buildStaffResponse(member, newTempPassword);
     }
 
-    private void verifyOwnerAccess(UUID userId, UUID businessId) {
-        if (!businessService.isOwnerOfBusiness(businessId, userId)) {
+    private void verifyManagementAccess(UUID userId, UUID businessId) {
+        if (!businessService.isManagerOrAboveOfBusiness(businessId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    private void requireCanAssignRole(UUID userId, UUID businessId, BranchMemberRole targetRole) {
+        BusinessMemberRole actorRole = businessMemberService.getRoleInBusiness(businessId, userId);
+        if (actorRole == null) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+        if (actorRole == BusinessMemberRole.MANAGER && targetRole != BranchMemberRole.WORKER) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private BranchMemberRole resolveBranchMemberRole(String role) {
+        if (role == null || role.isBlank()) {
+            return BranchMemberRole.WORKER;
+        }
+        try {
+            return BranchMemberRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return BranchMemberRole.WORKER;
+        }
+    }
+
+    private BusinessMemberRole mapToBusinessRole(BranchMemberRole branchRole) {
+        return switch (branchRole) {
+            case MANAGER -> BusinessMemberRole.MANAGER;
+            default -> BusinessMemberRole.WORKER;
+        };
     }
 
     private void requireBranchExists(UUID businessId, UUID branchId) {

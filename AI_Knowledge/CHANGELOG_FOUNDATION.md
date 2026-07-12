@@ -1,5 +1,189 @@
 # Foundation Changelog
 
+## 2026-07-12 — Backend Restructuring V2: Phases 1-4
+
+Four-phase restructuring per `backend_tasks/12_backend_restructuring_v2.md`. Compilation verified clean after each phase.
+
+### Phase 1: Foundation — Deletions + Schema
+
+**Deleted modules and entities:**
+- `messaging/` package (Conversation, ConversationMessage, ConversationParticipant, ConversationLink) — replaced by simplified chat/
+- `BrandExperienceController` (12 endpoints) — storefront builder removed
+- `BrandPageBlock` entity + table — no more custom storefront pages
+- `BusinessCard` entity + table — Canva-like builder removed
+- `BrandPageBlockType` enum, `StorefrontPageStatus` enum
+
+**Auth cleanup — email-only:**
+- Removed `phone` from AppUser, AuthChallenge entities and V1 migration
+- Removed `AuthChallengeChannel.PHONE` enum value
+- All SMS adapters and integrations deleted
+- AuthChallenge now uses EMAIL channel only (verification code + optional 2FA)
+
+**Role expansion:**
+- `AppRole`: CUSTOMER, BUSINESS → expanded to 7 values: CUSTOMER, BUSINESS_OWNER, BUSINESS_MANAGER, BUSINESS_WORKER, PLATFORM_SUPER_ADMIN, PLATFORM_ADMIN, PLATFORM_MODERATOR
+- `BusinessMemberRole`: OWNER only → expanded to OWNER, MANAGER, WORKER
+- `BranchMemberRole`: synced to OWNER, MANAGER, WORKER
+- Hierarchy: OWNER > MANAGER > WORKER. PLATFORM_SUPER_ADMIN is DB-only (no API creation).
+
+**V8 migration:** All schema changes in one migration file — adds new columns/tables, drops legacy tables (conversation*, brand_page_block, business_card, brand_drop_product, brand_drop_tag), drops phone columns.
+
+### Phase 2: Core Entity Restructuring
+
+**Product + Service M2M branches:**
+- `product_branch` and `service_branch` join tables — one product/service can now be linked to multiple branches
+- Product entity: added `price` (NUMERIC)
+- Business entity: added `currency` (VARCHAR(3), default KZT), `shippingMode`, `shippingCityIds` (JSONB)
+
+**BrandDrop → UniqueOffer (booster, not standalone search result):**
+- Table renamed: `brand_drop` → `unique_offer`
+- New fields: `discount_percent` (INTEGER), `discount_amount` (NUMERIC), `enabled` (BOOLEAN, default true), `currency` (VARCHAR(3)), `tags` (JSONB)
+- `UniqueOfferType`: DISCOUNT, NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER
+- `UniqueOfferStatus`: UPCOMING, ACTIVE, ENDED, CANCELLED
+- M2M join tables: `unique_offer_product`, `unique_offer_service`, `unique_offer_branch`
+- One offer can link to products AND services AND branches simultaneously
+- Offer can be toggled (enabled/disabled) without deletion
+
+**SearchDocument cleanup:**
+- Removed `brand_drop_id` column — UniqueOffers are boosters, not standalone search documents
+- `SearchDocumentType`: removed `DROP` enum value — only PRODUCT and SERVICE remain
+
+**CustomerProfile:** Removed `phone`, added `iconUrl` (VARCHAR(2048))
+
+**Deleted 9 BrandDrop files:** entity, service interface + impl, DTO, repository, type enum, status enum, request DTO, response DTO.
+
+**PublicSearchProcessor updated:** All `BrandDrop` references → `UniqueOffer`. Method `resolveDrops()` → `resolveOffers()`. Uses `UniqueOfferService` instead of `BrandDropService`.
+
+**2 leftover BrandPageBlock DTOs cleaned up** (BrandPageBlockRequest, BrandPageBlockResponse — missed in Phase 1 deletions).
+
+### Phase 3: Chat Restructuring
+
+**ChatConversation simplified — text-only, no statuses:**
+- Removed: `status` (ConversationStatus enum), `source`, `searchQuery`, `requestTargetId`
+- Added: `customerUnreadCount` (INTEGER, default 0), `businessUnreadCount` (INTEGER, default 0)
+- Entity now has only: id, businessId, customerId, subject, customerUnreadCount, businessUnreadCount, lastMessageAt, createdAt, updatedAt
+
+**ChatMessage simplified:**
+- Removed `attachmentUrl` — text + emoji only, no files/attachments
+
+**Deleted:** `ConversationStatus` enum, `ChatRequestBridge` component (bridged chats to request_target — no longer needed)
+
+**ChatServiceImpl rewritten:**
+- `startConversation()`: no status/source/searchQuery, no ChatRequestBridge call
+- `sendMessage()`: increments `businessUnreadCount` (customer messages) or `customerUnreadCount` (business messages); no status transitions, no attachmentUrl
+- `markRead()`: resets `customerUnreadCount=0` or `businessUnreadCount=0` based on readerType
+- `notifyBusinesses()`: removed searchQuery parameter
+- DTO mapping: no status/source/searchQuery, maps unread counts instead
+
+**Controllers simplified:**
+- ChatController: `startConversation()` no longer accepts `searchQuery`
+- BusinessChatController: removed `updateStatus()` PATCH endpoint entirely
+- SystemNotifyRequest: `searchQuery` field kept for backward compat but no longer @NotBlank
+
+### Phase 4: Unified AI-Powered Search
+
+**New endpoint:** `POST /api/v1/search/unified` — single search across PRODUCT + SERVICE catalog. AI structures raw query; no more scope toggle.
+
+**New DTOs:**
+- `UnifiedSearchRequest`: query (required), cityId (optional), limit (1-100, default 20)
+- `UnifiedSearchResultItem`: type, id, name, description, effectivePrice, originalPrice, imageUrl, categoryName, businessName, branchIds, activeOfferId, offerLabel, score
+- `UnifiedSearchResponse`: results, aiStructuredQuery, totalFound
+- `AiStructuredQuery` (inner class): intent (goods/service/both), searchTerms, categoryHints, priceRange (min/max), brands, originalQuery
+- `PriceRange` (inner class): min, max
+
+**UnifiedSearchProcessor:**
+- DeepSeek AI integration: POST to `/chat/completions` with JSON response_format, parses searchTerms/categoryHints/brands/priceRange
+- Falls back to simple text matching when `ask.ai.search.api-key` is unset
+- Scoring: TITLE_MATCH(30) + BODY_MATCH(15) + TOKEN_MATCH(20) + CATEGORY_MATCH(10) + BRAND_MATCH(10) + OFFER_BOOST(25) - PRICE_OVER_BUDGET(40)
+- UniqueOffer boosting: `findBestOffer()` matches by business ID from active UniqueOffers; if DISCOUNT type, computes `effectivePrice` (percent discount: `price * (1 - percent/100)`, amount discount: `price - amount`)
+- `formatOfferLabel()`: "-30%" for percent, "-5000 ₸" for amount, or offer name for non-DISCOUNT types
+- Price penalty: items over budget max get -40 score
+
+**UniqueOfferRepository:** Added `findByStatusIn(List<UniqueOfferStatus>)` for active offer lookup.
+
+**PublicSearchController:** Added `UnifiedSearchProcessor` field, new `/unified` POST endpoint.
+
+### Files Summary
+
+**Created:** UnifiedSearchRequest, UnifiedSearchResultItem, UnifiedSearchResponse, UnifiedSearchProcessor
+**Modified:** PublicSearchController, UniqueOfferRepository, PublicSearchProcessor, ChatConversation, ChatMessage, ChatConversationDto, ChatMessageDto, SendMessageRequest, ChatService, ChatServiceImpl, ChatController, BusinessChatController, SystemNotifyRequest, SearchDocument, SearchDocumentType, Product, Business, CustomerProfile, AppRole, BusinessMemberRole, BranchMemberRole, V8__restructuring.sql
+**Deleted:** 9 BrandDrop files, 2 BrandPageBlock DTOs, ConversationStatus enum, ChatRequestBridge, messaging/ package, BrandExperienceController, BrandPageBlock entity, BusinessCard entity, BrandPageBlockType, StorefrontPageStatus, AuthChallengeChannel.PHONE
+
+### Remaining Work (Phases 5-6) — COMPLETED 2026-07-12
+
+## 2026-07-12 — Backend Restructuring V2: Phases 5-6
+
+### Phase 5: Roles & Permissions
+
+**BusinessMemberService expanded:**
+- Added `createMember(businessId, userId, role)` — generalized member creation for any BusinessMemberRole (OWNER, MANAGER, WORKER)
+- Added `findByUser(userId)` — find any BusinessMember for a user (not just OWNER)
+- Added `findByBusinessAndUser(businessId, userId)` — find member in specific business
+- Added `isManagerOrAboveOfBusiness(businessId, userId)` — hierarchy check: OWNER and MANAGER return true
+- Added `getRoleInBusiness(businessId, userId)` — return BusinessMemberRole for hierarchy comparison
+- `createOwner()` now delegates to `createMember()` with OWNER role
+- `BusinessMapper.toBusinessMemberEntity()` now accepts `BusinessMemberRole role` parameter (was hardcoded OWNER)
+
+**BusinessMemberRepository:** Added `findByUserIdAndStatus(userId, status)` (list by user) and `findByBusinessIdAndUserId(businessId, userId)` (single member lookup).
+
+**StaffManagementProcessor — hierarchy + BusinessMember creation:**
+- Now creates both `BusinessMember` AND `BranchMember` when creating staff (was only BranchMember)
+- `verifyOwnerAccess()` → `verifyManagementAccess()` — now allows MANAGER+OWNER (was OWNER only)
+- MANAGER can only create WORKER-level staff; OWNER can create MANAGER and WORKER
+- `CreateStaffRequest.role` field added — default "WORKER"
+- `UpdateStaffRequest.role` field added — supports role changes
+- Role change validates hierarchy: MANAGER can't promote to MANAGER or OWNER
+
+**InviteProcessor — hierarchy + role support:**
+- `verifyOwnerAccess()` → `verifyManagementAccess()` — MANAGER can now create invites
+- MANAGER can only invite WORKERs; OWNER can invite MANAGERs and WORKERs
+- `CreateInviteRequest.role` field added — default "WORKER"
+- Invite role resolution: default WORKER, validates against BranchMemberRole enum
+
+**BranchMemberService:** Added `updateMemberRole(memberId, role)` for staff role changes.
+
+**BranchMemberServiceImpl.isStaffOfBranch():** Removed hardcoded `BranchMemberRole.WORKER` check — now accepts all branch member roles (OWNER, MANAGER, WORKER).
+
+**AuthProcessor — actual role resolution:**
+- `authorityForSession()`: Now looks up BusinessMember when bizResult is null (non-OWNER staff). Returns `ROLE_BUSINESS_OWNER`, `ROLE_BUSINESS_MANAGER`, or `ROLE_BUSINESS_WORKER` based on actual BusinessMember record. Falls back to `ROLE_BUSINESS_WORKER` for branch-only staff (backward compat).
+- `resolveStartRoute()`: OWNER and MANAGER → "OWNER_BRANCHES", WORKER → "BRANCH_WORKSPACE", STAFF → "BRANCH_WORKSPACE"
+- Added `BusinessMemberService` dependency
+
+**SecurityConfig:** Added `POST /api/v1/search/unified` to public endpoints (was missing, fell through to authenticated catch-all).
+
+**BusinessProductProcessor + BusinessServiceProcessor:** `requireAnyAccess()` now uses `isManagerOrAboveOfBusiness()` instead of `isOwnerOfBusiness()` — MANAGER can manage products/services for all branches.
+
+**ErrorCode:** Added `BUSINESS_NOT_FOUND`.
+
+### Phase 6: Shipping Settings + Customer Profile
+
+**Shipping settings CRUD:**
+- `ShippingController`: `GET` + `PATCH /api/v1/businesses/{businessId}/shipping` — OWNER-only
+- `ShippingProcessor`: reads/writes `shippingMode` and `shippingCityIds` (JSONB) on Business entity
+- `ShippingResponse` + `UpdateShippingRequest` DTOs
+
+**Customer profile endpoints:**
+- `ProfileController`: `GET /api/v1/profile`, `PATCH /api/v1/profile`, `POST /api/v1/profile/icon?iconUrl=...`
+- `ProfileProcessor` → `CustomerProfileService` → `CustomerProfileRepository`
+- `CustomerProfileResponse` + `UpdateCustomerProfileRequest` DTOs
+- Auto-creates `CustomerProfile` on first access (lazy initialization)
+- Icon URL update via simple query parameter (multipart deferred to future iteration)
+
+**New files (13):**
+DTOs: `ShippingResponse`, `UpdateShippingRequest`, `CustomerProfileResponse`, `UpdateCustomerProfileRequest`
+Domain: `CustomerProfileService`, `CustomerProfileServiceImpl`
+Repository: `CustomerProfileRepository`
+Processors: `ShippingProcessor`, `ProfileProcessor`
+Controllers: `ShippingController`, `ProfileController`
+
+**Modified files (18):**
+`BusinessMapper`, `BusinessMemberService`, `BusinessMemberServiceImpl`, `BusinessMemberRepository`, `BusinessService`, `BusinessServiceImpl`, `StaffManagementProcessor`, `InviteProcessor`, `BranchMemberService`, `BranchMemberServiceImpl`, `AuthProcessor`, `SecurityConfig`, `CreateStaffRequest`, `CreateInviteRequest`, `UpdateStaffRequest`, `BusinessProductProcessor`, `BusinessServiceProcessor`, `ErrorCode`
+
+### Files Summary (All 6 Phases)
+
+**Created:** UnifiedSearchRequest, UnifiedSearchResultItem, UnifiedSearchResponse, UnifiedSearchProcessor, ShippingResponse, UpdateShippingRequest, CustomerProfileResponse, UpdateCustomerProfileRequest, CustomerProfileService, CustomerProfileServiceImpl, CustomerProfileRepository, ShippingProcessor, ProfileProcessor, ShippingController, ProfileController
+**Modified:** PublicSearchController, UniqueOfferRepository, PublicSearchProcessor, ChatConversation, ChatMessage, ChatConversationDto, ChatMessageDto, SendMessageRequest, ChatService, ChatServiceImpl, ChatController, BusinessChatController, SystemNotifyRequest, SearchDocument, SearchDocumentType, Product, Business, CustomerProfile, AppRole, BusinessMemberRole, BranchMemberRole, V8__restructuring.sql, BusinessMapper, BusinessMemberService, BusinessMemberServiceImpl, BusinessMemberRepository, BusinessService, BusinessServiceImpl, StaffManagementProcessor, InviteProcessor, BranchMemberService, BranchMemberServiceImpl, AuthProcessor, SecurityConfig, CreateStaffRequest, CreateInviteRequest, UpdateStaffRequest, BusinessProductProcessor, BusinessServiceProcessor, ErrorCode
+**Deleted:** 9 BrandDrop files, 2 BrandPageBlock DTOs, ConversationStatus enum, ChatRequestBridge, messaging/ package, BrandExperienceController, BrandPageBlock entity, BusinessCard entity, BrandPageBlockType, StorefrontPageStatus, AuthChallengeChannel.PHONE
+
 ## 2026-07-05 - Business Cabinet Save And Import Fixes
 
 - Business registration/auth payloads stay camelCase on the frontend so the shared API adapter sends the backend's expected snake_case once, avoiding malformed keys such as double-underscored confirmation fields.

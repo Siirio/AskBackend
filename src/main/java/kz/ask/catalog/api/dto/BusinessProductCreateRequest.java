@@ -35,4 +35,6 @@ public class BusinessProductCreateRequest {
     private BigDecimal price;
 
     private Boolean enabled;
+
+    private String imageUrl;
 }

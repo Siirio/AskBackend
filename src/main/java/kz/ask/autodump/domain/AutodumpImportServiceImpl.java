@@ -17,6 +17,10 @@ import kz.ask.autodump.domain.enums.SourceType;
 import kz.ask.autodump.domain.enums.StorageKind;
 import kz.ask.autodump.infrastructure.mapper.AutodumpMapper;
 import kz.ask.autodump.infrastructure.repository.AutodumpAiJobRepository;
+import kz.ask.autodump.infrastructure.repository.AutodumpAuditEventRepository;
+import kz.ask.autodump.infrastructure.repository.AutodumpDraftAttributeRepository;
+import kz.ask.autodump.infrastructure.repository.AutodumpDraftItemRepository;
+import kz.ask.autodump.infrastructure.repository.AutodumpImportErrorRepository;
 import kz.ask.autodump.infrastructure.repository.AutodumpImportSessionRepository;
 import kz.ask.autodump.infrastructure.repository.AutodumpRawInputRepository;
 import kz.ask.business.domain.entity.Business;
@@ -25,6 +29,7 @@ import kz.ask.business.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
+import jakarta.persistence.EntityManager;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,10 +43,15 @@ public class AutodumpImportServiceImpl implements AutodumpImportService {
     private final AutodumpImportSessionRepository sessionRepository;
     private final AutodumpRawInputRepository rawInputRepository;
     private final AutodumpAiJobRepository aiJobRepository;
+    private final AutodumpDraftItemRepository draftItemRepository;
+    private final AutodumpDraftAttributeRepository draftAttributeRepository;
+    private final AutodumpAuditEventRepository auditEventRepository;
+    private final AutodumpImportErrorRepository importErrorRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
     private final AppUserRepository appUserRepository;
     private final AutodumpMapper mapper;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -163,6 +173,24 @@ public class AutodumpImportServiceImpl implements AutodumpImportService {
         return aiJobRepository.findByImportSessionId(sessionId).stream()
                 .map(mapper::toAiJobDto)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(UUID sessionId) {
+        entityManager.flush();
+        List<UUID> draftItemIds = draftItemRepository.findByImportSessionIdOrderByCreatedAt(sessionId)
+                .stream().map(d -> d.getId()).toList();
+        if (!draftItemIds.isEmpty()) {
+            draftAttributeRepository.deleteAllByDraftItemIdIn(draftItemIds);
+        }
+        auditEventRepository.deleteAllByImportSessionId(sessionId);
+        importErrorRepository.deleteAllByImportSessionId(sessionId);
+        draftItemRepository.deleteAllByImportSessionId(sessionId);
+        aiJobRepository.deleteAllByImportSessionId(sessionId);
+        rawInputRepository.deleteAllByImportSessionId(sessionId);
+        sessionRepository.deleteById(sessionId);
+        entityManager.clear();
     }
 
     private String sha256Hex(byte[] data) {

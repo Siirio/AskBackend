@@ -14,4 +14,6 @@ import lombok.Setter;
 public class UpdateStaffRequest {
 
     private String status;
+
+    private String role;
 }
