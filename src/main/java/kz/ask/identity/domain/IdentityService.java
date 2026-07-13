@@ -1,5 +1,6 @@
 package kz.ask.identity.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.AuthChallengeDto;
@@ -10,11 +11,11 @@ import kz.ask.identity.domain.enums.AuthChallengePurpose;
 
 public interface IdentityService {
 
-    AppUserDto createUser(String email, String phone, String displayName, String password, AppRole role);
+    AppUserDto createUser(String email, String displayName, String password, AppRole role);
 
-    AppUserDto createStaffUser(String email, String displayName, String tempPassword);
+    AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role);
 
-    AuthChallengeDto createChallenge(UUID userId, String email, String phone,
+    AuthChallengeDto createChallenge(UUID userId, String email,
                                      AuthChallengeChannel channel,
                                      AuthChallengePurpose purpose,
                                      Boolean rememberMe,
@@ -40,25 +41,31 @@ public interface IdentityService {
 
     AppUserDto findById(UUID id);
 
-    AppUserDto findActiveByEmail(String email);
+    List<AppUserDto> findAllByEmail(String email);
 
-    AppUserDto findActiveByPhone(String phone);
+    List<AppUserDto> findAllActiveByEmail(String email);
 
-    AppUserDto findByEmail(String email);
+    AppUserDto findByEmailAndRole(String email, AppRole role);
 
     Boolean emailExists(String email);
 
-    Boolean phoneExists(String phone);
+    Boolean emailExistsForRole(String email, AppRole role);
 
     Boolean verifyPassword(String rawPassword, String encodedPassword);
 
     String maskEmail(String email);
 
-    String maskPhone(String phone);
-
     Long staffSessionTtl(Boolean remembered);
 
     Long staffActivationSessionTtl();
 
-    void updateProfile(UUID userId, String displayName, String email, String phone);
+    void updateProfile(UUID userId, String displayName, String email);
+
+    void changePassword(UUID userId, String newPassword);
+
+    void toggleTwoFactor(UUID userId);
+
+    Boolean isTwoFactorEnabled(UUID userId);
+
+    void recordLogin(UUID userId);
 }

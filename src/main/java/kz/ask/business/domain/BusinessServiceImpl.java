@@ -33,22 +33,19 @@ public class BusinessServiceImpl implements BusinessService {
                                                         UUID branchCityId,
                                                         String branchAddress,
                                                         Boolean onlineOnly,
-                                                        String contactEmail,
-                                                        String contactPhone) {
+                                                        String contactEmail) {
         Business business = businessRepository.save(businessMapper.toBusinessEntity(businessName));
         UUID businessId = business.getId();
         BusinessDto businessDto = businessMapper.toBusinessDto(business);
 
         BusinessBranchDto branchDto = businessBranchService.create(
-                businessId, branchCityId, branchName, branchAddress, onlineOnly);
+                businessId, branchCityId, branchName, branchAddress, onlineOnly, null, null);
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);
 
         BusinessContactDto contactDto = null;
         if (contactEmail != null) {
             contactDto = businessContactService.create(businessId, branchDto.getId(), ContactType.EMAIL, contactEmail);
-        } else if (contactPhone != null) {
-            contactDto = businessContactService.create(businessId, branchDto.getId(), ContactType.PHONE, contactPhone);
         }
 
         return BusinessRegistrationResult.builder()
@@ -82,6 +79,11 @@ public class BusinessServiceImpl implements BusinessService {
     @Override
     public Boolean isOwnerOfBusiness(UUID businessId, UUID userId) {
         return businessMemberService.isOwnerOfBusiness(businessId, userId);
+    }
+
+    @Override
+    public Boolean isManagerOrAboveOfBusiness(UUID businessId, UUID userId) {
+        return businessMemberService.isManagerOrAboveOfBusiness(businessId, userId);
     }
 
     @Override

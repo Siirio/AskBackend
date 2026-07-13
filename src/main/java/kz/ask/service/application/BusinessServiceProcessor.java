@@ -12,6 +12,7 @@ import kz.ask.service.api.dto.BusinessServiceListResponse;
 import kz.ask.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.search.domain.SearchDocumentService;
+import kz.ask.search.domain.SearchIndexQueueService;
 import kz.ask.service.domain.ServiceService;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -34,6 +35,7 @@ public class BusinessServiceProcessor {
     private final CategoryService categoryService;
     private final ServiceService serviceService;
     private final SearchDocumentService searchDocumentService;
+    private final SearchIndexQueueService searchIndexQueueService;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -86,13 +88,15 @@ public class BusinessServiceProcessor {
                 dto.getServiceBranchOfferId(), dto.getBusinessId(), dto.getBranchId(),
                 dto.getName(), serviceSearchSummary(dto), dto.getCategoryLabel(),
                 dto.getBasePrice(), live);
+        if (live && dto.getServiceOfferingId() != null) {
+            searchIndexQueueService.schedule("SERVICE", dto.getServiceOfferingId());
+        }
     }
 
     private String serviceSearchSummary(ServiceBranchOfferDto dto) {
         return String.join(" ",
                 dto.getDescription() == null ? "" : dto.getDescription(),
-                dto.getScheduleText() == null ? "" : dto.getScheduleText(),
-                dto.getDurationMinutes() == null ? "" : dto.getDurationMinutes() + " минут").trim();
+                dto.getScheduleText() == null ? "" : dto.getScheduleText()).trim();
     }
 
     private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {
@@ -105,9 +109,9 @@ public class BusinessServiceProcessor {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .basePrice(dto.getBasePrice())
-                .durationMinutes(dto.getDurationMinutes())
                 .scheduleText(dto.getScheduleText())
                 .active(dto.getActive())
+                .imageUrl(dto.getImageUrl())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
     }
@@ -121,7 +125,7 @@ public class BusinessServiceProcessor {
     }
 
     private void requireAnyAccess(UUID userId, BusinessBranchDto branch) {
-        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
+        if (businessService.isManagerOrAboveOfBusiness(branch.getBusinessId(), userId)) {
             return;
         }
         if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {

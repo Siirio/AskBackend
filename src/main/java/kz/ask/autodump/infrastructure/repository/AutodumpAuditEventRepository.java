@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface AutodumpAuditEventRepository extends JpaRepository<AutodumpAuditEvent, UUID> {
 
     List<AutodumpAuditEvent> findByImportSessionIdOrderByCreatedAt(UUID importSessionId);
+
+    void deleteAllByImportSessionId(UUID importSessionId);
 }

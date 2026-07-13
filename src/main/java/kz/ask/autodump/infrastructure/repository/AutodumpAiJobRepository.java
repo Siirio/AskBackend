@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface AutodumpAiJobRepository extends JpaRepository<AutodumpAiJob, UUID> {
 
     List<AutodumpAiJob> findByImportSessionId(UUID importSessionId);
+
+    void deleteAllByImportSessionId(UUID importSessionId);
 }

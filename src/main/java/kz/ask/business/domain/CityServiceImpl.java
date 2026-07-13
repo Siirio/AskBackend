@@ -11,7 +11,6 @@ import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,17 +27,10 @@ public class CityServiceImpl implements CityService {
     }
 
     @Override
-    @Transactional
-    public CityDto findOrCreateByName(String name) {
+    public CityDto findByName(String name) {
         String trimmed = name == null ? "" : name.trim();
         City city = cityRepository.findByNameIgnoreCase(trimmed)
-                .orElseGet(() -> {
-                    City created = new City();
-                    created.setName(trimmed);
-                    created.setCountryCode("KZ");
-                    created.setStatus(RecordStatus.ACTIVE);
-                    return cityRepository.save(created);
-                });
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CITY_NOT_FOUND));
         return businessMapper.toCityDto(city);
     }
 

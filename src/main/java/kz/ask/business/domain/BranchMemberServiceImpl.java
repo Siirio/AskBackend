@@ -35,6 +35,15 @@ public class BranchMemberServiceImpl implements BranchMemberService {
     }
 
     @Override
+    @Transactional
+    public BranchMemberDto updateMemberRole(UUID memberId, BranchMemberRole role) {
+        BranchMember member = branchMemberRepository.findById(memberId)
+                .orElseThrow();
+        member.setRole(role);
+        return businessMapper.toBranchMemberDto(member);
+    }
+
+    @Override
     public List<BranchMemberDto> findByBranch(UUID branchId) {
         List<BranchMember> entities = branchMemberRepository.findByBranchIdAndStatus(branchId, RecordStatus.ACTIVE);
         return businessMapper.toBranchMemberDtoList(entities);
@@ -43,8 +52,7 @@ public class BranchMemberServiceImpl implements BranchMemberService {
     @Override
     public Boolean isStaffOfBranch(UUID branchId, UUID userId) {
         List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
-        return members.stream().anyMatch(m -> m.getBranch().getId().equals(branchId)
-                && m.getRole() == BranchMemberRole.STAFF);
+        return members.stream().anyMatch(m -> m.getBranch().getId().equals(branchId));
     }
 
     @Override

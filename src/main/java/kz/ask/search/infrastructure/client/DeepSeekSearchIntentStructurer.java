@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import kz.ask.search.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.domain.SearchIntentStructurer;
+import kz.ask.search.infrastructure.cache.IntentStructureCache;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
 import kz.ask.shared.error.ValidationException;
@@ -26,6 +27,7 @@ public class DeepSeekSearchIntentStructurer implements SearchIntentStructurer {
 
     private final RestClient deepSeekRestClient;
     private final ObjectMapper objectMapper;
+    private final IntentStructureCache cache;
 
     @Value("${ask.ai.search.api-key:}")
     private String apiKey;
@@ -41,10 +43,16 @@ public class DeepSeekSearchIntentStructurer implements SearchIntentStructurer {
 
     @Override
     public JsonNode structure(SearchIntentStructureRequest request) {
+        JsonNode cached = cache.get(request.getRawQuery());
+        if (cached != null) {
+            return cached;
+        }
         if (!StringUtils.hasText(apiKey)) {
             throw new ValidationException(ErrorCode.AI_SEARCH_API_KEY_MISSING);
         }
-        return callDeepSeek(request);
+        JsonNode result = callDeepSeek(request);
+        cache.put(request.getRawQuery(), result);
+        return result;
     }
 
     private JsonNode callDeepSeek(SearchIntentStructureRequest request) {

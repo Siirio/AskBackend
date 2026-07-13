@@ -3,3 +3,4 @@ target/
 *.log
 docs/api/
 deploy/vps/.env
+.claude/machine-bootstrap.lock

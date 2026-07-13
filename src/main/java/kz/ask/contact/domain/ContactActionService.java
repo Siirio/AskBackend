@@ -40,6 +40,7 @@ public class ContactActionService {
                         businessId, RecordStatus.ACTIVE)
                 .stream()
                 .filter(contact -> contact.getVisibility() != ContactVisibility.INTERNAL)
+                .filter(contact -> contact.getContactType() == ContactType.ASK_CHAT)
                 .limit(MAX_CARD_ACTIONS)
                 .map(this::toSummary)
                 .toList();
@@ -116,6 +117,7 @@ public class ContactActionService {
             case TWO_GIS -> "TWO_GIS";
             case EMAIL -> "EMAIL";
             case PHONE -> "PHONE";
+            case ASK_CHAT -> "ASK_CHAT";
         };
     }
 
@@ -128,6 +130,7 @@ public class ContactActionService {
             case TWO_GIS -> "Открыть 2GIS";
             case EMAIL -> "Написать email";
             case PHONE -> "Показать телефон";
+            case ASK_CHAT -> "Чат в приложении";
         };
     }
 
@@ -135,6 +138,7 @@ public class ContactActionService {
         return switch (type) {
             case PHONE -> "DISPLAY";
             case TELEGRAM -> "DEEP_LINK";
+            case ASK_CHAT -> "CHAT";
             default -> "REDIRECT";
         };
     }

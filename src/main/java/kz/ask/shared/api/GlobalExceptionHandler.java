@@ -127,11 +127,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation", ex);
+        Throwable cause = ex.getMostSpecificCause();
+        String detail = cause != null ? cause.getMessage() : ex.getMessage();
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.builder()
                         .timestamp(Instant.now())
                         .errorCode("DATA_CONFLICT")
                         .message("Данные конфликтуют с текущим состоянием")
+                        .detail(detail)
                         .build());
     }
 

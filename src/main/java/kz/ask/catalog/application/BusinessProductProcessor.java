@@ -13,6 +13,7 @@ import kz.ask.catalog.api.dto.BusinessProductUpdateRequest;
 import kz.ask.catalog.domain.ProductService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.search.domain.SearchDocumentService;
+import kz.ask.search.domain.SearchIndexQueueService;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -34,6 +35,7 @@ public class BusinessProductProcessor {
     private final CategoryService categoryService;
     private final ProductService productService;
     private final SearchDocumentService searchDocumentService;
+    private final SearchIndexQueueService searchIndexQueueService;
 
     @Transactional(readOnly = true)
     public BusinessProductListResponse listProducts(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -96,6 +98,9 @@ public class BusinessProductProcessor {
                 dto.getProductOfferId(), dto.getBusinessId(), dto.getBranchId(),
                 dto.getName(), dto.getDescription(), dto.getCategoryLabel(),
                 dto.getSku(), dto.getTags(), dto.getPrice(), live);
+        if (live && dto.getProductId() != null) {
+            searchIndexQueueService.schedule("PRODUCT", dto.getProductId());
+        }
     }
 
     private BusinessProductRowResponse toRowResponse(ProductOfferDto dto) {
@@ -111,6 +116,7 @@ public class BusinessProductProcessor {
                 .tags(dto.getTags())
                 .price(dto.getPrice())
                 .enabled(dto.getEnabled())
+                .imageUrl(dto.getImageUrl())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
     }
@@ -124,7 +130,7 @@ public class BusinessProductProcessor {
     }
 
     private void requireAnyAccess(UUID userId, BusinessBranchDto branch) {
-        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
+        if (businessService.isManagerOrAboveOfBusiness(branch.getBusinessId(), userId)) {
             return;
         }
         if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {

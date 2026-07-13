@@ -18,9 +18,9 @@ import lombok.Setter;
 public class CustomerRegisterRequest {
 
     private String displayName;
+    @NotBlank
     @Email
     private String email;
-    private String phone;
     @NotBlank
     @Size(min = 8, max = 128)
     private String password;
@@ -28,11 +28,6 @@ public class CustomerRegisterRequest {
     private String passwordConfirmation;
     private Boolean acceptedUserAgreement;
     private Boolean rememberMe;
-
-    @AssertTrue(message = "Exactly one of email or phone must be provided")
-    public boolean hasSingleContact() {
-        return (email != null && !email.isBlank()) ^ (phone != null && !phone.isBlank());
-    }
 
     @AssertTrue(message = "Password and confirmation must match")
     public boolean passwordsMatch() {

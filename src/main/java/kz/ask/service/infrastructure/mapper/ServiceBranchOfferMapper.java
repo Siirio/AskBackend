@@ -21,6 +21,7 @@ public class ServiceBranchOfferMapper {
         offering.setCategory(categoryRef);
         offering.setName(req.getName().trim());
         offering.setDescription(req.getDescription());
+        offering.setImageUrl(req.getImageUrl());
         offering.setStatus(RecordStatus.ACTIVE);
         return offering;
     }
@@ -31,7 +32,6 @@ public class ServiceBranchOfferMapper {
         offer.setBranch(branchRef);
         offer.setServiceMode(ServiceMode.ON_DEMAND);
         offer.setBasePrice(req.getBasePrice());
-        offer.setDurationMinutes(req.getDurationMinutes());
         offer.setScheduleText(req.getScheduleText());
         offer.setActive(req.getActive() == null ? Boolean.TRUE : req.getActive());
         offer.setStatus(RecordStatus.ACTIVE);
@@ -51,14 +51,14 @@ public class ServiceBranchOfferMapper {
         if (req.getBasePrice() != null) {
             offer.setBasePrice(req.getBasePrice());
         }
-        if (req.getDurationMinutes() != null) {
-            offer.setDurationMinutes(req.getDurationMinutes());
-        }
         if (req.getScheduleText() != null) {
             offer.setScheduleText(req.getScheduleText());
         }
         if (req.getActive() != null) {
             offer.setActive(req.getActive());
+        }
+        if (req.getImageUrl() != null) {
+            offering.setImageUrl(req.getImageUrl());
         }
     }
 
@@ -75,10 +75,10 @@ public class ServiceBranchOfferMapper {
                 .name(offering.getName())
                 .description(offering.getDescription())
                 .basePrice(offer.getBasePrice())
-                .durationMinutes(offer.getDurationMinutes())
                 .scheduleText(offer.getScheduleText())
                 .active(offer.getActive())
                 .status(offer.getStatus().name())
+                .imageUrl(offering.getImageUrl())
                 .updatedAt(offer.getUpdatedAt())
                 .build();
     }

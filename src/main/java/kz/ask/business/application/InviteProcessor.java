@@ -4,9 +4,11 @@ import kz.ask.business.api.dto.CreateInviteRequest;
 import kz.ask.business.api.dto.InviteResponse;
 import kz.ask.business.domain.BranchInviteService;
 import kz.ask.business.domain.BusinessBranchService;
+import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.dto.BranchInviteDto;
 import kz.ask.business.domain.enums.BranchMemberRole;
+import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
@@ -26,26 +28,30 @@ public class InviteProcessor {
 
     private final IdentityService identityService;
     private final BusinessService businessService;
+    private final BusinessMemberService businessMemberService;
     private final BranchInviteService branchInviteService;
     private final BusinessBranchService businessBranchService;
 
     @Transactional
     public InviteResponse createInvite(AskPrincipal principal, UUID businessId, UUID branchId,
                                         CreateInviteRequest req) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
+
+        BranchMemberRole role = resolveRole(req.getRole());
+        requireCanAssignRole(principal.getUserId(), businessId, role);
 
         AppUserDto createdBy = identityService.findById(principal.getUserId());
         Long ttlSeconds = 86400L;
         Integer maxUses = req.getMaxUses() != null && req.getMaxUses() > 0 ? req.getMaxUses() : 1;
 
         BranchInviteDto invite = branchInviteService.create(
-                branchId, BranchMemberRole.STAFF, maxUses, ttlSeconds, createdBy.getId());
+                branchId, role, maxUses, ttlSeconds, createdBy.getId());
         return buildInviteResponse(invite);
     }
 
     public List<InviteResponse> listInvites(AskPrincipal principal, UUID businessId, UUID branchId) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         List<BranchInviteDto> invites = branchInviteService.findByBranch(branchId);
         return invites.stream().map(this::buildInviteResponse).toList();
@@ -53,14 +59,35 @@ public class InviteProcessor {
 
     @Transactional
     public void revokeInvite(AskPrincipal principal, UUID businessId, UUID branchId, UUID inviteId) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyManagementAccess(principal.getUserId(), businessId);
         requireBranchExists(businessId, branchId);
         branchInviteService.revoke(inviteId);
     }
 
-    private void verifyOwnerAccess(UUID userId, UUID businessId) {
-        if (!businessService.isOwnerOfBusiness(businessId, userId)) {
+    private void verifyManagementAccess(UUID userId, UUID businessId) {
+        if (!businessService.isManagerOrAboveOfBusiness(businessId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void requireCanAssignRole(UUID userId, UUID businessId, BranchMemberRole targetRole) {
+        BusinessMemberRole actorRole = businessMemberService.getRoleInBusiness(businessId, userId);
+        if (actorRole == null) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+        if (actorRole == BusinessMemberRole.MANAGER && targetRole != BranchMemberRole.WORKER) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private BranchMemberRole resolveRole(String role) {
+        if (role == null || role.isBlank()) {
+            return BranchMemberRole.WORKER;
+        }
+        try {
+            return BranchMemberRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return BranchMemberRole.WORKER;
         }
     }
 

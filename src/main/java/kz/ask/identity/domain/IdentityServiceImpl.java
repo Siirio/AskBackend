@@ -8,6 +8,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -82,9 +83,9 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AppUserDto createUser(String email, String phone, String displayName, String password, AppRole role) {
+    public AppUserDto createUser(String email, String displayName, String password, AppRole role) {
         AppUser user = authMapper.toAppUserEntity(
-                blankToNull(email), blankToNull(phone), displayName,
+                blankToNull(email), displayName,
                 hashPassword(password), role, UserStatus.PENDING);
         AppUser saved = appUserRepository.save(user);
         return authMapper.toAppUserDto(saved);
@@ -92,7 +93,7 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AuthChallengeDto createChallenge(UUID userId, String email, String phone,
+    public AuthChallengeDto createChallenge(UUID userId, String email,
                                             AuthChallengeChannel channel,
                                             AuthChallengePurpose purpose,
                                             Boolean rememberMe,
@@ -103,7 +104,7 @@ public class IdentityServiceImpl implements IdentityService {
         }
         String code = generateCode();
         AuthChallenge challenge = authMapper.toChallengeEntity(
-                user, email, phone, channel, purpose,
+                user, email, channel, purpose,
                 hashCode(code), challengeMaxAttempts, challengeTtlSeconds,
                 Boolean.TRUE.equals(rememberMe), registrationData);
         AuthChallenge saved = authChallengeRepository.save(challenge);
@@ -166,9 +167,9 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AppUserDto createStaffUser(String email, String displayName, String tempPassword) {
+    public AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role) {
         AppUser user = authMapper.toStaffUserEntity(
-                email, displayName, hashPassword(tempPassword), encrypt(tempPassword));
+                email, displayName, hashPassword(tempPassword), encrypt(tempPassword), role);
         AppUser saved = appUserRepository.save(user);
         return authMapper.toAppUserDto(saved);
     }
@@ -229,29 +230,31 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public AppUserDto findActiveByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email)
+    public List<AppUserDto> findAllActiveByEmail(String email) {
+        return appUserRepository.findAllByEmailIgnoreCase(email).stream()
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                 .map(authMapper::toAppUserDto)
-                .orElse(null);
+                .toList();
     }
 
     @Override
-    public AppUserDto findActiveByPhone(String phone) {
-        return appUserRepository.findByPhone(phone)
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+    public List<AppUserDto> findAllByEmail(String email) {
+        return appUserRepository.findAllByEmailIgnoreCase(email).stream()
                 .map(authMapper::toAppUserDto)
-                .orElse(null);
+                .toList();
     }
 
+    @Override
     public Boolean emailExists(String email) {
         return appUserRepository.existsByEmailIgnoreCase(email);
     }
 
-    public Boolean phoneExists(String phone) {
-        return appUserRepository.existsByPhone(phone);
+    @Override
+    public Boolean emailExistsForRole(String email, AppRole role) {
+        return appUserRepository.existsByEmailIgnoreCaseAndRole(email, role);
     }
 
+    @Override
     public String maskEmail(String email) {
         if (email == null) return null;
         int at = email.indexOf('@');
@@ -259,14 +262,9 @@ public class IdentityServiceImpl implements IdentityService {
         return email.charAt(0) + "***" + email.charAt(at - 1) + email.substring(at);
     }
 
-    public String maskPhone(String phone) {
-        if (phone == null || phone.length() < 4) return phone;
-        return "***" + phone.substring(phone.length() - 4);
-    }
-
     @Override
-    public AppUserDto findByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email)
+    public AppUserDto findByEmailAndRole(String email, AppRole role) {
+        return appUserRepository.findByEmailIgnoreCaseAndRole(email, role)
                 .map(authMapper::toAppUserDto)
                 .orElse(null);
     }
@@ -283,11 +281,38 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public void updateProfile(UUID userId, String displayName, String email, String phone) {
+    public void updateProfile(UUID userId, String displayName, String email) {
         AppUser user = appUserRepository.getReferenceById(userId);
         if (displayName != null) user.setDisplayName(displayName);
         if (email != null) user.setEmail(email);
-        if (phone != null) user.setPhone(phone);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, String newPassword) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setPasswordHash(hashPassword(newPassword));
+    }
+
+    @Override
+    @Transactional
+    public void toggleTwoFactor(UUID userId) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setTwoFactorEnabled(!Boolean.TRUE.equals(user.getTwoFactorEnabled()));
+    }
+
+    @Override
+    @Transactional
+    public void recordLogin(UUID userId) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setLastLoginAt(Instant.now());
+    }
+
+    @Override
+    public Boolean isTwoFactorEnabled(UUID userId) {
+        return appUserRepository.findById(userId)
+                .map(u -> Boolean.TRUE.equals(u.getTwoFactorEnabled()))
+                .orElse(false);
     }
 
     private String encrypt(String plainText) {
