@@ -38,7 +38,12 @@ public class AppUser extends BaseUuidV7Entity {
     @Column(nullable = false)
     private Boolean mustChangePassword;
 
+    @Column(nullable = false)
+    private Boolean twoFactorEnabled = false;
+
     private String tempPasswordEncrypted;
 
     private Instant activatedAt;
+
+    private Instant lastLoginAt;
 }

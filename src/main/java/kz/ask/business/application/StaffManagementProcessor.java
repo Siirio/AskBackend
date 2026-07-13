@@ -15,6 +15,7 @@ import kz.ask.business.domain.enums.BranchMemberRole;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
+import kz.ask.identity.domain.enums.AppRole;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
@@ -43,12 +44,14 @@ public class StaffManagementProcessor {
         BranchMemberRole memberRole = resolveBranchMemberRole(req.getRole());
         requireCanAssignRole(principal.getUserId(), businessId, memberRole);
 
-        if (identityService.findByEmail(req.getEmail()) != null) {
+        AppRole appRole = memberRole == BranchMemberRole.MANAGER ? AppRole.BUSINESS_MANAGER : AppRole.BUSINESS_WORKER;
+
+        if (!identityService.findAllByEmail(req.getEmail()).isEmpty()) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         String tempPassword = generateTempPassword();
-        AppUserDto user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword);
+        AppUserDto user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword, appRole);
 
         BusinessMemberRole bizRole = mapToBusinessRole(memberRole);
         businessMemberService.createMember(businessId, user.getId(), bizRole);
