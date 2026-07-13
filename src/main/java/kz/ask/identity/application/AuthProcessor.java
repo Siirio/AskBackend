@@ -118,6 +118,12 @@ public class AuthProcessor {
             user = identityService.findById(challenge.getUserId());
         }
 
+        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(u -> u.getRole().name())
+                .distinct()
+                .toList();
+
         BusinessRegistrationResult bizResult = null;
         if (isNewRegistration
                 && isBusinessRole(user.getRole())
@@ -126,12 +132,6 @@ public class AuthProcessor {
         } else if (isBusinessRole(user.getRole())) {
             bizResult = businessService.findByOwner(user.getId());
         }
-
-        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(u -> u.getRole().name())
-                .distinct()
-                .toList();
 
         String authority = authorityForSession(user, bizResult);
         AuthSessionDto session = identityService.createSession(user.getId(), authority, challenge.getRememberMe());
@@ -198,6 +198,7 @@ public class AuthProcessor {
         }
 
         identityService.logout(principal.getUserId());
+        identityService.recordLogin(targetUser.getId());
 
         BusinessRegistrationResult bizResult = null;
         if (isBusinessRole(targetRole)) {
@@ -241,6 +242,7 @@ public class AuthProcessor {
 
         identityService.changePassword(targetUser.getId(), req.getNewPassword());
         identityService.logout(principal.getUserId());
+        identityService.recordLogin(targetUser.getId());
 
         BusinessRegistrationResult bizResult = null;
         if (isBusinessRole(targetRole)) {

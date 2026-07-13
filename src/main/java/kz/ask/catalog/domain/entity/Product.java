@@ -5,7 +5,6 @@ import lombok.Setter;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,7 +22,8 @@ import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.Category;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
-import kz.ask.shared.infrastructure.converter.JsonMapConverter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -66,7 +66,7 @@ public class Product extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private RecordStatus status;
 
-    @Convert(converter = JsonMapConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private Map<String, Object> attributes = new HashMap<>();
 }

@@ -1,7 +1,6 @@
 package kz.ask.business.domain.entity;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,9 +14,10 @@ import java.util.List;
 import kz.ask.business.domain.enums.UniqueOfferStatus;
 import kz.ask.business.domain.enums.UniqueOfferType;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.infrastructure.converter.JsonListConverter;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -61,7 +61,7 @@ public class UniqueOffer extends BaseUuidV7Entity {
     @Column(length = 3, columnDefinition = "VARCHAR(3) DEFAULT 'KZT'")
     private String currency;
 
-    @Convert(converter = JsonListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private List<String> tags = new ArrayList<>();
 }

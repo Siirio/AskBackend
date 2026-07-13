@@ -14,5 +14,6 @@ public class ErrorResponse {
     private Instant timestamp;
     private String errorCode;
     private String message;
+    private String detail;
     private List<ErrorDetail> errors;
 }

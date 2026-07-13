@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import java.util.List;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -35,6 +37,7 @@ public class Business extends BaseUuidV7Entity {
     @Column(name = "shipping_mode", length = 20)
     private String shippingMode;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "shipping_city_ids", columnDefinition = "JSONB")
     private String shippingCityIds;
 }
