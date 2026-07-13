@@ -8,6 +8,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -166,9 +167,9 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AppUserDto createStaffUser(String email, String displayName, String tempPassword) {
+    public AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role) {
         AppUser user = authMapper.toStaffUserEntity(
-                email, displayName, hashPassword(tempPassword), encrypt(tempPassword));
+                email, displayName, hashPassword(tempPassword), encrypt(tempPassword), role);
         AppUser saved = appUserRepository.save(user);
         return authMapper.toAppUserDto(saved);
     }
@@ -229,11 +230,18 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public AppUserDto findActiveByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email)
+    public List<AppUserDto> findAllActiveByEmail(String email) {
+        return appUserRepository.findAllByEmailIgnoreCase(email).stream()
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                 .map(authMapper::toAppUserDto)
-                .orElse(null);
+                .toList();
+    }
+
+    @Override
+    public List<AppUserDto> findAllByEmail(String email) {
+        return appUserRepository.findAllByEmailIgnoreCase(email).stream()
+                .map(authMapper::toAppUserDto)
+                .toList();
     }
 
     @Override
@@ -252,13 +260,6 @@ public class IdentityServiceImpl implements IdentityService {
         int at = email.indexOf('@');
         if (at <= 2) return email;
         return email.charAt(0) + "***" + email.charAt(at - 1) + email.substring(at);
-    }
-
-    @Override
-    public AppUserDto findByEmail(String email) {
-        return appUserRepository.findByEmailIgnoreCase(email)
-                .map(authMapper::toAppUserDto)
-                .orElse(null);
     }
 
     @Override
@@ -284,6 +285,34 @@ public class IdentityServiceImpl implements IdentityService {
         AppUser user = appUserRepository.getReferenceById(userId);
         if (displayName != null) user.setDisplayName(displayName);
         if (email != null) user.setEmail(email);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, String newPassword) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setPasswordHash(hashPassword(newPassword));
+    }
+
+    @Override
+    @Transactional
+    public void toggleTwoFactor(UUID userId) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setTwoFactorEnabled(!Boolean.TRUE.equals(user.getTwoFactorEnabled()));
+    }
+
+    @Override
+    @Transactional
+    public void recordLogin(UUID userId) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setLastLoginAt(Instant.now());
+    }
+
+    @Override
+    public Boolean isTwoFactorEnabled(UUID userId) {
+        return appUserRepository.findById(userId)
+                .map(u -> Boolean.TRUE.equals(u.getTwoFactorEnabled()))
+                .orElse(false);
     }
 
     private String encrypt(String plainText) {

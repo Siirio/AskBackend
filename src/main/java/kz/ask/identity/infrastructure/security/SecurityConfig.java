@@ -64,7 +64,8 @@ public class SecurityConfig {
                     "/api/v1/businesses/*/brand-profile",
                     "/api/v1/businesses/*/storefront",
                     "/api/v1/businesses/*/drops",
-                    "/api/v1/chat/files/*"
+                    "/api/v1/chat/files/*",
+                    "/api/v1/auth/email-info"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/search",
@@ -73,7 +74,8 @@ public class SecurityConfig {
                     "/api/v1/auth/customer/register",
                     "/api/v1/auth/business/login/start",
                     "/api/v1/auth/business/register",
-                    "/api/v1/auth/verify"
+                    "/api/v1/auth/verify",
+                    "/api/v1/auth/select-role"
                 ).permitAll()
                 .requestMatchers(
                     "/oauth2/**",

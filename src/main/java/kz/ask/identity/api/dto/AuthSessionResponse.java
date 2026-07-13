@@ -1,6 +1,8 @@
 package kz.ask.identity.api.dto;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,4 +21,10 @@ public class AuthSessionResponse {
     private String startRoute;
     private AuthUserResponse user;
     private AuthBusinessContextResponse business;
+    private Boolean requiresRoleSelection;
+    private List<RoleOption> availableRoles;
+    private List<String> allRoles;
+    private Boolean requiresTwoFactor;
+    private UUID authChallengeId;
+    private Boolean suggestRoleExpansion;
 }

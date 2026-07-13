@@ -1,5 +1,6 @@
 package kz.ask.identity.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.AuthChallengeDto;
@@ -12,7 +13,7 @@ public interface IdentityService {
 
     AppUserDto createUser(String email, String displayName, String password, AppRole role);
 
-    AppUserDto createStaffUser(String email, String displayName, String tempPassword);
+    AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role);
 
     AuthChallengeDto createChallenge(UUID userId, String email,
                                      AuthChallengeChannel channel,
@@ -40,9 +41,9 @@ public interface IdentityService {
 
     AppUserDto findById(UUID id);
 
-    AppUserDto findActiveByEmail(String email);
+    List<AppUserDto> findAllByEmail(String email);
 
-    AppUserDto findByEmail(String email);
+    List<AppUserDto> findAllActiveByEmail(String email);
 
     AppUserDto findByEmailAndRole(String email, AppRole role);
 
@@ -59,4 +60,12 @@ public interface IdentityService {
     Long staffActivationSessionTtl();
 
     void updateProfile(UUID userId, String displayName, String email);
+
+    void changePassword(UUID userId, String newPassword);
+
+    void toggleTwoFactor(UUID userId);
+
+    Boolean isTwoFactorEnabled(UUID userId);
+
+    void recordLogin(UUID userId);
 }

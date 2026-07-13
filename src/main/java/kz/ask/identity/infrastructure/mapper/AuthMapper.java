@@ -28,12 +28,12 @@ public class AuthMapper {
     }
 
     public AppUser toStaffUserEntity(String email, String displayName, String passwordHash,
-                                      String tempPasswordEncrypted) {
+                                      String tempPasswordEncrypted, AppRole role) {
         AppUser user = new AppUser();
         user.setEmail(email);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
-        user.setRole(AppRole.BUSINESS_WORKER);
+        user.setRole(role);
         user.setStatus(UserStatus.PENDING_ACTIVATION);
         user.setMustChangePassword(true);
         user.setTempPasswordEncrypted(tempPasswordEncrypted);
@@ -82,8 +82,10 @@ public class AuthMapper {
                 .role(entity.getRole())
                 .status(entity.getStatus())
                 .mustChangePassword(entity.getMustChangePassword())
+                .twoFactorEnabled(entity.getTwoFactorEnabled())
                 .tempPasswordEncrypted(entity.getTempPasswordEncrypted())
                 .activatedAt(entity.getActivatedAt())
+                .lastLoginAt(entity.getLastLoginAt())
                 .build();
     }
 

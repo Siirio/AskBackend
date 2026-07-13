@@ -8,11 +8,15 @@ import kz.ask.identity.api.dto.AuthChallengeResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.BusinessLoginStartRequest;
 import kz.ask.identity.api.dto.BusinessRegisterRequest;
+import kz.ask.identity.api.dto.ChangePasswordRequest;
 import kz.ask.identity.api.dto.ChangeTemporaryPasswordRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
+import kz.ask.identity.api.dto.EmailInfoResponse;
 import kz.ask.identity.api.dto.LoginRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
+import kz.ask.identity.api.dto.SelectRoleRequest;
+import kz.ask.identity.api.dto.SwitchRoleRequest;
 import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.application.AuthProcessor;
@@ -26,6 +30,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,6 +45,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthSessionResponse> login(@Valid @RequestBody LoginRequest req) {
         return ResponseEntity.ok(loginProcessor.login(req));
+    }
+
+    @PostMapping("/select-role")
+    public ResponseEntity<AuthSessionResponse> selectRole(@Valid @RequestBody SelectRoleRequest req) {
+        return ResponseEntity.ok(loginProcessor.selectRole(req));
+    }
+
+    @GetMapping("/email-info")
+    public ResponseEntity<EmailInfoResponse> emailInfo(@RequestParam String email) {
+        return ResponseEntity.ok(authProcessor.emailInfo(email));
     }
 
     @PostMapping("/change-temporary-password")
@@ -98,5 +113,28 @@ public class AuthController {
     public ResponseEntity<AuthSessionResponse> updateProfile(@AuthenticationPrincipal AskPrincipal principal,
                                                               @Valid @RequestBody UpdateProfileRequest req) {
         return ResponseEntity.ok(authProcessor.updateProfile(principal, req));
+    }
+
+    @Operation(summary = "Switch role", description = "Switches the current session to a different role the user has")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/switch-role")
+    public ResponseEntity<AuthSessionResponse> switchRole(@AuthenticationPrincipal AskPrincipal principal,
+                                                          @Valid @RequestBody SwitchRoleRequest req) {
+        return ResponseEntity.ok(authProcessor.switchRole(principal, req));
+    }
+
+    @Operation(summary = "Change password", description = "Changes password for a specific role of the authenticated user")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/change-password")
+    public ResponseEntity<AuthSessionResponse> changePassword(@AuthenticationPrincipal AskPrincipal principal,
+                                                               @Valid @RequestBody ChangePasswordRequest req) {
+        return ResponseEntity.ok(authProcessor.changePassword(principal, req));
+    }
+
+    @Operation(summary = "Toggle 2FA", description = "Toggles two-factor authentication for the current user")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/toggle-2fa")
+    public ResponseEntity<AuthSessionResponse> toggleTwoFactor(@AuthenticationPrincipal AskPrincipal principal) {
+        return ResponseEntity.ok(authProcessor.toggleTwoFactor(principal));
     }
 }

@@ -20,6 +20,8 @@ public class AppUserDto {
     private AppRole role;
     private UserStatus status;
     private Boolean mustChangePassword;
+    private Boolean twoFactorEnabled;
     private String tempPasswordEncrypted;
     private Instant activatedAt;
+    private Instant lastLoginAt;
 }
