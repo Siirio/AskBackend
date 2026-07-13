@@ -1,5 +1,6 @@
 package kz.ask.catalog.infrastructure.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import kz.ask.catalog.domain.entity.ProductOffer;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProductOfferRepository extends JpaRepository<ProductOffer, UUID> {
+
+    List<ProductOffer> findByProductId(UUID productId);
 
     @Query("""
         select po from ProductOffer po

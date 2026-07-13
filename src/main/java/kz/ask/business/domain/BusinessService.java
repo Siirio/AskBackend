@@ -11,12 +11,13 @@ public interface BusinessService {
                                                 UUID branchCityId,
                                                 String branchAddress,
                                                 Boolean onlineOnly,
-                                                String contactEmail,
-                                                String contactPhone);
+                                                String contactEmail);
 
     BusinessRegistrationResult findByOwner(UUID userId);
 
     Boolean isOwnerOfBusiness(UUID businessId, UUID userId);
+
+    Boolean isManagerOrAboveOfBusiness(UUID businessId, UUID userId);
 
     void updateBusiness(UUID businessId, String name);
 }

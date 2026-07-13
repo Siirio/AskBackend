@@ -19,4 +19,6 @@ public class CreateStaffRequest {
 
     @NotBlank
     private String displayName;
+
+    private String role;
 }

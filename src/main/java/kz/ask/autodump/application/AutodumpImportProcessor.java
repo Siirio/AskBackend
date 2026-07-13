@@ -10,8 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 import kz.ask.autodump.api.dto.AutodumpSessionStatusResponse;
 import kz.ask.autodump.api.dto.CreateAutodumpSessionRequest;
 import kz.ask.autodump.api.dto.CreateAutodumpSessionResponse;
@@ -61,9 +60,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Component
 @RequiredArgsConstructor
 public class AutodumpImportProcessor {
-
-    private static final Pattern HOUR_DURATION_PATTERN = Pattern.compile("(\\d+)\\s*(час|часа|часов|ч|hour|hours|h)");
-    private static final Pattern MINUTE_DURATION_PATTERN = Pattern.compile("(\\d+)\\s*(мин|минут|минута|минуты|min|m)");
 
     private final AutodumpImportService importService;
     private final AutodumpDraftService draftService;
@@ -243,6 +239,7 @@ public class AutodumpImportProcessor {
         importService.updateCounts(sessionId, session.getTotalDraftCount(),
                 session.getApprovedCount(), session.getRejectedCount(), skipped);
         importService.updateStatus(sessionId, ImportSessionStatus.PUBLISHED);
+        importService.deleteSession(sessionId);
 
         return PublishResponse.builder()
                 .sessionId(sessionId)
@@ -288,7 +285,6 @@ public class AutodumpImportProcessor {
                         .name(resolveTitle(draft))
                         .description(draft.getDescription())
                         .basePrice(draft.getPrice())
-                        .durationMinutes(resolveDurationMinutes(draft))
                         .scheduleText(resolveScheduleText(draft))
                         .active(Boolean.TRUE)
                         .build());
@@ -340,19 +336,6 @@ public class AutodumpImportProcessor {
         return characteristics;
     }
 
-    private Integer resolveDurationMinutes(DraftItemDto draft) {
-        String sourceText = draftSourceText(draft);
-        Matcher hourMatcher = HOUR_DURATION_PATTERN.matcher(sourceText.toLowerCase());
-        if (hourMatcher.find()) {
-            return Integer.parseInt(hourMatcher.group(1)) * 60;
-        }
-        Matcher minuteMatcher = MINUTE_DURATION_PATTERN.matcher(sourceText.toLowerCase());
-        if (minuteMatcher.find()) {
-            return Integer.parseInt(minuteMatcher.group(1));
-        }
-        return null;
-    }
-
     private String resolveScheduleText(DraftItemDto draft) {
         Map<String, String> attributes = parseStringMap(draft.getCustomAttributesJson());
         for (String key : List.of("duration", "duration_text", "schedule", "time", "длительность", "время")) {
@@ -361,18 +344,13 @@ public class AutodumpImportProcessor {
                 return value;
             }
         }
-        Integer durationMinutes = resolveDurationMinutes(draft);
-        if (durationMinutes != null) {
-            return durationMinutes % 60 == 0 ? durationMinutes / 60 + " час" : durationMinutes + " минут";
-        }
         return null;
     }
 
     private String serviceSearchSummary(ServiceBranchOfferDto offer) {
         return String.join(" ",
                 offer.getDescription() == null ? "" : offer.getDescription(),
-                offer.getScheduleText() == null ? "" : offer.getScheduleText(),
-                offer.getDurationMinutes() == null ? "" : offer.getDurationMinutes() + " минут").trim();
+                offer.getScheduleText() == null ? "" : offer.getScheduleText()).trim();
     }
 
     private String draftSourceText(DraftItemDto draft) {

@@ -15,4 +15,6 @@ public interface AutodumpDraftItemRepository extends JpaRepository<AutodumpDraft
     List<AutodumpDraftItem> findByImportSessionIdAndStatus(UUID importSessionId, DraftItemStatus status);
 
     List<AutodumpDraftItem> findByImportSessionIdAndIdIn(UUID importSessionId, List<UUID> ids);
+
+    void deleteAllByImportSessionId(UUID importSessionId);
 }

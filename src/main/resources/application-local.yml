@@ -10,7 +10,7 @@ spring:
     password: local-test-password
 
 server:
-  port: 9090
+  port: 2020
 
 management:
   health:

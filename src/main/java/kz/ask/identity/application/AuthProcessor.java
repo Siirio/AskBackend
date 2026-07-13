@@ -2,9 +2,12 @@ package kz.ask.identity.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.BranchMemberService;
+import java.util.List;
 import java.util.UUID;
+import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
 import kz.ask.identity.api.dto.AuthChallengeResponse;
@@ -12,9 +15,13 @@ import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.AuthUserResponse;
 import kz.ask.identity.api.dto.BusinessLoginStartRequest;
 import kz.ask.identity.api.dto.BusinessRegisterRequest;
+import kz.ask.identity.api.dto.ChangePasswordRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
+import kz.ask.identity.api.dto.EmailAccountInfo;
+import kz.ask.identity.api.dto.EmailInfoResponse;
 import kz.ask.identity.api.dto.LogoutResponse;
+import kz.ask.identity.api.dto.SwitchRoleRequest;
 import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.domain.IdentityService;
@@ -27,13 +34,14 @@ import kz.ask.identity.domain.enums.AuthChallengePurpose;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.identity.infrastructure.mail.EmailCodeSender;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.identity.infrastructure.sms.SmsCodeSender;
+import kz.ask.shared.error.AuthException;
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.InternalServerException;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.UnauthorizedException;
+import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -45,9 +53,9 @@ public class AuthProcessor {
 
     private final IdentityService identityService;
     private final BusinessService businessService;
+    private final BusinessMemberService businessMemberService;
     private final BranchMemberService branchMemberService;
     private final EmailCodeSender emailSender;
-    private final SmsCodeSender smsSender;
     private final ObjectMapper objectMapper;
 
     @Value("${auth.verification.test-mode:false}")
@@ -55,55 +63,46 @@ public class AuthProcessor {
 
     @Transactional
     public AuthChallengeResponse startCustomerLogin(CustomerLoginStartRequest req) {
-        AppUserDto user = findUserForLogin(req.getEmail(), req.getPhone());
+        AppUserDto user = identityService.findAllActiveByEmail(req.getEmail()).stream()
+                .filter(u -> u.getRole() == AppRole.CUSTOMER)
+                .findFirst()
+                .orElse(null);
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND);
         }
-        if (user.getRole() != AppRole.CUSTOMER) {
-            throw new ForbiddenException(ErrorCode.ROLE_MISMATCH);
-        }
-        return createLoginChallenge(user.getId(), user.getRole(), req.getEmail(), req.getPhone(), req.getRememberMe());
+        return createLoginChallenge(user.getId(), user.getRole(), req.getEmail(), req.getRememberMe());
     }
 
     @Transactional
     public AuthChallengeResponse registerCustomer(CustomerRegisterRequest req) {
-        if (req.getEmail() != null && !req.getEmail().isBlank() && identityService.emailExists(req.getEmail())) {
+        if (identityService.emailExistsForRole(req.getEmail(), AppRole.CUSTOMER)) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
-        if (req.getPhone() != null && !req.getPhone().isBlank() && identityService.phoneExists(req.getPhone())) {
-            throw new ConflictException(ErrorCode.PHONE_ALREADY_REGISTERED);
-        }
         String registrationData = serializeUserRegistration(
-                blankToNull(req.getEmail()), blankToNull(req.getPhone()),
-                req.getDisplayName(), req.getPassword(), "CUSTOMER");
-        return createRegisterChallenge(null, AppRole.CUSTOMER, req.getEmail(), req.getPhone(), req.getRememberMe(), registrationData);
+                req.getEmail(), req.getDisplayName(), req.getPassword(), "CUSTOMER");
+        return createRegisterChallenge(null, AppRole.CUSTOMER, req.getEmail(), req.getRememberMe(), registrationData);
     }
 
     @Transactional
     public AuthChallengeResponse startBusinessLogin(BusinessLoginStartRequest req) {
-        AppUserDto user = findUserForLogin(req.getEmail(), req.getPhone());
+        AppUserDto user = identityService.findAllActiveByEmail(req.getEmail()).stream()
+                .filter(u -> isBusinessRole(u.getRole()))
+                .findFirst()
+                .orElse(null);
         if (user == null) {
             throw new NotFoundException(ErrorCode.USER_NOT_FOUND);
         }
-        if (user.getRole() != AppRole.BUSINESS) {
-            throw new ForbiddenException(ErrorCode.ROLE_MISMATCH);
-        }
-        return createLoginChallenge(user.getId(), user.getRole(), req.getEmail(), req.getPhone(), req.getRememberMe());
+        return createLoginChallenge(user.getId(), user.getRole(), req.getEmail(), req.getRememberMe());
     }
 
     @Transactional
     public AuthChallengeResponse registerBusiness(BusinessRegisterRequest req) {
-        if (req.getEmail() != null && !req.getEmail().isBlank() && identityService.emailExists(req.getEmail())) {
+        if (identityService.emailExistsForRole(req.getEmail(), AppRole.BUSINESS_OWNER)) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
-        if (req.getPhone() != null && !req.getPhone().isBlank() && identityService.phoneExists(req.getPhone())) {
-            throw new ConflictException(ErrorCode.PHONE_ALREADY_REGISTERED);
-        }
-        String email = blankToNull(req.getEmail());
-        String phone = blankToNull(req.getPhone());
-        String registrationData = serializeBusinessRegistration(email, phone,
+        String registrationData = serializeBusinessRegistration(req.getEmail(),
                 req.getBusinessName(), req.getPassword(), req);
-        return createRegisterChallenge(null, AppRole.BUSINESS, email, phone, req.getRememberMe(), registrationData);
+        return createRegisterChallenge(null, AppRole.BUSINESS_OWNER, req.getEmail(), req.getRememberMe(), registrationData);
     }
 
     @Transactional
@@ -111,24 +110,38 @@ public class AuthProcessor {
         AuthChallengeDto challenge = identityService.verifyCode(req.getAuthChallengeId(), req.getCode());
 
         AppUserDto user;
-        if (challenge.getPurpose() == AuthChallengePurpose.REGISTER) {
+        boolean isNewRegistration = challenge.getPurpose() == AuthChallengePurpose.REGISTER;
+        if (isNewRegistration) {
             user = createUserFromStoredRegistration(challenge.getRegistrationData());
             identityService.activateUser(user.getId());
         } else {
             user = identityService.findById(challenge.getUserId());
         }
 
+        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(u -> u.getRole().name())
+                .distinct()
+                .toList();
+
         BusinessRegistrationResult bizResult = null;
-        if (challenge.getPurpose() == AuthChallengePurpose.REGISTER
-                && user.getRole() == AppRole.BUSINESS
+        if (isNewRegistration
+                && isBusinessRole(user.getRole())
                 && challenge.getRegistrationData() != null) {
             bizResult = deserializeAndCreateBusiness(user, challenge.getRegistrationData());
+        } else if (isBusinessRole(user.getRole())) {
+            bizResult = businessService.findByOwner(user.getId());
         }
 
         String authority = authorityForSession(user, bizResult);
         AuthSessionDto session = identityService.createSession(user.getId(), authority, challenge.getRememberMe());
 
-        return buildSessionResponse(session, user, bizResult);
+        AuthSessionResponse response = buildSessionResponse(session, user, bizResult);
+        response.setAllRoles(allRoles);
+        if (isNewRegistration && allRoles.size() == 1) {
+            response.setSuggestRoleExpansion(true);
+        }
+        return response;
     }
 
     public AuthSessionResponse currentSession(AskPrincipal principal) {
@@ -136,19 +149,26 @@ public class AuthProcessor {
         if (user == null || user.getStatus() != UserStatus.ACTIVE) {
             throw new UnauthorizedException(ErrorCode.SESSION_INVALID);
         }
+        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(u -> u.getRole().name())
+                .distinct()
+                .toList();
+
         BusinessRegistrationResult bizResult = null;
-        if (user.getRole() == AppRole.BUSINESS) {
+        if (isBusinessRole(user.getRole())) {
             bizResult = businessService.findByOwner(user.getId());
         }
         AuthSessionResponse resp = buildSessionResponse(null, user, bizResult);
         resp.setAccessToken(null);
+        resp.setAllRoles(allRoles);
         return resp;
     }
 
     @Transactional
     public AuthSessionResponse updateProfile(AskPrincipal principal, UpdateProfileRequest req) {
         identityService.updateProfile(principal.getUserId(),
-                req.getDisplayName(), req.getEmail(), req.getPhone());
+                req.getDisplayName(), req.getEmail());
         return currentSession(principal);
     }
 
@@ -158,64 +178,145 @@ public class AuthProcessor {
         return LogoutResponse.builder().success(true).build();
     }
 
-    private AuthChallengeResponse createLoginChallenge(UUID userId, AppRole role, String email, String phone, Boolean rememberMe) {
-        AuthChallengeChannel channel = email != null && !email.isBlank()
-                ? AuthChallengeChannel.EMAIL : AuthChallengeChannel.SMS;
-        String destination = email != null && !email.isBlank() ? email : phone;
-        AuthChallengeDto challenge = identityService.createChallenge(
-                userId, email, phone, channel, AuthChallengePurpose.LOGIN, rememberMe, null);
-        if (Boolean.TRUE.equals(testMode)) {
-            return buildChallengeResponse(challenge, destination, role.name(), challenge.getCodePlain());
+    @Transactional
+    public AuthSessionResponse switchRole(AskPrincipal principal, SwitchRoleRequest req) {
+        AppUserDto currentUser = identityService.findById(principal.getUserId());
+        if (currentUser == null) {
+            throw new UnauthorizedException(ErrorCode.SESSION_INVALID);
         }
-        sendCode(channel, destination, challenge.getCodePlain());
-        String masked = channel == AuthChallengeChannel.EMAIL
-                ? identityService.maskEmail(destination) : identityService.maskPhone(destination);
+
+        AppRole targetRole;
+        try {
+            targetRole = AppRole.valueOf(req.getRole());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ErrorCode.ROLE_MISMATCH);
+        }
+
+        AppUserDto targetUser = identityService.findByEmailAndRole(currentUser.getEmail(), targetRole);
+        if (targetUser == null || targetUser.getStatus() != UserStatus.ACTIVE) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        identityService.logout(principal.getUserId());
+        identityService.recordLogin(targetUser.getId());
+
+        BusinessRegistrationResult bizResult = null;
+        if (isBusinessRole(targetRole)) {
+            bizResult = businessService.findByOwner(targetUser.getId());
+        }
+
+        String authority = authorityForSession(targetUser, bizResult);
+        AuthSessionDto session = identityService.createSession(targetUser.getId(), authority, false);
+        AuthSessionResponse response = buildSessionResponse(session, targetUser, bizResult);
+        response.setAllRoles(identityService.findAllByEmail(currentUser.getEmail()).stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(u -> u.getRole().name())
+                .distinct()
+                .toList());
+        return response;
+    }
+
+    @Transactional
+    public AuthSessionResponse changePassword(AskPrincipal principal, ChangePasswordRequest req) {
+        if (!req.getNewPassword().equals(req.getPasswordConfirmation())) {
+            throw new ValidationException(ErrorCode.PASSWORDS_DO_NOT_MATCH);
+        }
+
+        AppUserDto currentUser = identityService.findById(principal.getUserId());
+
+        AppRole targetRole;
+        try {
+            targetRole = AppRole.valueOf(req.getRole());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ErrorCode.ROLE_MISMATCH);
+        }
+
+        AppUserDto targetUser = identityService.findByEmailAndRole(currentUser.getEmail(), targetRole);
+        if (targetUser == null) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (!identityService.verifyPassword(req.getCurrentPassword(), targetUser.getPasswordHash())) {
+            throw new AuthException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        identityService.changePassword(targetUser.getId(), req.getNewPassword());
+        identityService.logout(principal.getUserId());
+        identityService.recordLogin(targetUser.getId());
+
+        BusinessRegistrationResult bizResult = null;
+        if (isBusinessRole(targetRole)) {
+            bizResult = businessService.findByOwner(targetUser.getId());
+        }
+
+        String authority = authorityForSession(targetUser, bizResult);
+        AuthSessionDto session = identityService.createSession(targetUser.getId(), authority, false);
+        AuthSessionResponse response = buildSessionResponse(session, targetUser, bizResult);
+        response.setAllRoles(identityService.findAllByEmail(currentUser.getEmail()).stream()
+                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                .map(u -> u.getRole().name())
+                .distinct()
+                .toList());
+        return response;
+    }
+
+    @Transactional
+    public AuthSessionResponse toggleTwoFactor(AskPrincipal principal) {
+        identityService.toggleTwoFactor(principal.getUserId());
+        return currentSession(principal);
+    }
+
+    public EmailInfoResponse emailInfo(String email) {
+        List<AppUserDto> users = identityService.findAllByEmail(email);
+        if (users.isEmpty()) {
+            return EmailInfoResponse.builder().exists(false).accounts(List.of()).build();
+        }
+        List<EmailAccountInfo> accounts = users.stream()
+                .map(u -> {
+                    String businessName = null;
+                    if (isBusinessRole(u.getRole())) {
+                        BusinessRegistrationResult biz = businessService.findByOwner(u.getId());
+                        if (biz != null) {
+                            businessName = biz.getBusiness().getName();
+                        }
+                    }
+                    return EmailAccountInfo.builder()
+                            .role(u.getRole().name())
+                            .status(u.getStatus().name())
+                            .businessName(businessName)
+                            .build();
+                })
+                .toList();
+        return EmailInfoResponse.builder().exists(true).accounts(accounts).build();
+    }
+
+    private AuthChallengeResponse createLoginChallenge(UUID userId, AppRole role, String email, Boolean rememberMe) {
+        AuthChallengeDto challenge = identityService.createChallenge(
+                userId, email, AuthChallengeChannel.EMAIL, AuthChallengePurpose.LOGIN, rememberMe, null);
+        if (Boolean.TRUE.equals(testMode)) {
+            return buildChallengeResponse(challenge, email, role.name(), challenge.getCodePlain());
+        }
+        emailSender.sendCode(email, challenge.getCodePlain());
+        String masked = identityService.maskEmail(email);
         return buildChallengeResponse(challenge, masked, role.name(), null);
     }
 
-    private AuthChallengeResponse createRegisterChallenge(UUID userId, AppRole role, String email, String phone,
+    private AuthChallengeResponse createRegisterChallenge(UUID userId, AppRole role, String email,
                                                            Boolean rememberMe, String registrationData) {
-        AuthChallengeChannel channel = email != null && !email.isBlank()
-                ? AuthChallengeChannel.EMAIL : AuthChallengeChannel.SMS;
-        String destination = email != null && !email.isBlank() ? email : phone;
         AuthChallengeDto challenge = identityService.createChallenge(
-                userId, email, phone, channel, AuthChallengePurpose.REGISTER, rememberMe, registrationData);
+                userId, email, AuthChallengeChannel.EMAIL, AuthChallengePurpose.REGISTER, rememberMe, registrationData);
         if (Boolean.TRUE.equals(testMode)) {
-            return buildChallengeResponse(challenge, destination, role.name(), challenge.getCodePlain());
+            return buildChallengeResponse(challenge, email, role.name(), challenge.getCodePlain());
         }
-        sendCode(channel, destination, challenge.getCodePlain());
-        String masked = channel == AuthChallengeChannel.EMAIL
-                ? identityService.maskEmail(destination) : identityService.maskPhone(destination);
+        emailSender.sendCode(email, challenge.getCodePlain());
+        String masked = identityService.maskEmail(email);
         return buildChallengeResponse(challenge, masked, role.name(), null);
     }
 
-    private void sendCode(AuthChallengeChannel channel, String destination, String code) {
-        if (channel == AuthChallengeChannel.EMAIL) {
-            emailSender.sendCode(destination, code);
-        } else {
-            smsSender.sendCode(destination, code);
-        }
-    }
-
-    private AppUserDto findUserForLogin(String email, String phone) {
-        if (email != null && !email.isBlank()) {
-            return identityService.findActiveByEmail(email);
-        }
-        if (phone != null && !phone.isBlank()) {
-            return identityService.findActiveByPhone(phone);
-        }
-        return null;
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
-    }
-
-    private String serializeUserRegistration(String email, String phone, String displayName,
+    private String serializeUserRegistration(String email, String displayName,
                                              String password, String role) {
         BusinessRegistrationPayload payload = new BusinessRegistrationPayload();
         payload.setEmail(email);
-        payload.setPhone(phone);
         payload.setDisplayName(displayName);
         payload.setPassword(password);
         payload.setRole(role);
@@ -226,11 +327,10 @@ public class AuthProcessor {
         }
     }
 
-    private String serializeBusinessRegistration(String email, String phone, String displayName,
+    private String serializeBusinessRegistration(String email, String displayName,
                                                   String password, BusinessRegisterRequest req) {
         BusinessRegistrationPayload payload = new BusinessRegistrationPayload();
         payload.setEmail(email);
-        payload.setPhone(phone);
         payload.setDisplayName(displayName);
         payload.setPassword(password);
         payload.setRole("BUSINESS");
@@ -249,9 +349,9 @@ public class AuthProcessor {
     private AppUserDto createUserFromStoredRegistration(String registrationData) {
         try {
             BusinessRegistrationPayload payload = objectMapper.readValue(registrationData, BusinessRegistrationPayload.class);
-            AppRole role = "BUSINESS".equals(payload.getRole()) ? AppRole.BUSINESS : AppRole.CUSTOMER;
+            AppRole role = "BUSINESS".equals(payload.getRole()) ? AppRole.BUSINESS_OWNER : AppRole.CUSTOMER;
             return identityService.createUser(
-                    payload.getEmail(), payload.getPhone(), payload.getDisplayName(),
+                    payload.getEmail(), payload.getDisplayName(),
                     payload.getPassword(), role);
         } catch (JsonProcessingException e) {
             throw new InternalServerException(ErrorCode.REGISTRATION_PAYLOAD_ERROR);
@@ -268,8 +368,7 @@ public class AuthProcessor {
                     payload.getBranchCityId(),
                     payload.getBranchAddress(),
                     payload.getOnlineOnly(),
-                    payload.getEmail(),
-                    payload.getPhone());
+                    payload.getEmail());
         } catch (JsonProcessingException e) {
             throw new InternalServerException(ErrorCode.REGISTRATION_PAYLOAD_ERROR);
         }
@@ -282,8 +381,12 @@ public class AuthProcessor {
         if (bizResult != null && bizResult.getMember() != null) {
             return "ROLE_BUSINESS_" + bizResult.getMember().getRole();
         }
+        BusinessMemberDto member = businessMemberService.findByUser(user.getId());
+        if (member != null) {
+            return "ROLE_BUSINESS_" + member.getRole();
+        }
         if (branchMemberService.isBranchStaff(user.getId())) {
-            return "ROLE_BUSINESS_STAFF";
+            return "ROLE_BUSINESS_WORKER";
         }
         return "ROLE_BUSINESS_OWNER";
     }
@@ -329,7 +432,6 @@ public class AuthProcessor {
                 .userId(user.getId())
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
-                .phone(user.getPhone())
                 .status(user.getStatus().name())
                 .build();
     }
@@ -350,8 +452,11 @@ public class AuthProcessor {
             return "CLIENT_SEARCH";
         }
         if (authority != null) {
-            if (authority.contains("OWNER")) {
+            if (authority.contains("OWNER") || authority.contains("MANAGER")) {
                 return "OWNER_BRANCHES";
+            }
+            if (authority.contains("WORKER")) {
+                return "BRANCH_WORKSPACE";
             }
             if (authority.contains("STAFF")) {
                 return "BRANCH_WORKSPACE";
@@ -361,5 +466,11 @@ public class AuthProcessor {
             return "OWNER_BRANCHES";
         }
         return "BRANCH_WORKSPACE";
+    }
+
+    private boolean isBusinessRole(AppRole role) {
+        return role == AppRole.BUSINESS_OWNER
+                || role == AppRole.BUSINESS_MANAGER
+                || role == AppRole.BUSINESS_WORKER;
     }
 }

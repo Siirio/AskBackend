@@ -15,12 +15,13 @@ public class AppUserDto {
 
     private UUID id;
     private String email;
-    private String phone;
     private String displayName;
     private String passwordHash;
     private AppRole role;
     private UserStatus status;
     private Boolean mustChangePassword;
+    private Boolean twoFactorEnabled;
     private String tempPasswordEncrypted;
     private Instant activatedAt;
+    private Instant lastLoginAt;
 }

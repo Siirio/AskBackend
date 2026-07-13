@@ -13,12 +13,17 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.Category;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -52,7 +57,16 @@ public class Product extends BaseUuidV7Entity {
     @Column(name = "characteristics_json", columnDefinition = "TEXT")
     private String characteristicsJson;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    private BigDecimal price;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private RecordStatus status;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSONB")
+    private Map<String, Object> attributes = new HashMap<>();
 }

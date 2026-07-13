@@ -30,8 +30,6 @@ public class AuthChallenge extends BaseUuidV7Entity {
 
     private String email;
 
-    private String phone;
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private AuthChallengeChannel channel;

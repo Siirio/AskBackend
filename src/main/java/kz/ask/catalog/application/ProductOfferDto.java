@@ -30,5 +30,6 @@ public class ProductOfferDto {
     private BigDecimal price;
     private Boolean enabled;
     private String status;
+    private String imageUrl;
     private Instant updatedAt;
 }

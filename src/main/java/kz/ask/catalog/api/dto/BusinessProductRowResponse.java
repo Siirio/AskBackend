@@ -29,4 +29,5 @@ public class BusinessProductRowResponse {
     private BigDecimal price;
     private Boolean enabled;
     private Instant updatedAt;
+    private String imageUrl;
 }

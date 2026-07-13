@@ -21,8 +21,6 @@ public class AppUser extends BaseUuidV7Entity {
 
     private String email;
 
-    private String phone;
-
     @Column(nullable = false)
     private String displayName;
 
@@ -40,7 +38,12 @@ public class AppUser extends BaseUuidV7Entity {
     @Column(nullable = false)
     private Boolean mustChangePassword;
 
+    @Column(nullable = false)
+    private Boolean twoFactorEnabled = false;
+
     private String tempPasswordEncrypted;
 
     private Instant activatedAt;
+
+    private Instant lastLoginAt;
 }

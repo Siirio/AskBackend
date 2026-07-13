@@ -25,6 +25,7 @@ public class ProductOfferMapper {
         product.setDescription(req.getDescription());
         product.setSku(normalizeSku(req.getSku()));
         product.setTags(normalizeTags(req.getTags()));
+        product.setImageUrl(req.getImageUrl());
         product.setStatus(RecordStatus.ACTIVE);
         return product;
     }
@@ -61,6 +62,9 @@ public class ProductOfferMapper {
         if (req.getEnabled() != null) {
             offer.setEnabled(req.getEnabled());
         }
+        if (req.getImageUrl() != null) {
+            product.setImageUrl(req.getImageUrl());
+        }
     }
 
     public void markArchived(Product product, ProductOffer offer) {
@@ -86,6 +90,7 @@ public class ProductOfferMapper {
                 .price(offer.getPrice())
                 .enabled(offer.getEnabled())
                 .status(offer.getStatus().name())
+                .imageUrl(product.getImageUrl())
                 .updatedAt(offer.getUpdatedAt())
                 .build();
     }

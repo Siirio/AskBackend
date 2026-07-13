@@ -1,5 +1,6 @@
 package kz.ask.business.domain.dto;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,4 +19,6 @@ public class BusinessBranchDto {
     private String address;
     private Boolean onlineOnly;
     private String status;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
 }

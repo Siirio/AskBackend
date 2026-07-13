@@ -55,7 +55,15 @@ PRODUCT_SEARCH shape:
     "variant": "",
     "condition": "NEW | USED | ANY | UNKNOWN",
     "quantity": null,
-    "attributes": {}
+    "attributes": {
+      "color": [],
+      "size": "",
+      "brand": "",
+      "material": "",
+      "audience": [],
+      "occasion": [],
+      "condition": ""
+    }
   },
   "price": {
     "min": null,
@@ -103,7 +111,10 @@ SERVICE_SEARCH shape:
     "service_type": "",
     "desired_result": "",
     "target_customer": "",
-    "attributes": {}
+    "attributes": {
+      "audience": [],
+      "occasion": []
+    }
   },
   "time": {
     "date": null,
@@ -178,3 +189,14 @@ Search semantics:
 - For service/product type, include concrete direct terms the backend can match and rank, such as "стрижка", "барбершоп", "салон красоты", "креатин", "батончик", "ноутбук", "ps5", "велики", "велосипед", "прокат велосипедов".
 - Preserve physical package constraints in must_have and product.attributes when present. Example: "батончик > 900 грамм" means product_type "батончик", must_have includes "батончик" and package constraint "> 900 грамм"; the backend can match indexed products with "2 кг".
 - Preserve service duration and rental period in service.attributes or time fields when present. Example: "велики на прокат 1 час" means service_type "прокат велосипедов" and service.attributes.duration "1 час".
+
+Attribute keys (shared with index-time extraction — use these exact keys):
+- color: array of color names (e.g. ["red", "black"]). Normalize Russian colors: красный→red, черный→black, белый→white, синий→blue, зеленый→green, желтый→yellow, серый→gray, розовый→pink, фиолетовый→purple, оранжевый→orange, коричневый→brown, бежевый→beige, голубой→light blue.
+- size: single value (e.g. "S", "M", "L", "XL", "42"). Extract from query if explicit.
+- brand: single brand name string. Extract if mentioned.
+- material: single material string (e.g. "cotton", "leather", "steel", "wood").
+- audience: array from ["women", "men", "unisex", "kids"]. Infer from gendered terms.
+- occasion: array from ["birthday", "gift", "everyday"]. Infer from context like "подарок", "на день рождения".
+- condition: "new" or "used". Infer from "бу", "б/у", "used", "подержанный".
+- Omit keys you can't confidently infer. Never write null or empty string placeholders.
+- These keys are matched against the same attributes stored on products/services at index time.

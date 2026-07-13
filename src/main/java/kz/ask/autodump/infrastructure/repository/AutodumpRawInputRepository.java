@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface AutodumpRawInputRepository extends JpaRepository<AutodumpRawInput, UUID> {
 
     List<AutodumpRawInput> findByImportSessionId(UUID importSessionId);
+
+    void deleteAllByImportSessionId(UUID importSessionId);
 }

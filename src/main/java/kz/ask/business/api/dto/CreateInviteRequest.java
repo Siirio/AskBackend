@@ -14,4 +14,6 @@ import lombok.Setter;
 public class CreateInviteRequest {
 
     private Integer maxUses;
+
+    private String role;
 }

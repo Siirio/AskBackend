@@ -48,7 +48,7 @@ public class CustomerRequestProcessor {
         AppUser user = appUserRepository.findById(principal.getUserId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        CityDto cityDto = cityService.findOrCreateByName(req.getCityName());
+        CityDto cityDto = cityService.findByName(req.getCityName());
 
         CustomerRequest customerRequest = new CustomerRequest();
         customerRequest.setUser(user);

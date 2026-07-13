@@ -35,4 +35,6 @@ public interface AutodumpImportService {
     AiJobDto findAiJob(UUID jobId);
 
     List<AiJobDto> findAiJobsBySession(UUID sessionId);
+
+    void deleteSession(UUID sessionId);
 }

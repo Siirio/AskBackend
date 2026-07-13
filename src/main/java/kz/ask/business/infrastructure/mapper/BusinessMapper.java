@@ -1,5 +1,6 @@
 package kz.ask.business.infrastructure.mapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,29 +13,23 @@ import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.CityDto;
 import kz.ask.business.domain.dto.DataSourceDto;
 import kz.ask.business.domain.entity.BranchInvite;
-import kz.ask.business.domain.entity.BrandDrop;
-import kz.ask.business.domain.entity.BrandPageBlock;
+import kz.ask.business.domain.entity.UniqueOffer;
 import kz.ask.business.domain.entity.BrandProfile;
 import kz.ask.business.domain.entity.BranchMember;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.business.domain.entity.BusinessCard;
 import kz.ask.business.domain.entity.BusinessContact;
 import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.entity.City;
 import kz.ask.business.domain.entity.DataSource;
 import kz.ask.business.domain.enums.BranchMemberRole;
-import kz.ask.business.domain.enums.BrandDropStatus;
-import kz.ask.business.domain.enums.BrandDropType;
-import kz.ask.business.domain.enums.BrandPageBlockType;
+import kz.ask.business.domain.enums.UniqueOfferStatus;
+import kz.ask.business.domain.enums.UniqueOfferType;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.business.domain.enums.ContactVisibility;
 import kz.ask.business.domain.enums.ContactType;
-import kz.ask.business.domain.enums.StorefrontPageStatus;
-import kz.ask.business.domain.dto.BrandDropDto;
-import kz.ask.business.domain.dto.BrandPageBlockDto;
+import kz.ask.business.domain.dto.UniqueOfferDto;
 import kz.ask.business.domain.dto.BrandProfileDto;
-import kz.ask.business.domain.dto.BusinessCardDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.stereotype.Component;
@@ -45,27 +40,31 @@ public class BusinessMapper {
     public Business toBusinessEntity(String name) {
         Business business = new Business();
         business.setName(name);
+        business.setCurrency("KZT");
         business.setStatus(RecordStatus.ACTIVE);
         return business;
     }
 
     public BusinessBranch toBranchEntity(Business business, City city, String name,
-                                          String address, Boolean onlineOnly) {
+                                          String address, Boolean onlineOnly,
+                                          BigDecimal latitude, BigDecimal longitude) {
         BusinessBranch branch = new BusinessBranch();
         branch.setBusiness(business);
         branch.setCity(city);
         branch.setName(name);
         branch.setAddress(address);
         branch.setOnlineOnly(onlineOnly);
+        branch.setLatitude(latitude);
+        branch.setLongitude(longitude);
         branch.setStatus(RecordStatus.ACTIVE);
         return branch;
     }
 
-    public BusinessMember toBusinessMemberEntity(Business business, AppUser owner) {
+    public BusinessMember toBusinessMemberEntity(Business business, AppUser user, BusinessMemberRole role) {
         BusinessMember member = new BusinessMember();
         member.setBusiness(business);
-        member.setUser(owner);
-        member.setRole(BusinessMemberRole.OWNER);
+        member.setUser(user);
+        member.setRole(role);
         member.setStatus(RecordStatus.ACTIVE);
         return member;
     }
@@ -103,35 +102,22 @@ public class BusinessMapper {
         profile.setWebsiteUrl(websiteUrl);
     }
 
-    public BrandPageBlock toBrandPageBlockEntity(Business business, BrandPageBlockType blockType,
-                                                  Integer displayOrder, String configJson, Boolean enabled,
-                                                  StorefrontPageStatus pageStatus) {
-        BrandPageBlock block = new BrandPageBlock();
-        block.setBusiness(business);
-        block.setBlockType(blockType);
-        block.setDisplayOrder(displayOrder);
-        block.setConfigJson(configJson);
-        block.setEnabled(enabled);
-        block.setPageStatus(pageStatus);
-        return block;
-    }
-
-    public BrandDrop toBrandDropEntity(Business business, String name, String description,
-                                        java.time.Instant startDate, java.time.Instant endDate,
-                                        BrandDropType type, BrandDropStatus status, String coverUrl,
-                                        List<String> tags, List<java.util.UUID> productIds) {
-        BrandDrop drop = new BrandDrop();
-        drop.setBusiness(business);
-        drop.setName(name);
-        drop.setDescription(description);
-        drop.setStartDate(startDate);
-        drop.setEndDate(endDate);
-        drop.setType(type);
-        drop.setStatus(status);
-        drop.setCoverUrl(coverUrl);
-        drop.setTags(tags == null ? List.of() : tags);
-        drop.setProductIds(productIds == null ? List.of() : productIds);
-        return drop;
+    public UniqueOffer toUniqueOfferEntity(Business business, String name, String description,
+                                             java.time.Instant startDate, java.time.Instant endDate,
+                                             UniqueOfferType type, UniqueOfferStatus status, String coverUrl,
+                                             List<String> tags) {
+        UniqueOffer offer = new UniqueOffer();
+        offer.setBusiness(business);
+        offer.setName(name);
+        offer.setDescription(description);
+        offer.setStartDate(startDate);
+        offer.setEndDate(endDate);
+        offer.setType(type);
+        offer.setStatus(status);
+        offer.setCoverUrl(coverUrl);
+        offer.setTags(tags == null ? List.of() : tags);
+        offer.setCurrency("KZT");
+        return offer;
     }
 
     public BranchMember toBranchMemberEntity(BusinessBranch branch, AppUser user,
@@ -182,36 +168,6 @@ public class BusinessMapper {
                 .build();
     }
 
-    public BrandPageBlockDto toBrandPageBlockDto(BrandPageBlock entity) {
-        return BrandPageBlockDto.builder()
-                .id(entity.getId())
-                .businessId(entity.getBusiness().getId())
-                .blockType(entity.getBlockType().name())
-                .displayOrder(entity.getDisplayOrder())
-                .configJson(entity.getConfigJson())
-                .enabled(entity.getEnabled())
-                .pageStatus(entity.getPageStatus().name())
-                .updatedAt(entity.getUpdatedAt())
-                .build();
-    }
-
-    public BrandDropDto toBrandDropDto(BrandDrop entity) {
-        return BrandDropDto.builder()
-                .id(entity.getId())
-                .businessId(entity.getBusiness().getId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .startDate(entity.getStartDate())
-                .endDate(entity.getEndDate())
-                .type(entity.getType().name())
-                .status(entity.getStatus().name())
-                .coverUrl(entity.getCoverUrl())
-                .productCount(entity.getProductIds().size())
-                .tags(entity.getTags())
-                .productIds(entity.getProductIds())
-                .build();
-    }
-
     public BusinessBranchDto toBusinessBranchDto(BusinessBranch entity) {
         City city = entity.getCity();
         return BusinessBranchDto.builder()
@@ -223,6 +179,27 @@ public class BusinessMapper {
                 .address(entity.getAddress())
                 .onlineOnly(entity.getOnlineOnly())
                 .status(entity.getStatus().name())
+                .latitude(entity.getLatitude())
+                .longitude(entity.getLongitude())
+                .build();
+    }
+
+    public UniqueOfferDto toUniqueOfferDto(UniqueOffer entity) {
+        return UniqueOfferDto.builder()
+                .id(entity.getId())
+                .businessId(entity.getBusiness().getId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
+                .type(entity.getType().name())
+                .status(entity.getStatus().name())
+                .coverUrl(entity.getCoverUrl())
+                .discountPercent(entity.getDiscountPercent())
+                .discountAmount(entity.getDiscountAmount())
+                .enabled(entity.getEnabled())
+                .currency(entity.getCurrency())
+                .tags(entity.getTags())
                 .build();
     }
 
@@ -290,16 +267,6 @@ public class BusinessMapper {
         return CityDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
-                .build();
-    }
-
-    public BusinessCardDto toBusinessCardDto(BusinessCard entity) {
-        return BusinessCardDto.builder()
-                .id(entity.getId())
-                .businessId(entity.getBusiness().getId())
-                .blocks(entity.getBlocks())
-                .publishedAt(entity.getPublishedAt())
-                .status(entity.getStatus().name())
                 .build();
     }
 }

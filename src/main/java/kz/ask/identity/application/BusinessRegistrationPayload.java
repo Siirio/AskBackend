@@ -17,5 +17,4 @@ public class BusinessRegistrationPayload {
     private String branchAddress;
     private Boolean onlineOnly;
     private String email;
-    private String phone;
 }
