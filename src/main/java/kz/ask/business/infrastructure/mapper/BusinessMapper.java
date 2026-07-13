@@ -40,6 +40,7 @@ public class BusinessMapper {
     public Business toBusinessEntity(String name) {
         Business business = new Business();
         business.setName(name);
+        business.setCurrency("KZT");
         business.setStatus(RecordStatus.ACTIVE);
         return business;
     }
@@ -115,6 +116,7 @@ public class BusinessMapper {
         offer.setStatus(status);
         offer.setCoverUrl(coverUrl);
         offer.setTags(tags == null ? List.of() : tags);
+        offer.setCurrency("KZT");
         return offer;
     }
 

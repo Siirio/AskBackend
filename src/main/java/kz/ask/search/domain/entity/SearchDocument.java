@@ -5,7 +5,6 @@ import lombok.Setter;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,7 +25,8 @@ import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
-import kz.ask.shared.infrastructure.converter.JsonMapConverter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -83,7 +83,7 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(name = "public_note")
     private String publicNote;
 
-    @Convert(converter = JsonMapConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private Map<String, Object> attributes = new HashMap<>();
 }

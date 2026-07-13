@@ -107,9 +107,10 @@ ALTER TABLE business ADD COLUMN IF NOT EXISTS shipping_mode VARCHAR(20);
 ALTER TABLE business ADD COLUMN IF NOT EXISTS shipping_city_ids JSONB;
 
 -- ---------------------------------------------------------------------------
--- 8. Auth cleanup: drop phone columns (from V8)
+-- 8. Auth: drop phone columns, add two_factor_enabled (from V8 + V5)
 -- ---------------------------------------------------------------------------
 ALTER TABLE app_user DROP COLUMN IF EXISTS phone;
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE auth_challenge DROP COLUMN IF EXISTS phone;
 DROP INDEX IF EXISTS idx_app_user_phone;
 
