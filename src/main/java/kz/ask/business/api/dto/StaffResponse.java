@@ -15,6 +15,7 @@ public class StaffResponse {
     private String email;
     private String displayName;
     private String role;
+    private String branchName;
     private String status;
     private String tempPassword;
     private Instant activatedAt;

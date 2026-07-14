@@ -17,5 +17,6 @@ public class BranchMemberDto {
     private String userDisplayName;
     private String userStatus;
     private String role;
+    private String branchName;
     private Instant userActivatedAt;
 }

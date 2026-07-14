@@ -17,15 +17,15 @@
 | POST | /api/v1/business-admin/chats/{conversationId}/read | BUSINESS | Mark as read |
 
 ## ChatConversation Model
-- id, businessId, customerId, subject
+- conversationId, businessId, customerId, customerName, subject
 - customerUnreadCount (int, default 0)
 - businessUnreadCount (int, default 0)
-- lastMessageAt, createdAt, updatedAt
+- lastMessageAt, createdAt
 
 ## ChatMessage Model
-- id, conversationId, senderType (CUSTOMER/BUSINESS), senderId
-- content (text only — no attachments)
-- createdAt
+- messageId, conversationId, senderType (CUSTOMER/BUSINESS)
+- text (text only — no attachments)
+- readAt, createdAt
 
 ## Unread Count Rules
 - Customer sends message → increments businessUnreadCount

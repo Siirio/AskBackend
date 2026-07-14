@@ -11,6 +11,8 @@ import kz.ask.chat.domain.entity.ChatMessage;
 import kz.ask.chat.domain.enums.MessageSenderType;
 import kz.ask.chat.domain.repository.ChatConversationRepository;
 import kz.ask.chat.domain.repository.ChatMessageRepository;
+import kz.ask.identity.domain.entity.AppUser;
+import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
+    private final AppUserRepository appUserRepository;
 
     @Override
     @Transactional
@@ -140,10 +143,20 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatConversationDto toConversationDto(ChatConversation conv) {
+        String customerName = null;
+        if (conv.getCustomerId() != null) {
+            customerName = appUserRepository.findById(conv.getCustomerId())
+                    .map(AppUser::getDisplayName)
+                    .orElse(null);
+        }
+        if (customerName == null && conv.getSubject() != null && !conv.getSubject().isBlank()) {
+            customerName = conv.getSubject();
+        }
         return ChatConversationDto.builder()
                 .conversationId(conv.getId())
                 .businessId(conv.getBusinessId())
                 .customerId(conv.getCustomerId())
+                .customerName(customerName)
                 .subject(conv.getSubject())
                 .customerUnreadCount(conv.getCustomerUnreadCount())
                 .businessUnreadCount(conv.getBusinessUnreadCount())

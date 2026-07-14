@@ -18,6 +18,7 @@ public class ChatConversationDto {
     private UUID conversationId;
     private UUID businessId;
     private UUID customerId;
+    private String customerName;
     private String subject;
     private Integer customerUnreadCount;
     private Integer businessUnreadCount;

@@ -3,7 +3,9 @@ package kz.ask.identity.application;
 import java.util.Comparator;
 import java.util.List;
 import kz.ask.business.domain.BranchMemberService;
+import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
+import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
@@ -36,6 +38,7 @@ public class LoginProcessor {
 
     private final IdentityService identityService;
     private final BranchMemberService branchMemberService;
+    private final BusinessMemberService businessMemberService;
     private final BusinessService businessService;
     private final EmailCodeSender emailSender;
 
@@ -188,8 +191,12 @@ public class LoginProcessor {
         if (user.getRole() == AppRole.CUSTOMER) {
             return "ROLE_CUSTOMER";
         }
+        BusinessMemberDto member = businessMemberService.findByUser(user.getId());
+        if (member != null) {
+            return "ROLE_BUSINESS_" + member.getRole();
+        }
         if (branchMemberService.isBranchStaff(user.getId())) {
-            return "ROLE_BUSINESS_STAFF";
+            return "ROLE_BUSINESS_WORKER";
         }
         return "ROLE_BUSINESS_OWNER";
     }

@@ -9,14 +9,13 @@
 ## Business Admin Service Endpoints
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/STAFF | List branch services |
-| POST | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/STAFF | Create service + offer |
-| PATCH | /api/v1/business-admin/branches/{branchId}/services/{offerId} | OWNER/MANAGER/STAFF | Update service |
-| DELETE | /api/v1/business-admin/branches/{branchId}/services/{offerId} | OWNER/MANAGER/STAFF | Delete/deactivate service |
+| GET | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/WORKER | List branch services |
+| POST | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/WORKER | Create service + offer |
+| PATCH | /api/v1/business-admin/branches/{branchId}/services/{serviceOfferingId} | OWNER/MANAGER/WORKER | Update service |
 
 ## Service Branch Offer Model
-- service_offering: business_id, category_id, name, description, status
-- service_branch_offer: service_offering_id, branch_id, base_price, duration_minutes, schedule_text, active, status
+- service_offering: business_id, category_id, name, description, attributes (JSONB), image_url, status
+- service_branch_offer: service_offering_id, branch_id, base_price, schedule_text, active, status
 - service_branch M2M: one service can appear in multiple branches
 
 ## Supplier Response Statuses (Service)

@@ -26,11 +26,12 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | /api/v1/cities | No | List ACTIVE cities |
+| GET | /api/v1/cities/resolve | No | Resolve city from coordinates or name |
 | GET | /api/v1/categories | No | List root categories |
 | GET | /api/v1/categories/{parentId}/subcategories | No | List subcategories |
 
 ## Key DTOs
 - CreateStaffRequest: name, role (default WORKER), login (email)
 - UpdateStaffRequest: role, status
-- StaffResponse: id, displayName, email, role, status, branchName, tempPassword (only while pending)
-- BranchDto: id, name, cityId, cityName, address, onlineOnly, status
+- StaffResponse: id, displayName, email, role, status, branchName, tempPassword (only while pending), activatedAt
+- BranchResponse: id, businessId, cityId, cityName, name, address, onlineOnly, status, latitude, longitude
