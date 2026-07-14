@@ -230,6 +230,7 @@ public class BusinessMapper {
                 .userDisplayName(user.getDisplayName())
                 .userStatus(user.getStatus().name())
                 .role(entity.getRole().name())
+                .branchName(entity.getBranch().getName())
                 .userActivatedAt(user.getActivatedAt())
                 .build();
     }

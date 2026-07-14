@@ -24,10 +24,19 @@
 
 ## Key DTOs
 - AuthChallengeResponse: authChallengeId, role, purpose, channel, maskedDestination, expiresAt
-- AuthSessionResponse: accessToken, tokenType, expiresAt, remembered, role, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), startRoute
-- AuthUserResponse: userId, displayName, email, phone, status
+- AuthSessionResponse: accessToken, tokenType, expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, authChallengeId, suggestRoleExpansion
+- AuthUserResponse: userId, displayName, email, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
 - startRoute values: CLIENT_SEARCH, OWNER_BRANCHES, BRANCH_WORKSPACE
+
+## Additional Endpoints
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | /api/v1/auth/select-role | No | Select role when account has multiple roles |
+| POST | /api/v1/auth/switch-role | Bearer | Switch active role between sessions |
+| POST | /api/v1/auth/change-password | Bearer | Change password (authenticated) |
+| POST | /api/v1/auth/toggle-2fa | Bearer | Enable/disable two-factor auth |
+| GET | /api/v1/auth/email-info | No | Get email provider info for login hint |
 
 ## Config
 - auth.challenge.ttl, auth.challenge.code-length (6), auth.challenge.max-attempts

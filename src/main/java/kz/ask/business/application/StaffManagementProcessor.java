@@ -153,6 +153,7 @@ public class StaffManagementProcessor {
                 .email(member.getUserEmail())
                 .displayName(member.getUserDisplayName())
                 .role(member.getRole())
+                .branchName(member.getBranchName())
                 .status(member.getUserStatus())
                 .tempPassword(tempPassword)
                 .activatedAt(member.getUserActivatedAt())

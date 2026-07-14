@@ -170,3 +170,8 @@ CREATE INDEX IF NOT EXISTS idx_search_document_attributes ON search_document USI
 DROP TABLE IF EXISTS search_result_snapshot CASCADE;
 DROP TABLE IF EXISTS search_snapshot CASCADE;
 DROP TABLE IF EXISTS search_session CASCADE;
+
+-- ---------------------------------------------------------------------------
+-- 15. last_login_at tracking (from V6)
+-- ---------------------------------------------------------------------------
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;

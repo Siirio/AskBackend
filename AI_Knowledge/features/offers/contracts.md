@@ -1,12 +1,20 @@
 # Unique Offers — REST API Contracts
 
-## Business Admin
+## Business Admin (Drops)
+Base: /api/v1/businesses/{businessId}/drops
+
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/business-admin/offers | OWNER | Create offer |
-| GET | /api/v1/business-admin/offers | OWNER | List offers |
-| PATCH | /api/v1/business-admin/offers/{id} | OWNER | Update offer |
-| DELETE | /api/v1/business-admin/offers/{id} | OWNER | Delete offer |
+| GET | /drops | OWNER | List drops |
+| POST | /drops | OWNER | Create drop |
+| PATCH | /drops/{dropId} | OWNER | Update drop |
+| POST | /drops/{dropId}/cancel | OWNER | Cancel drop |
+| DELETE | /drops/{dropId} | OWNER | Delete drop |
+
+## Public
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/businesses/{businessId}/drops | No | List active and upcoming drops |
 
 ## UniqueOffer Model
 - id, business_id, name, description, type (UniqueOfferType enum), status (UniqueOfferStatus enum)
