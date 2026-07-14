@@ -7,7 +7,7 @@ REST API backend for the ASK platform — local product/service search with an a
 - PostgreSQL (source of truth + search engine via `SearchDocument` in-memory scoring)
 - Redis (sessions/cache)
 - DeepSeek AI (query structuring, NOT result selection)
-- REST APIs consumed by ASK Frontend (React SPA)
+- REST APIs consumed by ASK Frontend (Next.js App Router, Vertical Slice Architecture)
 
 ## Runtime Constraints
 - Never commit or push. User controls all version control.
@@ -26,7 +26,7 @@ Check if `.claude/machine-bootstrap.lock` exists. If NOT → run Machine Bootstr
 ```
 ls -d ../*/CLAUDE.md 2>/dev/null
 ```
-For each found: read its first project line. If `ask-frontend` is missing from `../ask-frontend/CLAUDE.md` → flag it. If present → note its features and locks.
+For each found: read its first project line. If `ASK Frontend` is missing from `../Ask_Frontend/CLAUDE.md` → flag it. If present → note its slices and locks.
 
 ### 3. Knowledge scan
 Read `AI_Knowledge/ProductVision.md`, `CodeRules.md`, `Locks.md`. Scan `features/` directories. Report: "{N} features tracked, {M} locks active."
@@ -59,9 +59,9 @@ claude mcp add figma-console
 Report each: installed / already present / failed. Continue on failure.
 
 ### C. Clone ASK Frontend
-Check if `../ask-frontend/CLAUDE.md` exists. If NOT:
+Check if `../Ask_Frontend/CLAUDE.md` exists. If NOT:
 ```
-git clone https://github.com/Siirio/AskFrontend.git ../ask-frontend
+git clone https://github.com/Siirio/AskFrontend.git ../Ask_Frontend
 ```
 If clone succeeds: verify it has CLAUDE.md. If not → flag to user.
 
@@ -115,9 +115,13 @@ Report: "Machine ready. Installed: {plugins}, {MCPs}. Cloned: {repos}."
 6. Did this change make a doc entry wrong? → Fix it NOW. Stale docs = broken system.
 
 ### Cross-project awareness
-- If you change an API that ASK Frontend consumes → check `../ask-frontend/AI_Knowledge/features/{domain}/contracts.md`
-- If the frontend repo has a matching feature folder → update its contracts.md too
+
+**The frontend's feature folders are named after ITS slices, not our modules.** `messaging/` → `chats/`, `service/` → `services/`, `request/` → `requests/`, `identity/` → `auth/` AND `profile/`, `offers/` → `business-cabinet/`, `import/` → `catalog/`. Never guess the path — use the **Frontend slice** column in the Feature Index below.
+
+- If you change an API that ASK Frontend consumes → open `../Ask_Frontend/AI_Knowledge/features/{frontend-slice}/contracts.md`
+- Update that contracts.md too. The frontend's copy of a contract is downstream of ours — backend wins for DATA.
 - If the frontend has a lock that would be violated → STOP and ASK
+- If a change REMOVES a field the frontend renders → say so explicitly. Their rules forbid faking it client-side, so a silent removal breaks a screen.
 
 ## Lock System
 
@@ -154,18 +158,22 @@ Run at session start:
 ## Related Projects
 | Project | Clone URL | Expected at | Relationship |
 |---------|-----------|-------------|-------------|
-| ASK Frontend | https://github.com/Siirio/AskFrontend.git | ../ask-frontend/ | React SPA, consumes this API |
+| ASK Frontend | https://github.com/Siirio/AskFrontend.git | ../Ask_Frontend/ | Next.js (App Router), Vertical Slice Architecture. Consumes this API. Its slices mirror our module names — see the Feature Index. |
 
 ## Feature Index
-| Feature | Folder | Has API | Consumed by Frontend |
-|---------|--------|---------|----------------------|
-| Identity & Auth | identity/ | Yes | Yes |
-| Business & Branches | business/ | Yes | Yes |
-| Catalog (Products) | catalog/ | Yes | Yes |
-| Services | service/ | Yes | Yes |
-| Unified Search | search/ | Yes | Yes |
-| Fallback Requests | request/ | Yes | Yes |
-| Chat/Messaging | messaging/ | Yes | Yes |
-| Unique Offers | offers/ | Yes | Yes |
-| Shipping | shipping/ | Yes | Yes |
-| Excel Import | import/ | Yes | Yes |
+
+The **Frontend slice** column is the cross-repo lookup key: our `AI_Knowledge/features/{folder}/` maps to their `../Ask_Frontend/AI_Knowledge/features/{slice}/`. The names differ — always use this table, never guess.
+
+| Feature | Folder | Has API | Frontend slice |
+|---------|--------|---------|----------------|
+| Identity & Auth | identity/ | Yes | `auth/` (session, roles) **and** `profile/` (settings, sign out) |
+| Business & Branches | business/ | Yes | `business-cabinet/` |
+| Catalog (Products) | catalog/ | Yes | `catalog/` |
+| Services | service/ | Yes | `services/` — plural |
+| Unified Search | search/ | Yes | `search/` |
+| Fallback Requests | request/ | Yes | `requests/` — plural |
+| Chat/Messaging | messaging/ | Yes | `chats/` — our folder is `messaging/`, theirs is `chats/` |
+| Unique Offers | offers/ | Yes | `business-cabinet/` (Unique Offers tab) |
+| Shipping | shipping/ | Yes | — no V1 surface yet |
+| Excel Import | import/ | Yes | `catalog/` (Products → Import) |
+| Autodump | (no folder) | Yes | — no V1 surface yet |
