@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ask
-    username: ask_app
-    password: 59wUTwwqJnYkWdGLo2zvpTJP8If75vb8
+    username: postgres
+    password: admin
   jpa:
     show-sql: true
   mail:
