@@ -40,8 +40,9 @@ import kz.ask.catalog.domain.dto.ProductOfferDto;
 import kz.ask.catalog.domain.service.ProductOfferService;
 import kz.ask.catalog.domain.service.ProductService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.search.domain.SearchDocumentService;
-import kz.ask.search.domain.SearchService;
+import kz.ask.search.domain.SearchOutboxService;
+import kz.ask.search.domain.enums.SearchAggregateType;
+import kz.ask.search.domain.enums.SearchEventType;
 import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.application.ServiceBranchOfferDto;
 import kz.ask.service.domain.ServiceService;
@@ -72,8 +73,7 @@ public class AutodumpImportProcessor {
     private final ProductService productService;
     private final ProductOfferService productOfferService;
     private final ServiceService serviceService;
-    private final SearchService searchService;
-    private final SearchDocumentService searchDocumentService;
+    private final SearchOutboxService searchOutboxService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -273,7 +273,9 @@ public class AutodumpImportProcessor {
                 .branchId(branchId)
                 .price(draft.getPrice())
                 .build());
-        searchService.indexProductOffer(offer.getId(), product.getId(), session.getBusinessId(), branchId);
+        searchOutboxService.publish(
+                SearchAggregateType.PRODUCT_OFFER, offer.getId(),
+                SearchEventType.UPSERT, offer.getSearchVersion());
         return offer;
     }
 
@@ -288,9 +290,9 @@ public class AutodumpImportProcessor {
                         .scheduleText(resolveScheduleText(draft))
                         .active(Boolean.TRUE)
                         .build());
-        searchDocumentService.syncServiceDocument(offer.getServiceBranchOfferId(), offer.getBusinessId(),
-                offer.getBranchId(), offer.getName(), serviceSearchSummary(offer), offer.getCategoryLabel(),
-                offer.getBasePrice(), offer.getActive());
+        searchOutboxService.publish(
+                SearchAggregateType.SERVICE_BRANCH_OFFER, offer.getServiceBranchOfferId(),
+                SearchEventType.UPSERT, offer.getSearchVersion());
         return offer;
     }
 
@@ -345,12 +347,6 @@ public class AutodumpImportProcessor {
             }
         }
         return null;
-    }
-
-    private String serviceSearchSummary(ServiceBranchOfferDto offer) {
-        return String.join(" ",
-                offer.getDescription() == null ? "" : offer.getDescription(),
-                offer.getScheduleText() == null ? "" : offer.getScheduleText()).trim();
     }
 
     private String draftSourceText(DraftItemDto draft) {

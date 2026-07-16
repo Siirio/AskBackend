@@ -1,43 +1,37 @@
-# Search — REST API Contracts
+# Search REST API Contract
 
-## Structured Search (V2)
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | /api/v1/search | No | AI-structured search across PRODUCT + SERVICE catalog |
+## Public search
 
-### SearchV2Request
-- rawQuery (string, required) — raw user query, any language
-- scope (string, optional) — PRODUCT or SERVICE
-- selectedCategory (string, optional) — category filter
-- city (string, optional) — city filter
-- sort (string, optional) — intent_match (default), price_asc, price_desc
-- userLocation (SearchLocationRequest, optional) — lat/lng for distance
-- language (string, optional) — user language
+`POST /api/v1/search` is anonymous and does not create requests, chats, recipients, notifications, or supplier outreach.
 
-### SearchV2Response
-- searchSessionId (UUID) — search session for history and tabs
-- rawQuery (String) — original query preserved
-- scope (String) — PRODUCT or SERVICE
-- understoodQuery (String) — how AI understood the query (Russian)
-- sections (List<SearchV2SectionResponse>) — result sections in display order
-- supplierCheckCount (Integer) — how many auto supplier checks were created
+The JSON contract uses snake_case. `raw_query` is required and is returned unchanged.
 
-### SearchV2SectionResponse
-- type (String) — section type (exact_products, similar_products, fresh_drops, etc.)
-- title (String) — section title in Russian
-- cards (List<SearchV2CardResponse>) — cards for this section
+### Request
 
-### SearchV2CardResponse
-- component (String) — ProductCard, ServiceCard, DropCard, BusinessCandidateCard
-- resultId (UUID), businessId (UUID), businessName (String)
-- brandColor (String), brandLogoUrl (String)
-- title (String), price (BigDecimal), availability (String)
-- badges (List<String>), distanceMeters (Integer)
-- branchName (String), hasActiveDrop (Boolean)
-- contactActions (List<ContactActionSummaryResponse>)
+- `raw_query`: complete visible customer query.
+- `scope`: `product`, `service`, or `all`.
+- `selected_category`, `city`, `sort`, `language`, and `user_location`: optional search inputs.
+- `sort`: `intent_match`, `distance`, or `price_asc`.
+- `page`: zero-based page, from 0 through 20.
+- `page_size`: from 1 through 50.
+- `filters`: optional `scope`, `category`, `city`, `min_price`, and `max_price` constraints.
+- `overrides`: optional values for the same constraint keys. Explicit overrides take precedence over interpreted values.
 
-## Search Engine
-- PostgreSQL is the source of truth and search engine via in-memory scoring
-- Meilisearch integration is under investigation — evaluating whether it improves query understanding/guessing
-- AI (DeepSeek) structures raw queries into SearchPlan JSON; backend validates and executes
-- Default sort is intent_match (relevance). price_asc/price_desc available as user choice, not default
+### Response
+
+- `raw_query`, `scope`, and `understood_query` preserve the request context.
+- `interpreted_constraints` reports each effective constraint with its source.
+- `sections` keeps `EXACT` matches separate from `ALTERNATIVE` results.
+- Alternative sections include `relaxed_constraints` and a human-readable `reason`.
+- `page`, `page_size`, `total`, and `has_next` describe bounded pagination.
+- `diagnostics` reports engine, fallback reason, candidate count, and server latency for operations; clients must not render diagnostics.
+
+Cards include brand presentation, price when known, availability state, an honest `availability_warning`, human-readable `match_reasons`, branch/distance context, badges, and opaque contact actions. Availability is never invented.
+
+## Retrieval behavior
+
+Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonical data and is the indexed fallback through full-text and trigram candidate SQL. A Meilisearch failure is visible in diagnostics and logs but does not fail search when PostgreSQL is available.
+
+DeepSeek interpretation is optional. Deterministic interpretation always runs, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
+
+AI enrichment is enabled by default. It runs asynchronously only when a DeepSeek API key is configured, stores evidence-bearing metadata separately from canonical business data, and otherwise safely does no work.

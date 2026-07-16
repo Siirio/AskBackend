@@ -81,6 +81,7 @@ public class ProductServiceImpl implements ProductService {
                 ? categoryRepository.getReferenceById(req.getCategoryId())
                 : null;
         productOfferMapper.applyUpdate(req, product, offer, categoryRef);
+        offer.setSearchVersion(offer.getSearchVersion() + 1);
         return productOfferMapper.toDto(offer);
     }
 
@@ -89,6 +90,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductOfferDto deleteProduct(UUID productId, UUID branchId) {
         ProductOffer offer = findOfferOrThrow(productId, branchId);
         productOfferMapper.markArchived(offer.getProduct(), offer);
+        offer.setSearchVersion(offer.getSearchVersion() + 1);
         return productOfferMapper.toDto(offer);
     }
 

@@ -12,8 +12,9 @@ import kz.ask.catalog.api.dto.BusinessProductRowResponse;
 import kz.ask.catalog.api.dto.BusinessProductUpdateRequest;
 import kz.ask.catalog.domain.ProductService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.search.domain.SearchDocumentService;
-import kz.ask.search.domain.SearchIndexQueueService;
+import kz.ask.search.domain.SearchOutboxService;
+import kz.ask.search.domain.enums.SearchAggregateType;
+import kz.ask.search.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -34,8 +35,7 @@ public class BusinessProductProcessor {
     private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
     private final ProductService productService;
-    private final SearchDocumentService searchDocumentService;
-    private final SearchIndexQueueService searchIndexQueueService;
+    private final SearchOutboxService searchOutboxService;
 
     @Transactional(readOnly = true)
     public BusinessProductListResponse listProducts(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -64,7 +64,7 @@ public class BusinessProductProcessor {
 
         categoryService.requireActiveCategory(req.getCategoryId());
         ProductOfferDto dto = productService.createProduct(branch.getBusinessId(), branchId, req);
-        syncSearchDocument(dto);
+        publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
@@ -78,7 +78,7 @@ public class BusinessProductProcessor {
             categoryService.requireActiveCategory(req.getCategoryId());
         }
         ProductOfferDto dto = productService.updateProduct(productId, branchId, req);
-        syncSearchDocument(dto);
+        publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
@@ -88,19 +88,17 @@ public class BusinessProductProcessor {
         requireAnyAccess(principal.getUserId(), branch);
 
         ProductOfferDto dto = productService.deleteProduct(productId, branchId);
-        syncSearchDocument(dto);
+        publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
-    private void syncSearchDocument(ProductOfferDto dto) {
+    private void publishSearchEvent(ProductOfferDto dto) {
         boolean live = Boolean.TRUE.equals(dto.getEnabled()) && "ACTIVE".equals(dto.getStatus());
-        searchDocumentService.syncProductDocument(
-                dto.getProductOfferId(), dto.getBusinessId(), dto.getBranchId(),
-                dto.getName(), dto.getDescription(), dto.getCategoryLabel(),
-                dto.getSku(), dto.getTags(), dto.getPrice(), live);
-        if (live && dto.getProductId() != null) {
-            searchIndexQueueService.schedule("PRODUCT", dto.getProductId());
-        }
+        searchOutboxService.publish(
+                SearchAggregateType.PRODUCT_OFFER,
+                dto.getProductOfferId(),
+                live ? SearchEventType.UPSERT : SearchEventType.DELETE,
+                dto.getSearchVersion());
     }
 
     private BusinessProductRowResponse toRowResponse(ProductOfferDto dto) {

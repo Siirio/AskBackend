@@ -11,6 +11,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.HashMap;
 import java.util.Map;
 import kz.ask.business.domain.entity.Business;
@@ -25,6 +26,10 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Table(name = "service_offering")
 public class ServiceOffering extends BaseUuidV7Entity {
+
+    @Version
+    @Column(name = "entity_version", nullable = false)
+    private Long entityVersion;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "business_id", nullable = false)

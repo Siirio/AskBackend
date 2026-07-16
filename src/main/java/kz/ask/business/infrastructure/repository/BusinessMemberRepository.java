@@ -13,9 +13,9 @@ public interface BusinessMemberRepository extends JpaRepository<BusinessMember, 
 
     BusinessMember findByUserIdAndRoleAndStatus(UUID userId, BusinessMemberRole role, RecordStatus status);
 
-    List<BusinessMember> findByBusinessIdAndRoleAndStatus(UUID businessId, BusinessMemberRole role, RecordStatus status);
-
     List<BusinessMember> findByUserIdAndStatus(UUID userId, RecordStatus status);
 
     BusinessMember findByBusinessIdAndUserId(UUID businessId, UUID userId);
+
+    List<BusinessMember> findByBusinessIdAndStatus(UUID businessId, RecordStatus status);
 }

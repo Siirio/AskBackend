@@ -206,7 +206,8 @@ public class CatalogImportMapper {
 
     public ProductOfferDto toProductOfferDto(ProductOffer offer) {
         return ProductOfferDto.builder()
-            .id(offer.getId())
+              .id(offer.getId())
+              .searchVersion(offer.getSearchVersion())
             .productId(offer.getProduct() != null ? offer.getProduct().getId() : null)
             .branchId(offer.getBranch() != null ? offer.getBranch().getId() : null)
             .price(offer.getPrice())

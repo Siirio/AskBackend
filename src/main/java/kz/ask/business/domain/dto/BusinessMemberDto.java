@@ -12,5 +12,6 @@ public class BusinessMemberDto {
 
     private UUID id;
     private UUID businessId;
+    private UUID userId;
     private String role;
 }

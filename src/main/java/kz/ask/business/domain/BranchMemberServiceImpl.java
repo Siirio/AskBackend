@@ -60,4 +60,10 @@ public class BranchMemberServiceImpl implements BranchMemberService {
         List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
         return !members.isEmpty();
     }
+
+    @Override
+    public BranchMemberDto findByUser(UUID userId) {
+        List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        return members.isEmpty() ? null : businessMapper.toBranchMemberDto(members.get(0));
+    }
 }

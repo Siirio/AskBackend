@@ -49,7 +49,8 @@ public enum ErrorCode {
     AUTODUMP_SESSION_NOT_FOUND("AI Autodump сессия не найдена"),
     AUTODUMP_DRAFT_NOT_FOUND("AI Autodump черновик не найден"),
     AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена"),
-    CONVERSATION_NOT_FOUND("Чат не найден");
+    CONVERSATION_NOT_FOUND("Чат не найден"),
+    BRANCH_REQUIRED_FOR_WORKER("Для сотрудника необходимо указать филиал");
 
     private final String template;
 

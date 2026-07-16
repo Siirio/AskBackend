@@ -25,6 +25,28 @@ public interface ProductOfferRepository extends JpaRepository<ProductOffer, UUID
         """)
     Optional<ProductOffer> findByProductIdAndBranchId(@Param("productId") UUID productId, @Param("branchId") UUID branchId);
 
+    @Query("""
+        select distinct po from ProductOffer po
+        join fetch po.product p
+        join fetch p.business
+        left join fetch p.category
+        left join fetch p.tags
+        join fetch po.branch b
+        left join fetch b.city
+        where po.id = :offerId
+        """)
+    Optional<ProductOffer> findProjectionSourceById(@Param("offerId") UUID offerId);
+
+    @Query("""
+        select po from ProductOffer po
+        join fetch po.product p
+        join fetch p.business
+        join fetch po.branch
+        where (:afterId is null or po.id > :afterId)
+        order by po.id
+        """)
+    List<ProductOffer> findReconciliationBatch(@Param("afterId") UUID afterId, Pageable pageable);
+
     @Query(value = """
         select distinct po from ProductOffer po
         join fetch po.product p

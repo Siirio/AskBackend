@@ -75,6 +75,7 @@ public class ServiceServiceImpl implements ServiceService {
                 ? categoryRepository.getReferenceById(req.getCategoryId())
                 : null;
         mapper.applyUpdate(req, offering, offer, categoryRef);
+        offer.setSearchVersion(offer.getSearchVersion() + 1);
         return mapper.toDto(offer);
     }
 

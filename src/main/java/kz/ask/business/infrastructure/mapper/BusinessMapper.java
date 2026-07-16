@@ -207,6 +207,7 @@ public class BusinessMapper {
         return BusinessMemberDto.builder()
                 .id(entity.getId())
                 .businessId(entity.getBusiness().getId())
+                .userId(entity.getUser().getId())
                 .role(entity.getRole().name())
                 .build();
     }

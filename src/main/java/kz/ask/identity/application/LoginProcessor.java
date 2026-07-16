@@ -156,10 +156,14 @@ public class LoginProcessor {
     }
 
     private BusinessRegistrationResult resolveBusiness(AppUserDto user) {
-        if (isBusinessRole(user.getRole())) {
-            return businessService.findByOwner(user.getId());
+        if (!isBusinessRole(user.getRole())) {
+            return null;
         }
-        return null;
+        BusinessRegistrationResult bizResult = businessService.findByOwner(user.getId());
+        if (bizResult != null) {
+            return bizResult;
+        }
+        return businessService.findByMember(user.getId());
     }
 
     @Transactional

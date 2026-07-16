@@ -15,6 +15,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ProductOfferDto {
     private UUID id;
+    private Long searchVersion;
     private UUID productId;
     private UUID branchId;
     private BigDecimal price;

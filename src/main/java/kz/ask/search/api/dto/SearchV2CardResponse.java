@@ -19,9 +19,10 @@ public class SearchV2CardResponse {
     private String title;
     private BigDecimal price;
     private String availability;
+    private String availabilityWarning;
+    private List<String> matchReasons;
     private List<String> badges;
     private Integer distanceMeters;
     private String branchName;
-    private Boolean hasActiveDrop;
     private List<ContactActionSummaryResponse> contactActions;
 }

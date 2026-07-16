@@ -17,6 +17,23 @@ services:
       timeout: 5s
       retries: 5
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.10.3
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-}
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - ask-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     ports:
@@ -36,14 +53,20 @@ services:
       ASK_MAIL_PASSWORD: ${ASK_MAIL_PASSWORD:-}
       AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-noreply@ask.kz}
       ASK_CORS_ORIGINS: ${ASK_CORS_ORIGINS:-http://localhost:5173}
+      MEILISEARCH_HOST_URL: http://meilisearch:7700
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-}
+      MEILISEARCH_INDEX_NAME: ${MEILISEARCH_INDEX_NAME:-search_documents_v1}
     depends_on:
       db:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     networks:
       - ask-network
 
 volumes:
   pgdata:
+  meili_data:
 
 networks:
   ask-network:

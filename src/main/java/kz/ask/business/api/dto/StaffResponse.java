@@ -19,4 +19,6 @@ public class StaffResponse {
     private String status;
     private String tempPassword;
     private Instant activatedAt;
+    private String businessName;
+    private UUID businessId;
 }

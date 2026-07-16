@@ -79,6 +79,7 @@ public class ProductOfferMapper {
         return ProductOfferDto.builder()
                 .productId(product.getId())
                 .productOfferId(offer.getId())
+                .searchVersion(offer.getSearchVersion())
                 .businessId(product.getBusiness().getId())
                 .branchId(offer.getBranch().getId())
                 .categoryId(category != null ? category.getId() : null)

@@ -1,6 +1,10 @@
 package kz.ask.business.domain;
 
 import java.util.UUID;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import kz.ask.business.domain.dto.BrandProfileDto;
 import kz.ask.business.domain.entity.BrandProfile;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
@@ -24,6 +28,17 @@ public class BrandProfileServiceImpl implements BrandProfileService {
         return brandProfileRepository.findByBusinessId(businessId)
                 .map(businessMapper::toBrandProfileDto)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, BrandProfileDto> findByBusinessIds(Collection<UUID> businessIds) {
+        if (businessIds.isEmpty()) {
+            return Map.of();
+        }
+        return brandProfileRepository.findByBusinessIdIn(businessIds).stream()
+                .map(businessMapper::toBrandProfileDto)
+                .collect(Collectors.toMap(BrandProfileDto::getBusinessId, Function.identity()));
     }
 
     @Override

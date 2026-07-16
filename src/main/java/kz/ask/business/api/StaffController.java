@@ -3,6 +3,7 @@ package kz.ask.business.api;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import kz.ask.business.api.dto.CreateEmployeeRequest;
 import kz.ask.business.api.dto.CreateStaffRequest;
 import kz.ask.business.api.dto.StaffResponse;
 import kz.ask.business.api.dto.UpdateStaffRequest;
@@ -16,17 +17,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/businesses/{businessId}/branches/{branchId}/staff")
 @RequiredArgsConstructor
 public class StaffController {
 
     private final StaffManagementProcessor staffProcessor;
 
-    @PostMapping
+    @PostMapping("/api/v1/businesses/{businessId}/branches/{branchId}/staff")
     public ResponseEntity<StaffResponse> createStaff(@AuthenticationPrincipal AskPrincipal principal,
                                       @PathVariable UUID businessId,
                                       @PathVariable UUID branchId,
@@ -35,14 +34,14 @@ public class StaffController {
                 .body(staffProcessor.createStaff(principal, businessId, branchId, req));
     }
 
-    @GetMapping
+    @GetMapping("/api/v1/businesses/{businessId}/branches/{branchId}/staff")
     public ResponseEntity<List<StaffResponse>> listStaff(@AuthenticationPrincipal AskPrincipal principal,
                                           @PathVariable UUID businessId,
                                           @PathVariable UUID branchId) {
         return ResponseEntity.ok(staffProcessor.listStaff(principal, businessId, branchId));
     }
 
-    @PostMapping("/{staffId}/update")
+    @PostMapping("/api/v1/businesses/{businessId}/branches/{branchId}/staff/{staffId}/update")
     public ResponseEntity<StaffResponse> updateStaff(@AuthenticationPrincipal AskPrincipal principal,
                                       @PathVariable UUID businessId,
                                       @PathVariable UUID branchId,
@@ -51,11 +50,25 @@ public class StaffController {
         return ResponseEntity.ok(staffProcessor.updateStaff(principal, businessId, branchId, staffId, req));
     }
 
-    @PostMapping("/{staffId}/reset-password")
+    @PostMapping("/api/v1/businesses/{businessId}/branches/{branchId}/staff/{staffId}/reset-password")
     public ResponseEntity<StaffResponse> resetPassword(@AuthenticationPrincipal AskPrincipal principal,
                                         @PathVariable UUID businessId,
                                         @PathVariable UUID branchId,
                                         @PathVariable UUID staffId) {
         return ResponseEntity.ok(staffProcessor.resetPassword(principal, businessId, branchId, staffId));
+    }
+
+    @PostMapping("/api/v1/businesses/{businessId}/staff")
+    public ResponseEntity<StaffResponse> createEmployee(@AuthenticationPrincipal AskPrincipal principal,
+                                          @PathVariable UUID businessId,
+                                          @Valid @RequestBody CreateEmployeeRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(staffProcessor.createEmployee(principal, businessId, req));
+    }
+
+    @GetMapping("/api/v1/businesses/{businessId}/staff")
+    public ResponseEntity<List<StaffResponse>> listEmployees(@AuthenticationPrincipal AskPrincipal principal,
+                                               @PathVariable UUID businessId) {
+        return ResponseEntity.ok(staffProcessor.listEmployees(principal, businessId));
     }
 }

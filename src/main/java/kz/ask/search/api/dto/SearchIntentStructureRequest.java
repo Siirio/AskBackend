@@ -1,5 +1,6 @@
 package kz.ask.search.api.dto;
 
+import java.math.BigDecimal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -21,4 +22,6 @@ public class SearchIntentStructureRequest {
     private SearchLocationRequest userLocation;
 
     private String language;
+    private BigDecimal explicitMinPrice;
+    private BigDecimal explicitMaxPrice;
 }

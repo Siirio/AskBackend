@@ -2,6 +2,7 @@ package kz.ask.business.application;
 
 import java.util.List;
 import java.util.UUID;
+import kz.ask.business.api.dto.CreateEmployeeRequest;
 import kz.ask.business.api.dto.CreateStaffRequest;
 import kz.ask.business.api.dto.StaffResponse;
 import kz.ask.business.api.dto.UpdateStaffRequest;
@@ -21,6 +22,7 @@ import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
+import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -160,7 +162,102 @@ public class StaffManagementProcessor {
                 .build();
     }
 
+    private StaffResponse buildStaffResponse(BranchMemberDto member, String tempPassword,
+                                             String businessName, UUID businessId) {
+        return StaffResponse.builder()
+                .id(member.getId())
+                .email(member.getUserEmail())
+                .displayName(member.getUserDisplayName())
+                .role(member.getRole())
+                .branchName(member.getBranchName())
+                .status(member.getUserStatus())
+                .tempPassword(tempPassword)
+                .activatedAt(member.getUserActivatedAt())
+                .businessName(businessName)
+                .businessId(businessId)
+                .build();
+    }
+
     private String generateTempPassword() {
         return UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    @Transactional
+    public StaffResponse createEmployee(AskPrincipal principal, UUID businessId,
+                                        CreateEmployeeRequest req) {
+        verifyManagementAccess(principal.getUserId(), businessId);
+
+        BranchMemberRole branchRole = resolveBranchMemberRole(req.getRole());
+        requireCanAssignRole(principal.getUserId(), businessId, branchRole);
+
+        if (branchRole == BranchMemberRole.WORKER && req.getBranchId() == null) {
+            throw new ValidationException(ErrorCode.BRANCH_REQUIRED_FOR_WORKER);
+        }
+
+        AppRole appRole = branchRole == BranchMemberRole.MANAGER ? AppRole.BUSINESS_MANAGER : AppRole.BUSINESS_WORKER;
+
+        if (!identityService.findAllByEmail(req.getEmail()).isEmpty()) {
+            throw new ConflictException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        String tempPassword = generateTempPassword();
+        AppUserDto user = identityService.createStaffUser(req.getEmail(), req.getDisplayName(), tempPassword, appRole);
+
+        BusinessMemberRole bizRole = mapToBusinessRole(branchRole);
+        BusinessMemberDto bizMember = businessMemberService.createMember(businessId, user.getId(), bizRole);
+
+        BranchMemberDto branchMember = null;
+        if (req.getBranchId() != null) {
+            branchMember = branchMemberService.addMember(req.getBranchId(), user.getId(), branchRole);
+        }
+
+        String businessName = businessService.findByMember(user.getId()).getBusiness().getName();
+
+        if (branchMember != null) {
+            StaffResponse response = buildStaffResponse(branchMember, tempPassword, businessName, businessId);
+            response.setId(bizMember.getId());
+            return response;
+        }
+        return buildEmployeeResponse(bizMember, user, tempPassword, businessName, businessId);
+    }
+
+    public List<StaffResponse> listEmployees(AskPrincipal principal, UUID businessId) {
+        verifyManagementAccess(principal.getUserId(), businessId);
+        List<BusinessMemberDto> members = businessMemberService.findByBusiness(businessId);
+        return members.stream()
+                .map(m -> buildEmployeeResponseFromDto(m, businessId))
+                .toList();
+    }
+
+    private StaffResponse buildEmployeeResponse(BusinessMemberDto member, AppUserDto user,
+                                                String tempPassword, String businessName, UUID businessId) {
+        return StaffResponse.builder()
+                .id(member.getId())
+                .email(user.getEmail())
+                .displayName(user.getDisplayName())
+                .role(member.getRole())
+                .branchName(null)
+                .status(user.getStatus().name())
+                .tempPassword(tempPassword)
+                .activatedAt(user.getActivatedAt())
+                .businessName(businessName)
+                .businessId(businessId)
+                .build();
+    }
+
+    private StaffResponse buildEmployeeResponseFromDto(BusinessMemberDto member, UUID businessId) {
+        AppUserDto user = identityService.findById(member.getUserId());
+        BranchMemberDto branchMember = branchMemberService.findByUser(member.getUserId());
+        return StaffResponse.builder()
+                .id(member.getId())
+                .email(user.getEmail())
+                .displayName(user.getDisplayName())
+                .role(member.getRole())
+                .branchName(branchMember != null ? branchMember.getBranchName() : null)
+                .status(user.getStatus().name())
+                .tempPassword(null)
+                .activatedAt(user.getActivatedAt())
+                .businessId(businessId)
+                .build();
     }
 }

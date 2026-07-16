@@ -8,7 +8,7 @@ Breaking requires: (1) explicit user approval, (2) proof surrounding extension i
 LOCKED | Default search sort is intent_match, never price_asc | ASK is an intent layer, not a marketplace. Price ascending commoditizes brands | StructuredSearchProcessor, SearchV2Response
 LOCKED | No buy-box logic collapsing different brands into one SKU comparison | Each brand owns its presentation. SKU comparison = marketplace behavior | All search result rendering
 LOCKED | AI (DeepSeek) structures queries only — never selects businesses or invents availability | AI cannot know real-time stock/availability | StructuredSearchProcessor, SearchV2Request
-LOCKED | PostgreSQL is source of truth and search engine via in-memory scoring | Meilisearch is under investigation — evaluating whether it improves query understanding | StructuredSearchProcessor, search domain
+LOCKED | Meilisearch is retrieval engine, PostgreSQL is source of truth + hydration | Replaces in-memory scoring with typo-tolerant, synonym-aware search. Fallback to PG if Meilisearch unavailable | StructuredSearchProcessor, MeilisearchService
 LOCKED | UniqueOffers are boosters and brand signals, not standalone search results | They boost linked products/services +25 score. DISCOUNT computes effective price. Non-DISCOUNT shows offer name as label | UniqueOffer, unique_offer_product/service/branch tables
 
 ## Data Locks

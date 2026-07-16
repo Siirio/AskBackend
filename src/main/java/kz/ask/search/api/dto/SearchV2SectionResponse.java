@@ -9,5 +9,8 @@ import lombok.Getter;
 public class SearchV2SectionResponse {
     private String type;
     private String title;
+    private String kind;
+    private List<String> relaxedConstraints;
+    private String reason;
     private List<SearchV2CardResponse> cards;
 }

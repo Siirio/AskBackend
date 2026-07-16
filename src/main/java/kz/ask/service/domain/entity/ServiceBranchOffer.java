@@ -23,6 +23,9 @@ import kz.ask.shared.domain.enums.RecordStatus;
 @Table(name = "service_branch_offer")
 public class ServiceBranchOffer extends BaseUuidV7Entity {
 
+    @Column(name = "search_version", nullable = false)
+    private Long searchVersion = 1L;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "service_offering_id", nullable = false)
     private ServiceOffering serviceOffering;

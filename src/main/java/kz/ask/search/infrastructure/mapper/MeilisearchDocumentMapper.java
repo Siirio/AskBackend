@@ -1,0 +1,50 @@
+package kz.ask.search.infrastructure.mapper;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import kz.ask.search.domain.dto.MeilisearchIndexDocument;
+import kz.ask.search.domain.entity.SearchDocument;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MeilisearchDocumentMapper {
+
+    public MeilisearchIndexDocument toIndexDocument(SearchDocument document) {
+        String city = document.getBranch() != null && document.getBranch().getCity() != null
+                ? document.getBranch().getCity().getName()
+                : "";
+        return new MeilisearchIndexDocument(
+                document.getId().toString(),
+                document.getAggregateId().toString(),
+                document.getDocumentVersion(),
+                document.getTitle(),
+                document.getNormalizedTitle(),
+                document.getSummary(),
+                document.getAiSearchSummary(),
+                document.getAliases(),
+                document.getBrand(),
+                document.getCategoryPath(),
+                document.getCategoryLabel(),
+                document.getSku(),
+                document.getCharacteristicsJson(),
+                document.getBusinessName(),
+                document.getBranchName(),
+                document.getTokens() == null ? List.of() : new ArrayList<>(document.getTokens()),
+                document.getPrice(),
+                document.getCurrency(),
+                document.getLatitude(),
+                document.getLongitude(),
+                city,
+                document.getDocumentType().name(),
+                copy(document.getVerifiedAttributes()),
+                copy(document.getAiAttributes()),
+                Instant.now());
+    }
+
+    private Map<String, Object> copy(Map<String, Object> attributes) {
+        return attributes == null ? Map.of() : new HashMap<>(attributes);
+    }
+}

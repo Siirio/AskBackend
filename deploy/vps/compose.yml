@@ -49,6 +49,38 @@ services:
     networks:
       - ask
 
+  meili-prod:
+    image: getmeili/meilisearch:v1.10.3
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_PROD_MASTER_KEY:?MEILI_PROD_MASTER_KEY must be set}
+    volumes:
+      - meili_prod:/meili_data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ask
+
+  meili-stage:
+    image: getmeili/meilisearch:v1.10.3
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_STAGE_MASTER_KEY:?MEILI_STAGE_MASTER_KEY must be set}
+    volumes:
+      - meili_stage:/meili_data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ask
+
   app-prod:
     build:
       context: ../..
@@ -56,6 +88,8 @@ services:
     restart: unless-stopped
     depends_on:
       db-prod:
+        condition: service_healthy
+      meili-prod:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -81,6 +115,9 @@ services:
       DEEPSEEK_SEARCH_MAX_TOKENS: ${DEEPSEEK_SEARCH_MAX_TOKENS:-1800}
       DEEPSEEK_AUTODUMP_MODEL: ${DEEPSEEK_AUTODUMP_MODEL:-deepseek-v4-flash}
       DEEPSEEK_AUTODUMP_MAX_TOKENS: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:-4000}
+      MEILISEARCH_HOST_URL: http://meili-prod:7700
+      MEILISEARCH_API_KEY: ${MEILI_PROD_MASTER_KEY:?MEILI_PROD_MASTER_KEY must be set}
+      MEILISEARCH_INDEX_NAME: ${MEILISEARCH_PROD_INDEX_NAME:-search_documents_v1}
     networks:
       - ask
 
@@ -91,6 +128,8 @@ services:
     restart: unless-stopped
     depends_on:
       db-stage:
+        condition: service_healthy
+      meili-stage:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -116,6 +155,9 @@ services:
       DEEPSEEK_SEARCH_MAX_TOKENS: ${DEEPSEEK_SEARCH_MAX_TOKENS:-1800}
       DEEPSEEK_AUTODUMP_MODEL: ${DEEPSEEK_AUTODUMP_MODEL:-deepseek-v4-flash}
       DEEPSEEK_AUTODUMP_MAX_TOKENS: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:-4000}
+      MEILISEARCH_HOST_URL: http://meili-stage:7700
+      MEILISEARCH_API_KEY: ${MEILI_STAGE_MASTER_KEY:?MEILI_STAGE_MASTER_KEY must be set}
+      MEILISEARCH_INDEX_NAME: ${MEILISEARCH_STAGE_INDEX_NAME:-search_documents_v1}
     networks:
       - ask
 
@@ -124,6 +166,8 @@ volumes:
   caddy_config:
   pg_prod:
   pg_stage:
+  meili_prod:
+  meili_stage:
 
 networks:
   ask:

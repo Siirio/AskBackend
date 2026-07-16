@@ -11,8 +11,9 @@ import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.api.dto.BusinessServiceListResponse;
 import kz.ask.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.service.api.dto.BusinessServiceUpdateRequest;
-import kz.ask.search.domain.SearchDocumentService;
-import kz.ask.search.domain.SearchIndexQueueService;
+import kz.ask.search.domain.SearchOutboxService;
+import kz.ask.search.domain.enums.SearchAggregateType;
+import kz.ask.search.domain.enums.SearchEventType;
 import kz.ask.service.domain.ServiceService;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -34,8 +35,7 @@ public class BusinessServiceProcessor {
     private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
     private final ServiceService serviceService;
-    private final SearchDocumentService searchDocumentService;
-    private final SearchIndexQueueService searchIndexQueueService;
+    private final SearchOutboxService searchOutboxService;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -64,7 +64,7 @@ public class BusinessServiceProcessor {
 
         categoryService.requireActiveCategory(req.getCategoryId());
         ServiceBranchOfferDto dto = serviceService.createService(branch.getBusinessId(), branchId, req);
-        syncSearchDocument(dto);
+        publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
@@ -78,25 +78,17 @@ public class BusinessServiceProcessor {
             categoryService.requireActiveCategory(req.getCategoryId());
         }
         ServiceBranchOfferDto dto = serviceService.updateService(serviceOfferingId, branchId, req);
-        syncSearchDocument(dto);
+        publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
-    private void syncSearchDocument(ServiceBranchOfferDto dto) {
+    private void publishSearchEvent(ServiceBranchOfferDto dto) {
         boolean live = Boolean.TRUE.equals(dto.getActive()) && "ACTIVE".equals(dto.getStatus());
-        searchDocumentService.syncServiceDocument(
-                dto.getServiceBranchOfferId(), dto.getBusinessId(), dto.getBranchId(),
-                dto.getName(), serviceSearchSummary(dto), dto.getCategoryLabel(),
-                dto.getBasePrice(), live);
-        if (live && dto.getServiceOfferingId() != null) {
-            searchIndexQueueService.schedule("SERVICE", dto.getServiceOfferingId());
-        }
-    }
-
-    private String serviceSearchSummary(ServiceBranchOfferDto dto) {
-        return String.join(" ",
-                dto.getDescription() == null ? "" : dto.getDescription(),
-                dto.getScheduleText() == null ? "" : dto.getScheduleText()).trim();
+        searchOutboxService.publish(
+                SearchAggregateType.SERVICE_BRANCH_OFFER,
+                dto.getServiceBranchOfferId(),
+                live ? SearchEventType.UPSERT : SearchEventType.DELETE,
+                dto.getSearchVersion());
     }
 
     private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {

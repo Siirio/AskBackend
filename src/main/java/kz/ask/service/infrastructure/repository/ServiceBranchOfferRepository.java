@@ -26,6 +26,27 @@ public interface ServiceBranchOfferRepository extends JpaRepository<ServiceBranc
     Optional<ServiceBranchOffer> findByServiceOfferingIdAndBranchId(@Param("serviceOfferingId") UUID serviceOfferingId,
                                                                      @Param("branchId") UUID branchId);
 
+    @Query("""
+        select sbo from ServiceBranchOffer sbo
+        join fetch sbo.serviceOffering so
+        join fetch so.business
+        join fetch so.category
+        join fetch sbo.branch b
+        left join fetch b.city
+        where sbo.id = :offerId
+        """)
+    Optional<ServiceBranchOffer> findProjectionSourceById(@Param("offerId") UUID offerId);
+
+    @Query("""
+        select sbo from ServiceBranchOffer sbo
+        join fetch sbo.serviceOffering so
+        join fetch so.business
+        join fetch sbo.branch
+        where (:afterId is null or sbo.id > :afterId)
+        order by sbo.id
+        """)
+    List<ServiceBranchOffer> findReconciliationBatch(@Param("afterId") UUID afterId, Pageable pageable);
+
     @Query(value = """
         select distinct sbo from ServiceBranchOffer sbo
         join fetch sbo.serviceOffering so

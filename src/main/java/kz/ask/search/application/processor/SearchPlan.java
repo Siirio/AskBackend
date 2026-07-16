@@ -8,12 +8,13 @@ import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class SearchPlan {
 
     private SearchDocumentType itemType;
     private String city;
     private String userSelectedCategory;
+    private String sort;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private BigDecimal minPackageGrams;

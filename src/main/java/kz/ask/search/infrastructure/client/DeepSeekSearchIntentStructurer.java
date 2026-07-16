@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import kz.ask.search.api.dto.SearchIntentStructureRequest;
-import kz.ask.search.domain.SearchIntentStructurer;
 import kz.ask.search.infrastructure.cache.IntentStructureCache;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
@@ -21,7 +20,7 @@ import org.springframework.web.client.RestClientException;
 
 @Component
 @RequiredArgsConstructor
-public class DeepSeekSearchIntentStructurer implements SearchIntentStructurer {
+public class DeepSeekSearchIntentStructurer {
 
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
 
@@ -41,7 +40,6 @@ public class DeepSeekSearchIntentStructurer implements SearchIntentStructurer {
     @Value("classpath:prompts/search-intent-structurer.md")
     private Resource promptResource;
 
-    @Override
     public JsonNode structure(SearchIntentStructureRequest request) {
         JsonNode cached = cache.get(request.getRawQuery());
         if (cached != null) {
@@ -53,6 +51,10 @@ public class DeepSeekSearchIntentStructurer implements SearchIntentStructurer {
         JsonNode result = callDeepSeek(request);
         cache.put(request.getRawQuery(), result);
         return result;
+    }
+
+    public Boolean isAvailable() {
+        return StringUtils.hasText(apiKey);
     }
 
     private JsonNode callDeepSeek(SearchIntentStructureRequest request) {

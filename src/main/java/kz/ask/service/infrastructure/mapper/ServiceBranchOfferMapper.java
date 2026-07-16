@@ -68,6 +68,7 @@ public class ServiceBranchOfferMapper {
         return ServiceBranchOfferDto.builder()
                 .serviceOfferingId(offering.getId())
                 .serviceBranchOfferId(offer.getId())
+                .searchVersion(offer.getSearchVersion())
                 .businessId(offering.getBusiness().getId())
                 .branchId(offer.getBranch().getId())
                 .categoryId(category != null ? category.getId() : null)

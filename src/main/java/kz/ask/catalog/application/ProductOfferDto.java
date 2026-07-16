@@ -19,6 +19,7 @@ public class ProductOfferDto {
 
     private UUID productId;
     private UUID productOfferId;
+    private Long searchVersion;
     private UUID businessId;
     private UUID branchId;
     private UUID categoryId;

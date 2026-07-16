@@ -13,6 +13,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +31,10 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Table(name = "product")
 public class Product extends BaseUuidV7Entity {
+
+    @Version
+    @Column(name = "entity_version", nullable = false)
+    private Long entityVersion;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "business_id", nullable = false)

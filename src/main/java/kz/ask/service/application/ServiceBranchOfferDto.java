@@ -18,6 +18,7 @@ public class ServiceBranchOfferDto {
 
     private UUID serviceOfferingId;
     private UUID serviceBranchOfferId;
+    private Long searchVersion;
     private UUID businessId;
     private UUID branchId;
     private UUID categoryId;

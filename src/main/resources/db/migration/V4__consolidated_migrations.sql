@@ -136,42 +136,168 @@ DROP TABLE IF EXISTS business_card CASCADE;
 -- ---------------------------------------------------------------------------
 ALTER TABLE product ADD COLUMN IF NOT EXISTS attributes JSONB;
 CREATE INDEX IF NOT EXISTS idx_product_attributes ON product USING GIN (attributes);
+ALTER TABLE product ADD COLUMN IF NOT EXISTS entity_version BIGINT NOT NULL DEFAULT 0;
 
 ALTER TABLE service_offering ADD COLUMN IF NOT EXISTS attributes JSONB;
 CREATE INDEX IF NOT EXISTS idx_service_offering_attributes ON service_offering USING GIN (attributes);
+ALTER TABLE service_offering ADD COLUMN IF NOT EXISTS entity_version BIGINT NOT NULL DEFAULT 0;
+
+ALTER TABLE product_offer ADD COLUMN IF NOT EXISTS search_version BIGINT NOT NULL DEFAULT 1;
+ALTER TABLE service_branch_offer ADD COLUMN IF NOT EXISTS search_version BIGINT NOT NULL DEFAULT 1;
 
 -- ---------------------------------------------------------------------------
--- 12. Search index queue for debounced AI attribute extraction (from V9)
+-- 12. Transactional search outbox
 -- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS search_index_queue (
-    id              UUID PRIMARY KEY,
-    entity_type     VARCHAR(20)  NOT NULL,
-    entity_id       UUID         NOT NULL,
-    scheduled_at    TIMESTAMPTZ  NOT NULL,
-    retry_count     INTEGER      NOT NULL DEFAULT 0,
-    last_error      TEXT,
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT uq_search_index_queue_entry UNIQUE (entity_type, entity_id)
+DROP TABLE IF EXISTS search_index_queue;
+
+CREATE TABLE IF NOT EXISTS search_outbox_event (
+    id                    UUID PRIMARY KEY,
+    aggregate_type        VARCHAR(32)  NOT NULL,
+    aggregate_id          UUID         NOT NULL,
+    event_type            VARCHAR(32)  NOT NULL,
+    aggregate_version     BIGINT       NOT NULL,
+    payload_version       INTEGER      NOT NULL DEFAULT 1,
+    available_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    processing_started_at TIMESTAMPTZ,
+    processed_at          TIMESTAMPTZ,
+    worker_id             VARCHAR(128),
+    attempt_count         INTEGER      NOT NULL DEFAULT 0,
+    last_error            VARCHAR(2000),
+    status                VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT uq_search_outbox_event
+        UNIQUE (aggregate_type, aggregate_id, aggregate_version, event_type),
+    CONSTRAINT chk_search_outbox_status
+        CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'RETRY', 'DEAD')),
+    CONSTRAINT chk_search_outbox_attempt_count CHECK (attempt_count >= 0)
 );
 
-CREATE INDEX IF NOT EXISTS idx_search_index_queue_scheduled
-    ON search_index_queue (scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_search_outbox_claim
+    ON search_outbox_event (status, available_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_search_outbox_aggregate
+    ON search_outbox_event (aggregate_type, aggregate_id, aggregate_version DESC);
+CREATE INDEX IF NOT EXISTS idx_search_outbox_processing
+    ON search_outbox_event (processing_started_at)
+    WHERE status = 'PROCESSING';
 
 -- ---------------------------------------------------------------------------
--- 13. Search document attributes (from V10)
+-- 13. Separate AI-derived search metadata
 -- ---------------------------------------------------------------------------
-ALTER TABLE search_document ADD COLUMN IF NOT EXISTS attributes JSONB;
-CREATE INDEX IF NOT EXISTS idx_search_document_attributes ON search_document USING GIN (attributes);
+CREATE TABLE IF NOT EXISTS search_ai_metadata (
+    id                 UUID PRIMARY KEY,
+    aggregate_type     VARCHAR(32)   NOT NULL,
+    aggregate_id       UUID          NOT NULL,
+    attribute_key      VARCHAR(128)  NOT NULL,
+    attribute_value    JSONB         NOT NULL,
+    confidence         NUMERIC(5,4)  NOT NULL,
+    evidence           VARCHAR(1000) NOT NULL,
+    source             VARCHAR(32)   NOT NULL,
+    model_version      VARCHAR(128)  NOT NULL,
+    schema_version     VARCHAR(128)  NOT NULL,
+    extracted_at       TIMESTAMPTZ   NOT NULL,
+    verification_state VARCHAR(32)   NOT NULL,
+    created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    CONSTRAINT uq_search_ai_metadata_fact
+        UNIQUE (aggregate_type, aggregate_id, attribute_key, schema_version, model_version),
+    CONSTRAINT chk_search_ai_metadata_confidence
+        CHECK (confidence >= 0 AND confidence <= 1),
+    CONSTRAINT chk_search_ai_verification_state
+        CHECK (verification_state IN ('AI_DERIVED', 'BUSINESS_CONFIRMED', 'BUSINESS_CORRECTED', 'REJECTED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_ai_metadata_aggregate
+    ON search_ai_metadata (aggregate_type, aggregate_id);
+CREATE INDEX IF NOT EXISTS idx_search_ai_metadata_value
+    ON search_ai_metadata USING GIN (attribute_value);
 
 -- ---------------------------------------------------------------------------
--- 14. Drop orphaned analytics tables (created in V1, never referenced in code)
+-- 14. Versioned rebuildable PostgreSQL search projection and fallback indexes
+-- ---------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS aggregate_id UUID;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS document_version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS normalized_title TEXT NOT NULL DEFAULT '';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS brand VARCHAR(255);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS category_path TEXT;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS business_name VARCHAR(255);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS branch_name VARCHAR(255);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS verified_attributes JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_attributes JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS aliases TEXT NOT NULL DEFAULT '';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_search_summary TEXT;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'KZT';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS latitude NUMERIC(10,7);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS longitude NUMERIC(10,7);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS availability_status VARCHAR(32) NOT NULL DEFAULT 'UNKNOWN';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS availability_source VARCHAR(32) NOT NULL DEFAULT 'UNKNOWN';
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS last_business_updated_at TIMESTAMPTZ;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS indexed_at TIMESTAMPTZ;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_version BIGINT;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_available_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_started_at TIMESTAMPTZ;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_worker_id VARCHAR(128);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_attempt_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_error VARCHAR(2000);
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS ai_enrichment_dead BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE search_document ADD COLUMN IF NOT EXISTS search_vector TSVECTOR
+    GENERATED ALWAYS AS (
+        to_tsvector(
+            'simple',
+            coalesce(normalized_title, '') || ' ' ||
+            coalesce(title, '') || ' ' ||
+            coalesce(brand, '') || ' ' ||
+            coalesce(category_path, '') || ' ' ||
+            coalesce(category_label, '') || ' ' ||
+            coalesce(sku, '') || ' ' ||
+            coalesce(aliases, '') || ' ' ||
+            coalesce(ai_search_summary, '') || ' ' ||
+            coalesce(summary, '') || ' ' ||
+            coalesce(business_name, '') || ' ' ||
+            coalesce(branch_name, '')
+        )
+    ) STORED;
+
+UPDATE search_document document
+SET aggregate_id = COALESCE(document.product_offer_id, document.service_branch_offer_id),
+    normalized_title = lower(trim(document.title)),
+    business_name = business.name,
+    branch_name = branch.name,
+    last_business_updated_at = document.updated_at
+FROM business, business_branch branch
+WHERE document.business_id = business.id
+  AND document.branch_id = branch.id;
+
+ALTER TABLE search_document ALTER COLUMN aggregate_id SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_search_document_aggregate
+    ON search_document (document_type, aggregate_id);
+CREATE INDEX IF NOT EXISTS idx_search_document_search_vector
+    ON search_document USING GIN (search_vector);
+CREATE INDEX IF NOT EXISTS idx_search_document_title_trgm
+    ON search_document USING GIN (normalized_title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_search_document_active_type_price
+    ON search_document (document_type, status, price, id);
+CREATE INDEX IF NOT EXISTS idx_search_document_business_active
+    ON search_document (business_id, document_type, status, id);
+CREATE INDEX IF NOT EXISTS idx_search_document_verified_attributes
+    ON search_document USING GIN (verified_attributes);
+CREATE INDEX IF NOT EXISTS idx_search_document_ai_attributes
+    ON search_document USING GIN (ai_attributes);
+CREATE INDEX IF NOT EXISTS idx_search_document_ai_enrichment
+    ON search_document (ai_enrichment_available_at, id)
+    WHERE status = 'ACTIVE';
+
+-- ---------------------------------------------------------------------------
+-- 15. Drop orphaned analytics tables (created in V1, never referenced in code)
 -- ---------------------------------------------------------------------------
 DROP TABLE IF EXISTS search_result_snapshot CASCADE;
 DROP TABLE IF EXISTS search_snapshot CASCADE;
 DROP TABLE IF EXISTS search_session CASCADE;
 
 -- ---------------------------------------------------------------------------
--- 15. last_login_at tracking (from V6)
+-- 16. last_login_at tracking (from V6)
 -- ---------------------------------------------------------------------------
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;

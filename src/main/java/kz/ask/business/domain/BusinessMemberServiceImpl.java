@@ -90,4 +90,11 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
             return null;
         }
     }
+
+    @Override
+    public List<BusinessMemberDto> findByBusiness(UUID businessId) {
+        List<BusinessMember> members = businessMemberRepository.findByBusinessIdAndStatus(
+                businessId, RecordStatus.ACTIVE);
+        return members.stream().map(businessMapper::toBusinessMemberDto).toList();
+    }
 }

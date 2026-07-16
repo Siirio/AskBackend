@@ -16,4 +16,6 @@ public interface BranchMemberService {
     Boolean isStaffOfBranch(UUID branchId, UUID userId);
 
     Boolean isBranchStaff(UUID userId);
+
+    BranchMemberDto findByUser(UUID userId);
 }

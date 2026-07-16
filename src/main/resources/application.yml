@@ -86,10 +86,42 @@ ask:
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_SEARCH_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_SEARCH_MAX_TOKENS:1800}
+      connect-timeout: ${DEEPSEEK_SEARCH_CONNECT_TIMEOUT:PT2S}
+      read-timeout: ${DEEPSEEK_SEARCH_READ_TIMEOUT:PT4S}
     autodump:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}
+    meilisearch:
+      host-url: ${MEILISEARCH_HOST_URL:http://localhost:7700}
+      api-key: ${MEILISEARCH_API_KEY:}
+      index-name: ${MEILISEARCH_INDEX_NAME:search_documents_v1}
     indexer:
       interval-ms: ${ASK_INDEXER_INTERVAL_MS:60000}
+  search:
+    outbox:
+      batch-size: ${ASK_SEARCH_OUTBOX_BATCH_SIZE:50}
+      poll-interval: ${ASK_SEARCH_OUTBOX_POLL_INTERVAL:PT1S}
+      max-attempts: ${ASK_SEARCH_OUTBOX_MAX_ATTEMPTS:8}
+      retry-base-delay: ${ASK_SEARCH_OUTBOX_RETRY_BASE_DELAY:PT5S}
+      retry-max-delay: ${ASK_SEARCH_OUTBOX_RETRY_MAX_DELAY:PT10M}
+      processing-timeout: ${ASK_SEARCH_OUTBOX_PROCESSING_TIMEOUT:PT5M}
+    reindex:
+      batch-size: ${ASK_SEARCH_REINDEX_BATCH_SIZE:250}
+      on-startup: ${ASK_SEARCH_REINDEX_ON_STARTUP:false}
+    reconciliation:
+      enabled: ${ASK_SEARCH_RECONCILIATION_ENABLED:false}
+      repair: ${ASK_SEARCH_RECONCILIATION_REPAIR:true}
+      batch-size: ${ASK_SEARCH_RECONCILIATION_BATCH_SIZE:250}
+      interval: ${ASK_SEARCH_RECONCILIATION_INTERVAL:PT30S}
+    ai-enrichment:
+      enabled: ${ASK_SEARCH_AI_ENRICHMENT_ENABLED:true}
+      batch-size: ${ASK_SEARCH_AI_ENRICHMENT_BATCH_SIZE:20}
+      interval: ${ASK_SEARCH_AI_ENRICHMENT_INTERVAL:PT30S}
+      processing-timeout: ${ASK_SEARCH_AI_ENRICHMENT_PROCESSING_TIMEOUT:PT5M}
+      max-attempts: ${ASK_SEARCH_AI_ENRICHMENT_MAX_ATTEMPTS:5}
+      retry-base-delay: ${ASK_SEARCH_AI_ENRICHMENT_RETRY_BASE_DELAY:PT1M}
+      retry-max-delay: ${ASK_SEARCH_AI_ENRICHMENT_RETRY_MAX_DELAY:PT6H}
+      schema-version: ${ASK_SEARCH_AI_ENRICHMENT_SCHEMA_VERSION:attribute-v1}
+      max-tokens: ${ASK_SEARCH_AI_ENRICHMENT_MAX_TOKENS:4000}

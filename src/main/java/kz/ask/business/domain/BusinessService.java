@@ -20,4 +20,6 @@ public interface BusinessService {
     Boolean isManagerOrAboveOfBusiness(UUID businessId, UUID userId);
 
     void updateBusiness(UUID businessId, String name);
+
+    BusinessRegistrationResult findByMember(UUID userId);
 }

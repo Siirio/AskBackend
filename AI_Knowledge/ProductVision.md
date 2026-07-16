@@ -15,7 +15,7 @@ ASK is a local search platform for products and services across city businesses.
 - Auto-reply does NOT count as confirmation. Only real business confirmation advances status.
 - All actions must be traceable to an authenticated user.
 - AI (DeepSeek) structures queries — it never selects businesses or invents availability.
-- PostgreSQL is the source of truth and search engine. Meilisearch is deferred.
+- Meilisearch is the retrieval engine with typo tolerance, Russian stemming, and synonyms. PostgreSQL is source of truth and hydration layer.
 - Never invent stock, delivery, logistics, schedules, or availability without supplier input or trusted integration data.
 
 ## What we are NOT building

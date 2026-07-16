@@ -6,6 +6,9 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 import kz.ask.business.domain.entity.BusinessContact;
 import kz.ask.business.domain.enums.ContactType;
 import kz.ask.business.domain.enums.ContactVisibility;
@@ -44,6 +47,24 @@ public class ContactActionService {
                 .limit(MAX_CARD_ACTIONS)
                 .map(this::toSummary)
                 .toList();
+    }
+
+    public Map<UUID, List<ContactActionSummaryResponse>> summarize(Collection<UUID> businessIds) {
+        if (businessIds.isEmpty()) {
+            return Map.of();
+        }
+        return businessContactRepository
+                .findByBusinessIdInAndStatusOrderByPrimaryContactDescUpdatedAtDesc(
+                        businessIds, RecordStatus.ACTIVE)
+                .stream()
+                .filter(contact -> contact.getVisibility() != ContactVisibility.INTERNAL)
+                .filter(contact -> contact.getContactType() == ContactType.ASK_CHAT)
+                .collect(Collectors.groupingBy(
+                        contact -> contact.getBusiness().getId(),
+                        Collectors.collectingAndThen(Collectors.toList(), contacts -> contacts.stream()
+                                .limit(MAX_CARD_ACTIONS)
+                                .map(this::toSummary)
+                                .toList())));
     }
 
     public ContactResolveResponse resolve(String contactActionId) {

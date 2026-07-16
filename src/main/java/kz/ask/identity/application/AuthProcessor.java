@@ -130,7 +130,7 @@ public class AuthProcessor {
                 && challenge.getRegistrationData() != null) {
             bizResult = deserializeAndCreateBusiness(user, challenge.getRegistrationData());
         } else if (isBusinessRole(user.getRole())) {
-            bizResult = businessService.findByOwner(user.getId());
+            bizResult = resolveBusinessContext(user);
         }
 
         String authority = authorityForSession(user, bizResult);
@@ -155,10 +155,7 @@ public class AuthProcessor {
                 .distinct()
                 .toList();
 
-        BusinessRegistrationResult bizResult = null;
-        if (isBusinessRole(user.getRole())) {
-            bizResult = businessService.findByOwner(user.getId());
-        }
+        BusinessRegistrationResult bizResult = resolveBusinessContext(user);
         AuthSessionResponse resp = buildSessionResponse(null, user, bizResult);
         resp.setAccessToken(null);
         resp.setAllRoles(allRoles);
@@ -200,10 +197,7 @@ public class AuthProcessor {
         identityService.logout(principal.getUserId());
         identityService.recordLogin(targetUser.getId());
 
-        BusinessRegistrationResult bizResult = null;
-        if (isBusinessRole(targetRole)) {
-            bizResult = businessService.findByOwner(targetUser.getId());
-        }
+        BusinessRegistrationResult bizResult = resolveBusinessContext(targetUser);
 
         String authority = authorityForSession(targetUser, bizResult);
         AuthSessionDto session = identityService.createSession(targetUser.getId(), authority, false);
@@ -244,10 +238,7 @@ public class AuthProcessor {
         identityService.logout(principal.getUserId());
         identityService.recordLogin(targetUser.getId());
 
-        BusinessRegistrationResult bizResult = null;
-        if (isBusinessRole(targetRole)) {
-            bizResult = businessService.findByOwner(targetUser.getId());
-        }
+        BusinessRegistrationResult bizResult = resolveBusinessContext(targetUser);
 
         String authority = authorityForSession(targetUser, bizResult);
         AuthSessionDto session = identityService.createSession(targetUser.getId(), authority, false);
@@ -276,6 +267,9 @@ public class AuthProcessor {
                     String businessName = null;
                     if (isBusinessRole(u.getRole())) {
                         BusinessRegistrationResult biz = businessService.findByOwner(u.getId());
+                        if (biz == null) {
+                            biz = businessService.findByMember(u.getId());
+                        }
                         if (biz != null) {
                             businessName = biz.getBusiness().getName();
                         }
@@ -437,14 +431,18 @@ public class AuthProcessor {
     }
 
     private AuthBusinessContextResponse buildBusinessContextResponse(BusinessRegistrationResult bizResult) {
-        return AuthBusinessContextResponse.builder()
+        var builder = AuthBusinessContextResponse.builder()
                 .businessId(bizResult.getBusiness().getId())
                 .businessName(bizResult.getBusiness().getName())
-                .branchId(bizResult.getBranch().getId())
-                .branchName(bizResult.getBranch().getName())
                 .membershipId(bizResult.getMember().getId())
-                .memberRole(bizResult.getMember().getRole())
-                .build();
+                .memberRole(bizResult.getMember().getRole());
+
+        if (bizResult.getBranch() != null) {
+            builder.branchId(bizResult.getBranch().getId())
+                    .branchName(bizResult.getBranch().getName());
+        }
+
+        return builder.build();
     }
 
     private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult, AppUserDto user) {
@@ -472,5 +470,16 @@ public class AuthProcessor {
         return role == AppRole.BUSINESS_OWNER
                 || role == AppRole.BUSINESS_MANAGER
                 || role == AppRole.BUSINESS_WORKER;
+    }
+
+    private BusinessRegistrationResult resolveBusinessContext(AppUserDto user) {
+        if (!isBusinessRole(user.getRole())) {
+            return null;
+        }
+        BusinessRegistrationResult bizResult = businessService.findByOwner(user.getId());
+        if (bizResult != null) {
+            return bizResult;
+        }
+        return businessService.findByMember(user.getId());
     }
 }

@@ -1,5 +1,6 @@
 package kz.ask.business.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.enums.BusinessMemberRole;
@@ -21,4 +22,6 @@ public interface BusinessMemberService {
     Boolean isManagerOrAboveOfBusiness(UUID businessId, UUID userId);
 
     BusinessMemberRole getRoleInBusiness(UUID businessId, UUID userId);
+
+    List<BusinessMemberDto> findByBusiness(UUID businessId);
 }

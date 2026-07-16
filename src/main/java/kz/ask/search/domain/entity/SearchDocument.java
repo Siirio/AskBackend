@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,8 @@ import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.search.domain.enums.SearchDocumentType;
+import kz.ask.search.domain.enums.SearchAvailabilitySource;
+import kz.ask.search.domain.enums.SearchAvailabilityStatus;
 import kz.ask.service.domain.entity.ServiceBranchOffer;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
@@ -38,6 +41,12 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private SearchDocumentType documentType;
 
+    @Column(name = "aggregate_id", nullable = false)
+    private java.util.UUID aggregateId;
+
+    @Column(name = "document_version", nullable = false)
+    private Long documentVersion = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_offer_id")
     private ProductOffer productOffer;
@@ -49,12 +58,26 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "normalized_title", nullable = false)
+    private String normalizedTitle = "";
+
     private String summary;
 
     @Column(name = "category_label")
     private String categoryLabel;
 
     private String sku;
+
+    private String brand;
+
+    @Column(name = "category_path")
+    private String categoryPath;
+
+    @Column(name = "business_name")
+    private String businessName;
+
+    @Column(name = "branch_name")
+    private String branchName;
 
     @Column(name = "characteristics_json", columnDefinition = "TEXT")
     private String characteristicsJson;
@@ -68,6 +91,13 @@ public class SearchDocument extends BaseUuidV7Entity {
     private BusinessBranch branch;
 
     private BigDecimal price;
+
+    @Column(nullable = false, length = 3)
+    private String currency = "KZT";
+
+    private BigDecimal latitude;
+
+    private BigDecimal longitude;
 
     @ElementCollection
     @CollectionTable(name = "search_document_token", joinColumns = @JoinColumn(name = "search_document_id"))
@@ -84,6 +114,51 @@ public class SearchDocument extends BaseUuidV7Entity {
     private String publicNote;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSONB")
-    private Map<String, Object> attributes = new HashMap<>();
+    @Column(name = "verified_attributes", nullable = false, columnDefinition = "JSONB")
+    private Map<String, Object> verifiedAttributes = new HashMap<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ai_attributes", nullable = false, columnDefinition = "JSONB")
+    private Map<String, Object> aiAttributes = new HashMap<>();
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String aliases = "";
+
+    @Column(name = "ai_search_summary")
+    private String aiSearchSummary;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "availability_status", nullable = false)
+    private SearchAvailabilityStatus availabilityStatus = SearchAvailabilityStatus.UNKNOWN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "availability_source", nullable = false)
+    private SearchAvailabilitySource availabilitySource = SearchAvailabilitySource.UNKNOWN;
+
+    @Column(name = "last_business_updated_at")
+    private Instant lastBusinessUpdatedAt;
+
+    @Column(name = "indexed_at")
+    private Instant indexedAt;
+
+    @Column(name = "ai_enrichment_version")
+    private Long aiEnrichmentVersion;
+
+    @Column(name = "ai_enrichment_available_at", nullable = false)
+    private Instant aiEnrichmentAvailableAt = Instant.now();
+
+    @Column(name = "ai_enrichment_started_at")
+    private Instant aiEnrichmentStartedAt;
+
+    @Column(name = "ai_enrichment_worker_id")
+    private String aiEnrichmentWorkerId;
+
+    @Column(name = "ai_enrichment_attempt_count", nullable = false)
+    private Integer aiEnrichmentAttemptCount = 0;
+
+    @Column(name = "ai_enrichment_error", length = 2000)
+    private String aiEnrichmentError;
+
+    @Column(name = "ai_enrichment_dead", nullable = false)
+    private Boolean aiEnrichmentDead = Boolean.FALSE;
 }

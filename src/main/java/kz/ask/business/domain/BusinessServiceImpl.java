@@ -92,4 +92,21 @@ public class BusinessServiceImpl implements BusinessService {
         Business business = businessRepository.getReferenceById(businessId);
         if (name != null) business.setName(name);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BusinessRegistrationResult findByMember(UUID userId) {
+        BusinessMemberDto memberDto = businessMemberService.findByUser(userId);
+        if (memberDto == null) return null;
+
+        BusinessDto businessDto = businessRepository.findById(memberDto.getBusinessId())
+                .map(businessMapper::toBusinessDto)
+                .orElse(null);
+
+        return BusinessRegistrationResult.builder()
+                .business(businessDto)
+                .member(memberDto)
+                .contact(null)
+                .build();
+    }
 }

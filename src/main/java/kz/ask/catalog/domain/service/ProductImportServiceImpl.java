@@ -24,7 +24,9 @@ import kz.ask.catalog.domain.enums.CatalogImportStatus;
 import kz.ask.catalog.domain.enums.RawRowStatus;
 import kz.ask.catalog.infrastructure.mapper.CatalogImportMapper;
 import kz.ask.catalog.infrastructure.repository.RawCatalogRowRepository;
-import kz.ask.search.domain.SearchService;
+import kz.ask.search.domain.SearchOutboxService;
+import kz.ask.search.domain.enums.SearchAggregateType;
+import kz.ask.search.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +48,7 @@ public class ProductImportServiceImpl implements ProductImportService {
     private final ProductService productService;
     private final ProductOfferService productOfferService;
     private final RawCatalogRowRepository rawCatalogRowRepository;
-    private final SearchService searchService;
+    private final SearchOutboxService searchOutboxService;
     private final CatalogImportMapper mapper;
     private final ObjectMapper objectMapper;
 
@@ -169,8 +171,9 @@ public class ProductImportServiceImpl implements ProductImportService {
             rawCatalogRowService.updateAfterImport(rowDto.getId(), RawRowStatus.VALID.name(),
                     savedProduct.getId(), savedOffer.getId());
 
-            searchService.indexProductOffer(savedOffer.getId(), savedProduct.getId(),
-                    businessId, branchId);
+            searchOutboxService.publish(
+                    SearchAggregateType.PRODUCT_OFFER, savedOffer.getId(),
+                    SearchEventType.UPSERT, savedOffer.getSearchVersion());
 
             created++;
         }
