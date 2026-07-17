@@ -7,6 +7,8 @@
 | POST | /api/v1/auth/customer/register | No | Register customer |
 | POST | /api/v1/auth/verify | No | Verify 6-digit code → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | Unified login for ALL roles (email + password) |
+| GET | /oauth2/authorization/google | No | Start Google OAuth. Creates/reuses CUSTOMER after Google returns a verified email |
+| GET | /login/oauth2/code/google | Google callback | Complete Google OAuth and redirect to configured frontend `/oauth/callback#token=...` |
 
 ## Business Auth
 | Method | Path | Auth | Purpose |
@@ -38,8 +40,23 @@
 | POST | /api/v1/auth/toggle-2fa | Bearer | Enable/disable two-factor auth |
 | GET | /api/v1/auth/email-info | No | Get email provider info for login hint |
 
+## JSON Wire Format
+All API responses and requests use **snake_case** property naming. Jackson is configured with `SNAKE_CASE` in `application.yml` (`spring.jackson.property-naming-strategy: SNAKE_CASE`).
+
+Examples:
+- `accessToken` on the wire → `access_token`
+- `authChallengeId` → `auth_challenge_id`
+- `requiresRoleSelection` → `requires_role_selection`
+- `businessId` → `business_id`
+
+DTO field names in this document use camelCase (Java convention). Always map to snake_case when integrating.
+
 ## Config
 - auth.challenge.ttl, auth.challenge.code-length (6), auth.challenge.max-attempts
 - auth.customer.session.ttl, auth.customer.remembered-session.ttl
 - auth.business.session.ttl, auth.business.remembered-session.ttl
 - auth.verification.email.enabled (true), auth.verification.sms.enabled (false)
+- auth.oauth2.google.client-id / `OAUTH2_GOOGLE_CLIENT_ID`
+- auth.oauth2.google.client-secret / `OAUTH2_GOOGLE_CLIENT_SECRET`
+- auth.oauth2.frontend-redirect-uri / `OAUTH2_FRONTEND_REDIRECT_URI`
+- Google Console redirect URI: `{backendBaseUrl}/login/oauth2/code/google`

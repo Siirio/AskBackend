@@ -161,8 +161,10 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     @Transactional
     public void activateUser(UUID userId) {
-        AppUser user = appUserRepository.getReferenceById(userId);
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
         user.setStatus(UserStatus.ACTIVE);
+        appUserRepository.saveAndFlush(user);
     }
 
     @Override
@@ -304,8 +306,10 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     @Transactional
     public void recordLogin(UUID userId) {
-        AppUser user = appUserRepository.getReferenceById(userId);
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
         user.setLastLoginAt(Instant.now());
+        appUserRepository.saveAndFlush(user);
     }
 
     @Override

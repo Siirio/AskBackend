@@ -16,7 +16,7 @@ LOCKED | Auto-reply does NOT count as confirmation | Only real business confirma
 LOCKED | Contact privacy: contactActionId pattern, never raw phone/username to frontend | HMAC for dedup, encrypted vault for storage | BusinessContact, ContactResolveResponse, frontend contactActionId flow
 LOCKED | Never invent stock, delivery, logistics, schedules, or availability | Must come from supplier input or trusted integration data | Product, ServiceBranchOffer, Booking
 LOCKED | One concrete sellable variation = one Product entity | Search grouping via tags + SearchDocument. No variant tables | Product entity, catalog domain
-LOCKED | Email-only auth for MVP | SMS disabled until real provider connected. Phone removed from entities V8 | identity domain, AuthChallenge, AppUser
+LOCKED | Email-based auth for MVP | Password/OTP and Google OAuth use verified email. SMS remains disabled until a real provider is connected | identity domain, AuthChallenge, AppUser, Google OAuth
 
 ## Architecture Locks
 LOCKED | Single modular monolith with feature-first packages | One backend for all clients (Android, iOS, web) | kz.ask.* package structure

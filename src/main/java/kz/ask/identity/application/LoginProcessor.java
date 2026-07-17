@@ -219,14 +219,16 @@ public class LoginProcessor {
                 .allRoles(allRoles);
 
         if (bizResult != null) {
-            builder.business(AuthBusinessContextResponse.builder()
-                    .businessId(bizResult.getBusiness().getId())
-                    .businessName(bizResult.getBusiness().getName())
-                    .branchId(bizResult.getBranch().getId())
-                    .branchName(bizResult.getBranch().getName())
-                    .membershipId(bizResult.getMember().getId())
-                    .memberRole(bizResult.getMember().getRole())
-                    .build());
+        var business = AuthBusinessContextResponse.builder()
+                            .businessId(bizResult.getBusiness().getId())
+                            .businessName(bizResult.getBusiness().getName())
+                            .membershipId(bizResult.getMember().getId())
+                            .memberRole(bizResult.getMember().getRole());
+            if (bizResult.getBranch() != null) {
+                business.branchId(bizResult.getBranch().getId())
+                        .branchName(bizResult.getBranch().getName());
+            }
+            builder.business(business.build());
         }
 
         return builder.build();

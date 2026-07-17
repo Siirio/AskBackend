@@ -61,11 +61,13 @@ auth:
       ttl: ${AUTH_STAFF_ACTIVATION_SESSION_TTL:300}
     temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
   verification:
-    test-mode: ${AUTH_VERIFICATION_TEST_MODE:true}
+    test-mode: ${AUTH_VERIFICATION_TEST_MODE:false}
+    staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
   oauth2:
     google:
       client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
       client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth/callback}
   jwt:
     secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
   email:
@@ -73,7 +75,7 @@ auth:
 
 ask:
   cors:
-    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,https://ask.com.kz,https://stage.ask.com.kz,https://ask-frontend-stage-ask7.vercel.app}
   contact:
     hmac-secret: ${ASK_CONTACT_HMAC_SECRET:change-me-contact-hmac-secret-32chr}
     encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY:change-me-contact-encryption-key-32chr}

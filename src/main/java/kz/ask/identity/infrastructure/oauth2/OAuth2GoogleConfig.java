@@ -11,13 +11,13 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 @Configuration
-@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${OAUTH2_GOOGLE_CLIENT_ID:}')")
+@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${auth.oauth2.google.client-id:}') && T(org.springframework.util.StringUtils).hasText('${auth.oauth2.google.client-secret:}')")
 public class OAuth2GoogleConfig {
 
-    @Value("${OAUTH2_GOOGLE_CLIENT_ID}")
+    @Value("${auth.oauth2.google.client-id}")
     private String clientId;
 
-    @Value("${OAUTH2_GOOGLE_CLIENT_SECRET}")
+    @Value("${auth.oauth2.google.client-secret}")
     private String clientSecret;
 
     @Bean
@@ -28,10 +28,10 @@ public class OAuth2GoogleConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-                .scope("email", "profile")
+                .scope("openid", "email", "profile")
                 .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
-                .tokenUri("https://www.googleapis.com/oauth2/v4/token")
-                .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+                .tokenUri("https://oauth2.googleapis.com/token")
+                .userInfoUri("https://openidconnect.googleapis.com/v1/userinfo")
                 .userNameAttributeName("sub")
                 .clientName("Google")
                 .build();

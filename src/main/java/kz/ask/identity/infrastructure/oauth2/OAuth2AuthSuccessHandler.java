@@ -3,6 +3,8 @@ package kz.ask.identity.infrastructure.oauth2;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
@@ -21,8 +23,8 @@ public class OAuth2AuthSuccessHandler implements AuthenticationSuccessHandler {
 
     private final IdentityService identityService;
 
-    @Value("${ask.cors.allowed-origins:http://localhost:5173}")
-    private String allowedOrigins;
+    @Value("${auth.oauth2.frontend-redirect-uri:http://localhost:5173/oauth/callback}")
+    private String frontendRedirectUri;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -35,8 +37,10 @@ public class OAuth2AuthSuccessHandler implements AuthenticationSuccessHandler {
         String authority = user.getRole() == AppRole.CUSTOMER ? "ROLE_CUSTOMER" : "ROLE_BUSINESS_OWNER";
         AuthSessionDto session = identityService.createSession(user.getId(), authority, true);
 
-        String frontendUrl = allowedOrigins.split(",")[0].trim();
-        String redirectUrl = frontendUrl + "/oauth/callback?token=" + session.getPlainToken();
+        response.setHeader("Cache-Control", "no-store");
+        response.setHeader("Referrer-Policy", "no-referrer");
+        String token = URLEncoder.encode(session.getPlainToken(), StandardCharsets.UTF_8);
+        String redirectUrl = frontendRedirectUri + "#token=" + token;
         response.sendRedirect(redirectUrl);
     }
 }

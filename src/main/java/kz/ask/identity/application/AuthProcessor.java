@@ -114,9 +114,12 @@ public class AuthProcessor {
         if (isNewRegistration) {
             user = createUserFromStoredRegistration(challenge.getRegistrationData());
             identityService.activateUser(user.getId());
+            user.setStatus(UserStatus.ACTIVE);
         } else {
             user = identityService.findById(challenge.getUserId());
         }
+        identityService.recordLogin(user.getId());
+        user = identityService.findById(user.getId());
 
         List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)

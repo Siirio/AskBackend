@@ -1,6 +1,7 @@
 package kz.ask.identity.infrastructure.security;
 
 import kz.ask.identity.infrastructure.oauth2.CustomOAuth2UserService;
+import kz.ask.identity.infrastructure.oauth2.OAuth2AuthFailureHandler;
 import kz.ask.identity.infrastructure.oauth2.OAuth2AuthSuccessHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -22,16 +23,22 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
+    private final OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
 
-    @Value("${OAUTH2_GOOGLE_CLIENT_ID:}")
+    @Value("${auth.oauth2.google.client-id:}")
     private String oauth2GoogleClientId;
+
+    @Value("${auth.oauth2.google.client-secret:}")
+    private String oauth2GoogleClientSecret;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomOAuth2UserService customOAuth2UserService,
-                          OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler) {
+                          OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler,
+                          OAuth2AuthFailureHandler oAuth2AuthFailureHandler) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.customOAuth2UserService = customOAuth2UserService;
         this.oAuth2AuthSuccessHandler = oAuth2AuthSuccessHandler;
+        this.oAuth2AuthFailureHandler = oAuth2AuthFailureHandler;
     }
 
     @Bean
@@ -41,10 +48,12 @@ public class SecurityConfig {
             .cors(withDefaults())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        if (oauth2GoogleClientId != null && !oauth2GoogleClientId.isBlank()) {
+        if (oauth2GoogleClientId != null && !oauth2GoogleClientId.isBlank()
+                && oauth2GoogleClientSecret != null && !oauth2GoogleClientSecret.isBlank()) {
             http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 .successHandler(oAuth2AuthSuccessHandler)
+                .failureHandler(oAuth2AuthFailureHandler)
             );
         }
 
