@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.business.domain.entity.Business;
+import kz.ask.business.domain.enums.BusinessModerationStatus;
+import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.catalog.domain.entity.Product;
 import kz.ask.catalog.domain.entity.ProductOffer;
@@ -206,18 +208,25 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
     }
 
     private boolean isLive(ProductOffer offer) {
+        Business business = offer.getProduct().getBusiness();
         return Boolean.TRUE.equals(offer.getEnabled())
                 && offer.getStatus() == RecordStatus.ACTIVE
                 && offer.getProduct().getStatus() == RecordStatus.ACTIVE
-                && offer.getProduct().getBusiness().getStatus() == RecordStatus.ACTIVE
+                && !Boolean.TRUE.equals(offer.getProduct().getHiddenByModerator())
+                && business.getStatus() == RecordStatus.ACTIVE
+                && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
+                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 
     private boolean isLive(ServiceBranchOffer offer) {
+        Business business = offer.getServiceOffering().getBusiness();
         return Boolean.TRUE.equals(offer.getActive())
                 && offer.getStatus() == RecordStatus.ACTIVE
                 && offer.getServiceOffering().getStatus() == RecordStatus.ACTIVE
-                && offer.getServiceOffering().getBusiness().getStatus() == RecordStatus.ACTIVE
+                && business.getStatus() == RecordStatus.ACTIVE
+                && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
+                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 

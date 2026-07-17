@@ -35,6 +35,8 @@ public class BusinessRegisterRequest {
     private Boolean onlineOnly;
     private Boolean acceptedBusinessRules;
     private Boolean rememberMe;
+    private String countryCode = "KZ";
+    private String locale = "ru";
 
     @AssertTrue(message = "Password and confirmation must match")
     public boolean passwordsMatch() {
@@ -46,8 +48,4 @@ public class BusinessRegisterRequest {
         return acceptedBusinessRules != null && acceptedBusinessRules;
     }
 
-    @AssertTrue(message = "Branch city and address must be provided for offline branch")
-    public boolean hasOfflineBranchLocation() {
-        return onlineOnly != null && onlineOnly || (branchCityId != null && branchAddress != null && !branchAddress.isBlank());
-    }
 }

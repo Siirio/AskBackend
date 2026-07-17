@@ -45,6 +45,7 @@ public class BusinessChatController {
                                                @PathVariable UUID conversationId,
                                                @RequestParam UUID businessId) {
         requireBusinessOwner(businessId, principal.getUserId());
+        chatService.requireBusinessAccess(conversationId, businessId);
         List<ChatMessageDto> items = chatService.getMessages(conversationId);
         return ChatMessageListResponse.builder().items(items).build();
     }
@@ -55,6 +56,7 @@ public class BusinessChatController {
                                        @RequestParam UUID businessId,
                                        @RequestBody SendMessageRequest req) {
         requireBusinessOwner(businessId, principal.getUserId());
+        chatService.requireBusinessAccess(conversationId, businessId);
         return chatService.sendMessage(conversationId, null, "BUSINESS", req);
     }
 
@@ -64,6 +66,7 @@ public class BusinessChatController {
                          @PathVariable UUID conversationId,
                          @RequestParam UUID businessId) {
         requireBusinessOwner(businessId, principal.getUserId());
+        chatService.requireBusinessAccess(conversationId, businessId);
         chatService.markRead(conversationId, "BUSINESS");
     }
 

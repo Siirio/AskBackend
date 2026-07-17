@@ -10,6 +10,7 @@ import kz.ask.catalog.api.dto.BusinessProductCreateRequest;
 import kz.ask.catalog.api.dto.BusinessProductListResponse;
 import kz.ask.catalog.api.dto.BusinessProductRowResponse;
 import kz.ask.catalog.api.dto.BusinessProductUpdateRequest;
+import kz.ask.catalog.domain.CatalogCapabilityService;
 import kz.ask.catalog.domain.ProductService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.search.domain.SearchOutboxService;
@@ -33,6 +34,7 @@ public class BusinessProductProcessor {
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
     private final BranchMemberService branchMemberService;
+    private final CatalogCapabilityService catalogCapabilityService;
     private final CategoryService categoryService;
     private final ProductService productService;
     private final SearchOutboxService searchOutboxService;
@@ -132,6 +134,9 @@ public class BusinessProductProcessor {
             return;
         }
         if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {
+            return;
+        }
+        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

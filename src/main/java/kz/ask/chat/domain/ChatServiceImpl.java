@@ -3,18 +3,26 @@ package kz.ask.chat.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import kz.ask.chat.api.dto.ChatAttachmentDto;
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.api.dto.ChatMessageDto;
 import kz.ask.chat.api.dto.SendMessageRequest;
+import kz.ask.chat.domain.entity.ChatAttachment;
 import kz.ask.chat.domain.entity.ChatConversation;
 import kz.ask.chat.domain.entity.ChatMessage;
 import kz.ask.chat.domain.enums.MessageSenderType;
+import kz.ask.chat.domain.enums.ConversationStatus;
+import kz.ask.chat.domain.enums.ConversationType;
+import kz.ask.chat.domain.repository.ChatAttachmentRepository;
 import kz.ask.chat.domain.repository.ChatConversationRepository;
 import kz.ask.chat.domain.repository.ChatMessageRepository;
+import kz.ask.chat.infrastructure.ChatFileStorage;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
+import kz.ask.shared.error.ForbiddenException;
+import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -28,7 +36,9 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
+    private final ChatAttachmentRepository attachmentRepository;
     private final AppUserRepository appUserRepository;
+    private final ChatFileStorage chatFileStorage;
 
     @Override
     @Transactional
@@ -59,9 +69,15 @@ public class ChatServiceImpl implements ChatService {
     public ChatMessageDto sendMessage(UUID conversationId, UUID senderUserId, String senderType, SendMessageRequest req) {
         ChatConversation conv = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
+        if (conv.getConversationStatus() == ConversationStatus.CLOSED) {
+            throw new ValidationException(ErrorCode.CONVERSATION_CLOSED);
+        }
 
         if ("CUSTOMER".equals(senderType) && conv.getCustomerId() == null && senderUserId != null) {
             conv.setCustomerId(senderUserId);
+        }
+        if ("PLATFORM".equals(senderType) && conv.getConversationStatus() == ConversationStatus.PENDING) {
+            conv.setConversationStatus(ConversationStatus.IN_CHAT);
         }
         conv.setLastMessageAt(Instant.now());
 
@@ -94,6 +110,16 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public List<ChatConversationDto> listBusinessActiveConversations(UUID businessId) {
         return conversationRepository.findActiveByBusinessId(businessId, PageRequest.of(0, MAX_CONVERSATIONS))
+                .stream()
+                .map(this::toConversationDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatConversationDto> listPlatformConversations() {
+        return conversationRepository.findByConversationType(
+                        ConversationType.MANAGED_IMPORT, PageRequest.of(0, MAX_CONVERSATIONS))
                 .stream()
                 .map(this::toConversationDto)
                 .toList();
@@ -142,6 +168,105 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+    @Override
+    @Transactional
+    public ChatConversationDto startManagedImportConversation(
+            UUID ownerId,
+            UUID businessId,
+            UUID managedImportRequestId,
+            String subject,
+            String systemMessage) {
+        ChatConversation conversation = new ChatConversation();
+        conversation.setBusinessId(businessId);
+        conversation.setCustomerId(ownerId);
+        conversation.setSubject(subject);
+        conversation.setConversationType(ConversationType.MANAGED_IMPORT);
+        conversation.setConversationStatus(ConversationStatus.PENDING);
+        conversation.setManagedImportRequestId(managedImportRequestId);
+        conversation.setLastMessageAt(Instant.now());
+        conversation = conversationRepository.save(conversation);
+
+        ChatMessage message = new ChatMessage();
+        message.setConversationId(conversation.getId());
+        message.setSenderType(MessageSenderType.SYSTEM);
+        message.setText(systemMessage);
+        messageRepository.save(message);
+        return toConversationDto(conversation);
+    }
+
+    @Override
+    @Transactional
+    public void deleteConversation(UUID conversationId) {
+        attachmentRepository.findByConversationId(conversationId)
+                .forEach(attachment -> chatFileStorage.delete(attachment.getStoredName()));
+        attachmentRepository.deleteByConversationId(conversationId);
+        messageRepository.deleteByConversationId(conversationId);
+        conversationRepository.deleteById(conversationId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ChatConversationDto getConversation(UUID conversationId) {
+        return conversationRepository.findById(conversationId)
+                .map(this::toConversationDto)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
+    public ChatConversationDto closeConversation(UUID conversationId) {
+        ChatConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
+        conversation.setConversationStatus(ConversationStatus.CLOSED);
+        return toConversationDto(conversation);
+    }
+
+    @Override
+    @Transactional
+    public ChatAttachmentDto registerAttachment(UUID conversationId, UUID uploadedByUserId,
+                                                String storedName, String originalName,
+                                                String contentType, Long sizeBytes) {
+        if (!conversationRepository.existsById(conversationId)) {
+            throw new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+        ChatAttachment attachment = new ChatAttachment();
+        attachment.setConversationId(conversationId);
+        attachment.setUploadedByUserId(uploadedByUserId);
+        attachment.setStoredName(storedName);
+        attachment.setOriginalName(originalName);
+        attachment.setContentType(contentType);
+        attachment.setSizeBytes(sizeBytes);
+        return toAttachmentDto(attachmentRepository.save(attachment));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ChatAttachmentDto findAttachmentByStoredName(String storedName) {
+        return attachmentRepository.findByStoredName(storedName)
+                .map(this::toAttachmentDto)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireCustomerAccess(UUID conversationId, UUID userId) {
+        ChatConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
+        if (!userId.equals(conversation.getCustomerId())) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireBusinessAccess(UUID conversationId, UUID businessId) {
+        ChatConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
+        if (!businessId.equals(conversation.getBusinessId())) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
     private ChatConversationDto toConversationDto(ChatConversation conv) {
         String customerName = null;
         if (conv.getCustomerId() != null) {
@@ -158,10 +283,24 @@ public class ChatServiceImpl implements ChatService {
                 .customerId(conv.getCustomerId())
                 .customerName(customerName)
                 .subject(conv.getSubject())
+                .conversationType(conv.getConversationType().name())
+                .conversationStatus(conv.getConversationStatus().name())
+                .managedImportRequestId(conv.getManagedImportRequestId())
                 .customerUnreadCount(conv.getCustomerUnreadCount())
                 .businessUnreadCount(conv.getBusinessUnreadCount())
                 .lastMessageAt(conv.getLastMessageAt())
                 .createdAt(conv.getCreatedAt())
+                .build();
+    }
+
+    private ChatAttachmentDto toAttachmentDto(ChatAttachment attachment) {
+        return ChatAttachmentDto.builder()
+                .id(attachment.getId())
+                .conversationId(attachment.getConversationId())
+                .storedName(attachment.getStoredName())
+                .originalName(attachment.getOriginalName())
+                .contentType(attachment.getContentType())
+                .sizeBytes(attachment.getSizeBytes())
                 .build();
     }
 

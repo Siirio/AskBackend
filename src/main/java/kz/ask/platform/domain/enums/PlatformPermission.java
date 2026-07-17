@@ -1,0 +1,12 @@
+package kz.ask.platform.domain.enums;
+
+public enum PlatformPermission {
+    MANAGE_PLATFORM_USERS,
+    MANAGE_MANAGED_IMPORTS,
+    EDIT_CATALOG_DURING_IMPORT,
+    PUBLISH_CATALOG_DURING_IMPORT,
+    MANAGE_SUPPORT_CHATS,
+    MODERATE_CONTENT,
+    SUSPEND_BUSINESS,
+    BAN_BUSINESS
+}

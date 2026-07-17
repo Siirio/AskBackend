@@ -18,4 +18,8 @@ public interface AuthChallengeRepository extends JpaRepository<AuthChallenge, UU
     @Modifying
     @Query("UPDATE AuthChallenge c SET c.status = :expiredStatus WHERE c.status = :pendingStatus AND c.expiresAt < :now")
     void expirePendingChallenges(Instant now, AuthChallengeStatus expiredStatus, AuthChallengeStatus pendingStatus);
+
+    void deleteByUserId(UUID userId);
+
+    void deleteByExpiresAtBefore(Instant cutoff);
 }

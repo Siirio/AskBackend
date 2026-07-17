@@ -27,4 +27,8 @@ public class AuthSessionResponse {
     private Boolean requiresTwoFactor;
     private UUID authChallengeId;
     private Boolean suggestRoleExpansion;
+    private AuthCustomerProfileResponse customerProfile;
+    private List<AuthBusinessMembershipResponse> businessMemberships;
+    private AuthPlatformMembershipResponse platformMembership;
+    private Integer pendingInvitationsCount;
 }

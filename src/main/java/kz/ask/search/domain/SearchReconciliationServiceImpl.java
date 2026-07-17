@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import kz.ask.business.domain.entity.Business;
+import kz.ask.business.domain.enums.BusinessModerationStatus;
+import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.catalog.domain.entity.ProductOffer;
 import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
 import kz.ask.search.domain.dto.SearchReconciliationBatch;
@@ -114,18 +117,24 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
     }
 
     private boolean isLive(ProductOffer offer) {
+        Business business = offer.getProduct().getBusiness();
         return Boolean.TRUE.equals(offer.getEnabled())
                 && offer.getStatus() == RecordStatus.ACTIVE
                 && offer.getProduct().getStatus() == RecordStatus.ACTIVE
-                && offer.getProduct().getBusiness().getStatus() == RecordStatus.ACTIVE
+                && business.getStatus() == RecordStatus.ACTIVE
+                && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
+                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 
     private boolean isLive(ServiceBranchOffer offer) {
+        Business business = offer.getServiceOffering().getBusiness();
         return Boolean.TRUE.equals(offer.getActive())
                 && offer.getStatus() == RecordStatus.ACTIVE
                 && offer.getServiceOffering().getStatus() == RecordStatus.ACTIVE
-                && offer.getServiceOffering().getBusiness().getStatus() == RecordStatus.ACTIVE
+                && business.getStatus() == RecordStatus.ACTIVE
+                && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
+                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 

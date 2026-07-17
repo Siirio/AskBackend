@@ -22,6 +22,28 @@
 | GET | /api/v1/businesses/{bId}/branches/{brId}/invites | OWNER/MANAGER | List invites |
 | DELETE | /api/v1/businesses/{bId}/branches/{brId}/invites/{id} | OWNER/MANAGER | Revoke invite |
 
+## Members Management
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/businesses/{businessId}/members | OWNER/MANAGER | List members (email, displayName, role, status) |
+| PATCH | /api/v1/businesses/{businessId}/members/{membershipId} | OWNER | Change role (never to/from OWNER) |
+| POST | /api/v1/businesses/{businessId}/members/{membershipId}/deactivate | OWNER, or MANAGER for WORKER | Deactivate member (OWNER protected) |
+
+## Invitations
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | /api/v1/businesses/{businessId}/invitations | OWNER (MANAGER/WORKER), MANAGER (WORKER only) | Create invitation by email |
+| GET | /api/v1/businesses/{businessId}/invitations | OWNER/MANAGER | List invitations |
+| DELETE | /api/v1/businesses/{businessId}/invitations/{invitationId} | OWNER/MANAGER | Revoke pending invitation |
+| GET | /api/v1/me/invitations | Bearer | My pending invitations |
+| POST | /api/v1/me/invitations/{invitationId}/accept | Bearer | Accept → creates ACTIVE membership |
+| POST | /api/v1/me/invitations/{invitationId}/decline | Bearer | Decline |
+
+## Seller Onboarding
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | /api/v1/seller/onboarding | Bearer | Create business + branch + OWNER membership for current user |
+
 ## Public Reference
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|

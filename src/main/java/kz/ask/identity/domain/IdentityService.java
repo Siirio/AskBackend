@@ -23,6 +23,8 @@ public interface IdentityService {
 
     AuthChallengeDto verifyCode(UUID challengeId, String code);
 
+    void clearChallengeRegistrationData(UUID challengeId);
+
     AuthSessionDto createSession(UUID userId, String authority, Boolean remembered);
 
     AuthSessionDto createSession(UUID userId, String authority, Boolean remembered, Long ttlSeconds, Boolean activationRequired);
@@ -61,6 +63,8 @@ public interface IdentityService {
 
     void updateProfile(UUID userId, String displayName, String email);
 
+    void updateEmail(UUID userId, String email);
+
     void changePassword(UUID userId, String newPassword);
 
     void toggleTwoFactor(UUID userId);
@@ -68,4 +72,6 @@ public interface IdentityService {
     Boolean isTwoFactorEnabled(UUID userId);
 
     void recordLogin(UUID userId);
+
+    void anonymizeAccount(UUID userId);
 }

@@ -30,9 +30,8 @@ import kz.ask.autodump.domain.enums.ImportSessionStatus;
 import kz.ask.autodump.domain.enums.SourceType;
 import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.CategoryService;
-import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.BranchMemberService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
+import kz.ask.catalog.domain.CatalogCapabilityService;
 import kz.ask.catalog.domain.dto.CreateProductDto;
 import kz.ask.catalog.domain.dto.CreateProductOfferDto;
 import kz.ask.catalog.domain.dto.ProductDto;
@@ -66,9 +65,8 @@ public class AutodumpImportProcessor {
     private final AutodumpDraftService draftService;
     private final AutodumpAuditService auditService;
     private final AutodumpExtractionClient extractionClient;
-    private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
-    private final BranchMemberService branchMemberService;
+    private final CatalogCapabilityService catalogCapabilityService;
     private final CategoryService categoryService;
     private final ProductService productService;
     private final ProductOfferService productOfferService;
@@ -399,10 +397,7 @@ public class AutodumpImportProcessor {
 
     private void verifyBranchAccess(UUID userId, UUID branchId) {
         BusinessBranchDto branch = requireBranch(branchId);
-        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
-            return;
-        }
-        if (branchMemberService.isStaffOfBranch(branchId, userId)) {
+        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

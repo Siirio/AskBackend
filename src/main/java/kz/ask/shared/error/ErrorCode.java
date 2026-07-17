@@ -50,7 +50,26 @@ public enum ErrorCode {
     AUTODUMP_DRAFT_NOT_FOUND("AI Autodump черновик не найден"),
     AUTODUMP_AI_JOB_NOT_FOUND("AI Autodump задача не найдена"),
     CONVERSATION_NOT_FOUND("Чат не найден"),
-    BRANCH_REQUIRED_FOR_WORKER("Для сотрудника необходимо указать филиал");
+    BRANCH_REQUIRED_FOR_WORKER("Для сотрудника необходимо указать филиал"),
+    INVITATION_NOT_FOUND("Приглашение не найдено"),
+    INVITATION_ALREADY_PENDING("Активное приглашение уже существует"),
+    INVITATION_NOT_PENDING("Приглашение больше не активно"),
+    INVITATION_EMAIL_MISMATCH("Приглашение предназначено другому пользователю"),
+    INVITATION_MEMBER_EXISTS("Пользователь уже состоит в этом бизнесе"),
+    INVITATION_ROLE_NOT_ALLOWED("Эту роль нельзя назначить через приглашение"),
+    LEGAL_DOCUMENT_NOT_FOUND("Active legal document not found"),
+    ACCOUNT_OWNER_TRANSFER_REQUIRED("Transfer ownership or delete the owned business before deleting the account"),
+    SELLER_ONBOARDING_INVALID("Seller onboarding data is invalid"),
+    MANAGED_IMPORT_NOT_FOUND("Managed import request not found"),
+    MANAGED_IMPORT_FORBIDDEN("Managed import access is not allowed"),
+    FILE_INVALID("Uploaded file is not allowed"),
+    ATTACHMENT_NOT_FOUND("Attachment not found"),
+    CONVERSATION_CLOSED("Чат закрыт"),
+    PLATFORM_MEMBERSHIP_NOT_FOUND("Platform membership not found"),
+    PLATFORM_MEMBERSHIP_EXISTS("Platform membership already exists"),
+    BUSINESS_MEMBER_NOT_FOUND("Участник бизнеса не найден"),
+    BUSINESS_MEMBER_ROLE_NOT_ALLOWED("Эту роль нельзя назначить участнику"),
+    CONTENT_REPORT_NOT_FOUND("Content report not found");
 
     private final String template;
 

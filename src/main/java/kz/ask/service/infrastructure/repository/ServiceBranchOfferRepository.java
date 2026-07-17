@@ -16,6 +16,9 @@ public interface ServiceBranchOfferRepository extends JpaRepository<ServiceBranc
 
     List<ServiceBranchOffer> findByServiceOfferingId(UUID serviceOfferingId);
 
+    @Query("select sbo from ServiceBranchOffer sbo where sbo.serviceOffering.business.id = :businessId")
+    List<ServiceBranchOffer> findByBusinessId(@Param("businessId") UUID businessId);
+
     @Query("""
         select sbo from ServiceBranchOffer sbo
         join fetch sbo.serviceOffering so

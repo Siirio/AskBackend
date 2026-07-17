@@ -16,6 +16,9 @@ public interface ProductOfferRepository extends JpaRepository<ProductOffer, UUID
 
     List<ProductOffer> findByProductId(UUID productId);
 
+    @Query("select po from ProductOffer po where po.product.business.id = :businessId")
+    List<ProductOffer> findByBusinessId(@Param("businessId") UUID businessId);
+
     @Query("""
         select po from ProductOffer po
         join fetch po.product p

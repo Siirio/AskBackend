@@ -18,6 +18,7 @@ import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.domain.entity.AuthChallenge;
 import kz.ask.identity.domain.entity.AuthSession;
+import kz.ask.identity.domain.entity.CustomerProfile;
 import kz.ask.identity.domain.enums.AppRole;
 import kz.ask.identity.domain.enums.AuthChallengeChannel;
 import kz.ask.identity.domain.enums.AuthChallengePurpose;
@@ -31,6 +32,7 @@ import kz.ask.shared.error.ValidationException;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.repository.AuthChallengeRepository;
 import kz.ask.identity.infrastructure.repository.AuthSessionRepository;
+import kz.ask.identity.infrastructure.repository.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +46,7 @@ public class IdentityServiceImpl implements IdentityService {
     private final AppUserRepository appUserRepository;
     private final AuthChallengeRepository authChallengeRepository;
     private final AuthSessionRepository authSessionRepository;
+    private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthMapper authMapper;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -73,6 +76,8 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Value("${auth.staff.temp-password-key}")
     private String tempPasswordKey;
+    @Value("${auth.account.deleted-display-name:Deleted user}")
+    private String deletedDisplayName;
     private SecretKeySpec aesKey;
 
     @PostConstruct
@@ -138,6 +143,14 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
+    public void clearChallengeRegistrationData(UUID challengeId) {
+        AuthChallenge challenge = authChallengeRepository.findById(challengeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
+        challenge.setRegistrationData(null);
+    }
+
+    @Override
+    @Transactional
     public AuthSessionDto createSession(UUID userId, String authority, Boolean remembered) {
         Long ttl = sessionTtl(authority, remembered);
         return createSession(userId, authority, remembered, ttl, false);
@@ -165,6 +178,12 @@ public class IdentityServiceImpl implements IdentityService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
         user.setStatus(UserStatus.ACTIVE);
         appUserRepository.saveAndFlush(user);
+        if (!customerProfileRepository.findByUserId(userId).isPresent()) {
+            CustomerProfile profile = new CustomerProfile();
+            profile.setUser(user);
+            profile.setDisplayName(user.getDisplayName());
+            customerProfileRepository.save(profile);
+        }
     }
 
     @Override
@@ -286,7 +305,13 @@ public class IdentityServiceImpl implements IdentityService {
     public void updateProfile(UUID userId, String displayName, String email) {
         AppUser user = appUserRepository.getReferenceById(userId);
         if (displayName != null) user.setDisplayName(displayName);
-        if (email != null) user.setEmail(email);
+    }
+
+    @Override
+    @Transactional
+    public void updateEmail(UUID userId, String email) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setEmail(blankToNull(email));
     }
 
     @Override
@@ -310,6 +335,22 @@ public class IdentityServiceImpl implements IdentityService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
         user.setLastLoginAt(Instant.now());
         appUserRepository.saveAndFlush(user);
+    }
+
+    @Override
+    @Transactional
+    public void anonymizeAccount(UUID userId) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
+        authSessionRepository.revokeAllForUser(userId, Instant.now());
+        authChallengeRepository.deleteByUserId(userId);
+        user.setEmail(null);
+        user.setDisplayName(deletedDisplayName);
+        user.setPasswordHash(hashPassword(generateToken()));
+        user.setStatus(UserStatus.DELETED);
+        user.setMustChangePassword(false);
+        user.setTwoFactorEnabled(false);
+        user.setTempPasswordEncrypted(null);
     }
 
     @Override

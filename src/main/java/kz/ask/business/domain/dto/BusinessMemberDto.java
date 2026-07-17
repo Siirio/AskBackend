@@ -12,6 +12,10 @@ public class BusinessMemberDto {
 
     private UUID id;
     private UUID businessId;
+    private String businessName;
     private UUID userId;
+    private String email;
+    private String displayName;
     private String role;
+    private String status;
 }

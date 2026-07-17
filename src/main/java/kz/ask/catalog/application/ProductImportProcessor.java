@@ -15,6 +15,7 @@ import kz.ask.catalog.api.dto.ColumnInfo;
 import kz.ask.catalog.api.dto.MappingRequest;
 import kz.ask.catalog.api.dto.PreviewResponse;
 import kz.ask.catalog.api.dto.UploadResponse;
+import kz.ask.catalog.domain.CatalogCapabilityService;
 import kz.ask.catalog.domain.dto.CatalogImportColumnMappingDto;
 import kz.ask.catalog.domain.dto.CatalogImportDto;
 import kz.ask.catalog.domain.dto.RawCatalogRowDto;
@@ -41,6 +42,7 @@ public class ProductImportProcessor {
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
     private final BranchMemberService branchMemberService;
+    private final CatalogCapabilityService catalogCapabilityService;
     private final CatalogImportService catalogImportService;
     private final CatalogImportColumnMappingService catalogImportColumnMappingService;
     private final RawCatalogRowService rawCatalogRowService;
@@ -68,6 +70,9 @@ public class ProductImportProcessor {
             return;
         }
         if (branchMemberService.isStaffOfBranch(branchId, userId)) {
+            return;
+        }
+        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

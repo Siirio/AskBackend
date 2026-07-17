@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
-import kz.ask.business.domain.dto.BranchInviteDto;
 import kz.ask.business.domain.dto.BranchMemberDto;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.business.domain.dto.BusinessContactDto;
@@ -12,7 +11,6 @@ import kz.ask.business.domain.dto.BusinessDto;
 import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.CityDto;
 import kz.ask.business.domain.dto.DataSourceDto;
-import kz.ask.business.domain.entity.BranchInvite;
 import kz.ask.business.domain.entity.UniqueOffer;
 import kz.ask.business.domain.entity.BrandProfile;
 import kz.ask.business.domain.entity.BranchMember;
@@ -130,20 +128,6 @@ public class BusinessMapper {
         return member;
     }
 
-    public BranchInvite toInviteEntity(BusinessBranch branch, BranchMemberRole role,
-                                        Integer maxUses, Instant expiresAt,
-                                        AppUser createdBy, String code) {
-        BranchInvite invite = new BranchInvite();
-        invite.setBranch(branch);
-        invite.setRole(role);
-        invite.setMaxUses(maxUses);
-        invite.setUseCount(0);
-        invite.setExpiresAt(expiresAt);
-        invite.setCreatedBy(createdBy);
-        invite.setCode(code);
-        return invite;
-    }
-
     public BusinessDto toBusinessDto(Business entity) {
         return BusinessDto.builder()
                 .id(entity.getId())
@@ -207,8 +191,12 @@ public class BusinessMapper {
         return BusinessMemberDto.builder()
                 .id(entity.getId())
                 .businessId(entity.getBusiness().getId())
+                .businessName(entity.getBusiness().getName())
                 .userId(entity.getUser().getId())
+                .email(entity.getUser().getEmail())
+                .displayName(entity.getUser().getDisplayName())
                 .role(entity.getRole().name())
+                .status(entity.getStatus().name())
                 .build();
     }
 
@@ -238,22 +226,6 @@ public class BusinessMapper {
 
     public List<BranchMemberDto> toBranchMemberDtoList(List<BranchMember> entities) {
         return entities.stream().map(this::toBranchMemberDto).collect(Collectors.toList());
-    }
-
-    public BranchInviteDto toBranchInviteDto(BranchInvite entity) {
-        return BranchInviteDto.builder()
-                .id(entity.getId())
-                .code(entity.getCode())
-                .role(entity.getRole().name())
-                .maxUses(entity.getMaxUses())
-                .useCount(entity.getUseCount())
-                .expiresAt(entity.getExpiresAt())
-                .revokedAt(entity.getRevokedAt())
-                .build();
-    }
-
-    public List<BranchInviteDto> toBranchInviteDtoList(List<BranchInvite> entities) {
-        return entities.stream().map(this::toBranchInviteDto).collect(Collectors.toList());
     }
 
     public DataSourceDto toDataSourceDto(DataSource entity) {

@@ -2,12 +2,16 @@ package kz.ask.chat.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import kz.ask.chat.domain.enums.ConversationStatus;
+import kz.ask.chat.domain.enums.ConversationType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -27,6 +31,17 @@ public class ChatConversation {
 
     @Column(name = "customer_id")
     private UUID customerId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "conversation_type", nullable = false)
+    private ConversationType conversationType = ConversationType.GENERAL_SUPPORT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "conversation_status", nullable = false)
+    private ConversationStatus conversationStatus = ConversationStatus.PENDING;
+
+    @Column(name = "managed_import_request_id")
+    private UUID managedImportRequestId;
 
     @Column(nullable = false, length = 512)
     private String subject;

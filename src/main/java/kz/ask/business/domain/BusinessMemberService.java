@@ -15,6 +15,8 @@ public interface BusinessMemberService {
 
     BusinessMemberDto findByUser(UUID userId);
 
+    List<BusinessMemberDto> findActiveByUser(UUID userId);
+
     BusinessMemberDto findByBusinessAndUser(UUID businessId, UUID userId);
 
     Boolean isOwnerOfBusiness(UUID businessId, UUID userId);
@@ -24,4 +26,10 @@ public interface BusinessMemberService {
     BusinessMemberRole getRoleInBusiness(UUID businessId, UUID userId);
 
     List<BusinessMemberDto> findByBusiness(UUID businessId);
+
+    BusinessMemberDto findById(UUID membershipId);
+
+    BusinessMemberDto updateRole(UUID membershipId, BusinessMemberRole role);
+
+    BusinessMemberDto deactivate(UUID membershipId);
 }

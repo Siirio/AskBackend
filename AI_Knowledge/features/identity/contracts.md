@@ -51,8 +51,15 @@ Examples:
 
 DTO field names in this document use camelCase (Java convention). Always map to snake_case when integrating.
 
+## Account Lifecycle
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/account/export | Bearer | Export account data (memberships, platform role, legal acceptances) |
+| DELETE | /api/v1/account | Bearer | Delete account: anonymize profile + user, deactivate memberships, revoke sessions, delete challenges. 409 ACCOUNT_OWNER_TRANSFER_REQUIRED if sole business OWNER. Records ACCOUNT_DELETION_REQUESTED / ACCOUNT_DELETED significant events |
+
 ## Config
 - auth.challenge.ttl, auth.challenge.code-length (6), auth.challenge.max-attempts
+- auth.challenge.retention (P1D) + auth.challenge.retention-interval (PT1H) — expired-challenge purge scheduler
 - auth.customer.session.ttl, auth.customer.remembered-session.ttl
 - auth.business.session.ttl, auth.business.remembered-session.ttl
 - auth.verification.email.enabled (true), auth.verification.sms.enabled (false)

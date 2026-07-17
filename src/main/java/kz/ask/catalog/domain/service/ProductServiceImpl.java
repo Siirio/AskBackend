@@ -1,5 +1,6 @@
 package kz.ask.catalog.domain.service;
 
+import java.util.UUID;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.business.infrastructure.repository.CategoryRepository;
@@ -8,6 +9,8 @@ import kz.ask.catalog.domain.dto.ProductDto;
 import kz.ask.catalog.domain.entity.Product;
 import kz.ask.catalog.infrastructure.mapper.CatalogImportMapper;
 import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.shared.error.ErrorCode;
+import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,15 @@ public class ProductServiceImpl implements ProductService {
         }
         Product saved = productRepository.save(product);
         return mapper.toProductDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public ProductDto setHiddenByModerator(UUID productId, Boolean hidden) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
+        product.setHiddenByModerator(hidden);
+        return mapper.toProductDto(product);
     }
 
 }

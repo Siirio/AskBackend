@@ -28,6 +28,8 @@ public class CustomerRegisterRequest {
     private String passwordConfirmation;
     private Boolean acceptedUserAgreement;
     private Boolean rememberMe;
+    private String countryCode = "KZ";
+    private String locale = "ru";
 
     @AssertTrue(message = "Password and confirmation must match")
     public boolean passwordsMatch() {

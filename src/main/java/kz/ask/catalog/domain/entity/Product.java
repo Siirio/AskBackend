@@ -71,6 +71,9 @@ public class Product extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private RecordStatus status;
 
+    @Column(name = "hidden_by_moderator", nullable = false)
+    private Boolean hiddenByModerator = Boolean.FALSE;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private Map<String, Object> attributes = new HashMap<>();

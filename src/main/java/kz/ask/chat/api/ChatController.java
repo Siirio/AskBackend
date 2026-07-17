@@ -11,8 +11,6 @@ import kz.ask.chat.api.dto.SendMessageRequest;
 import kz.ask.chat.api.dto.SystemNotifyRequest;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.shared.error.ErrorCode;
-import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,6 +45,7 @@ public class ChatController {
     @GetMapping("/conversations/{conversationId}/messages")
     public ChatMessageListResponse getMessages(@AuthenticationPrincipal AskPrincipal principal,
                                                @PathVariable UUID conversationId) {
+        chatService.requireCustomerAccess(conversationId, principal.getUserId());
         List<ChatMessageDto> items = chatService.getMessages(conversationId);
         return ChatMessageListResponse.builder().items(items).build();
     }
@@ -55,12 +54,14 @@ public class ChatController {
     public ChatMessageDto sendMessage(@AuthenticationPrincipal AskPrincipal principal,
                                        @PathVariable UUID conversationId,
                                        @RequestBody SendMessageRequest req) {
+        chatService.requireCustomerAccess(conversationId, principal.getUserId());
         return chatService.sendMessage(conversationId, principal.getUserId(), "CUSTOMER", req);
     }
 
     @PostMapping("/conversations/{conversationId}/read")
     public void markRead(@AuthenticationPrincipal AskPrincipal principal,
                          @PathVariable UUID conversationId) {
+        chatService.requireCustomerAccess(conversationId, principal.getUserId());
         chatService.markRead(conversationId, "CUSTOMER");
     }
 

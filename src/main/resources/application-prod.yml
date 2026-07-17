@@ -20,6 +20,11 @@ auth:
       client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
       client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
     frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:https://ask.com.kz/oauth/callback}
+  cookie:
+    name: ${AUTH_COOKIE_NAME:ASK_SESSION}
+    path: /
+    same-site: ${AUTH_COOKIE_SAME_SITE:None}
+    secure: ${AUTH_COOKIE_SECURE:true}
 
 ask:
   cors:

@@ -1,15 +1,14 @@
 package kz.ask.chat.api;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import kz.ask.chat.api.dto.ChatFileDownloadDto;
+import kz.ask.chat.api.dto.ChatFileUploadResponse;
+import kz.ask.chat.application.ChatFileProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,45 +23,35 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/chat")
+@RequiredArgsConstructor
 public class ChatFileController {
 
-    private final Path uploadDir;
+    private static final String CONTENT_TYPE_OPTIONS_HEADER = "X-Content-Type-Options";
+    private static final String CONTENT_TYPE_OPTIONS_NOSNIFF = "nosniff";
 
-    public ChatFileController(@Value("${ask.chat.upload-dir:uploads/chat}") String uploadDirPath) throws IOException {
-        this.uploadDir = Paths.get(uploadDirPath).toAbsolutePath().normalize();
-        Files.createDirectories(this.uploadDir);
-    }
+    private final ChatFileProcessor chatFileProcessor;
 
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> upload(@AuthenticationPrincipal AskPrincipal principal,
-                                                      @RequestParam("file") MultipartFile file) throws IOException {
-        String originalName = file.getOriginalFilename();
-        String ext = "";
-        if (originalName != null && originalName.contains(".")) {
-            ext = originalName.substring(originalName.lastIndexOf("."));
-        }
-        String storedName = UUID.randomUUID() + ext;
-        Path target = uploadDir.resolve(storedName);
-        file.transferTo(target.toFile());
-
-        String url = "/api/v1/chat/files/" + storedName;
-        return ResponseEntity.ok(Map.of("url", url));
+    public ResponseEntity<ChatFileUploadResponse> upload(@AuthenticationPrincipal AskPrincipal principal,
+                                                         @RequestParam UUID conversationId,
+                                                         @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(chatFileProcessor.upload(principal, conversationId, file));
     }
 
-    @GetMapping("/files/{filename}")
-    public ResponseEntity<Resource> serve(@PathVariable String filename) throws IOException {
-        Path file = uploadDir.resolve(filename).normalize();
-        if (!file.startsWith(uploadDir)) {
-            return ResponseEntity.notFound().build();
-        }
-        Resource resource = new UrlResource(file.toUri());
-        if (!resource.exists() || !resource.isReadable()) {
-            return ResponseEntity.notFound().build();
-        }
-        String contentType = Files.probeContentType(file);
+    @GetMapping("/files/{storedName}")
+    public ResponseEntity<Resource> serve(@AuthenticationPrincipal AskPrincipal principal,
+                                          @PathVariable String storedName) {
+        ChatFileDownloadDto download = chatFileProcessor.download(principal, storedName);
+        String downloadName = download.getOriginalName() != null ? download.getOriginalName() : storedName;
         return ResponseEntity.ok()
-                .contentType(contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .body(resource);
+                .contentType(download.getContentType() != null
+                        ? MediaType.parseMediaType(download.getContentType())
+                        : MediaType.APPLICATION_OCTET_STREAM)
+                .header(CONTENT_TYPE_OPTIONS_HEADER, CONTENT_TYPE_OPTIONS_NOSNIFF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(downloadName, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .body(download.getResource());
     }
 }

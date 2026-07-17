@@ -12,11 +12,9 @@ import kz.ask.identity.api.dto.ChangePasswordRequest;
 import kz.ask.identity.api.dto.ChangeTemporaryPasswordRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
-import kz.ask.identity.api.dto.EmailInfoResponse;
 import kz.ask.identity.api.dto.LoginRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
-import kz.ask.identity.api.dto.SelectRoleRequest;
-import kz.ask.identity.api.dto.SwitchRoleRequest;
+import kz.ask.identity.api.dto.RequestEmailChangeRequest;
 import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.application.AuthProcessor;
@@ -45,16 +43,6 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthSessionResponse> login(@Valid @RequestBody LoginRequest req) {
         return ResponseEntity.ok(loginProcessor.login(req));
-    }
-
-    @PostMapping("/select-role")
-    public ResponseEntity<AuthSessionResponse> selectRole(@Valid @RequestBody SelectRoleRequest req) {
-        return ResponseEntity.ok(loginProcessor.selectRole(req));
-    }
-
-    @GetMapping("/email-info")
-    public ResponseEntity<EmailInfoResponse> emailInfo(@RequestParam String email) {
-        return ResponseEntity.ok(authProcessor.emailInfo(email));
     }
 
     @PostMapping("/change-temporary-password")
@@ -115,12 +103,18 @@ public class AuthController {
         return ResponseEntity.ok(authProcessor.updateProfile(principal, req));
     }
 
-    @Operation(summary = "Switch role", description = "Switches the current session to a different role the user has")
-    @SecurityRequirement(name = "bearerAuth")
-    @PostMapping("/switch-role")
-    public ResponseEntity<AuthSessionResponse> switchRole(@AuthenticationPrincipal AskPrincipal principal,
-                                                          @Valid @RequestBody SwitchRoleRequest req) {
-        return ResponseEntity.ok(authProcessor.switchRole(principal, req));
+    @PostMapping("/email-change/request")
+    public ResponseEntity<AuthChallengeResponse> requestEmailChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody RequestEmailChangeRequest req) {
+        return ResponseEntity.ok(authProcessor.requestEmailChange(principal, req));
+    }
+
+    @PostMapping("/email-change/confirm")
+    public ResponseEntity<AuthSessionResponse> confirmEmailChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody VerifyCodeRequest req) {
+        return ResponseEntity.ok(authProcessor.confirmEmailChange(principal, req));
     }
 
     @Operation(summary = "Change password", description = "Changes password for a specific role of the authenticated user")

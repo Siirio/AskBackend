@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -31,6 +31,12 @@ public class SecurityConfig {
     @Value("${auth.oauth2.google.client-secret:}")
     private String oauth2GoogleClientSecret;
 
+    @Value("${auth.cookie.same-site:Lax}")
+    private String cookieSameSite;
+
+    @Value("${auth.cookie.secure:false}")
+    private Boolean cookieSecure;
+
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomOAuth2UserService customOAuth2UserService,
                           OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler,
@@ -43,8 +49,26 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookieCustomizer(cookie -> cookie
+                .sameSite(cookieSameSite)
+                .secure(Boolean.TRUE.equals(cookieSecure))
+                .path("/"));
         http
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(csrfTokenRepository)
+                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                .ignoringRequestMatchers(
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/customer/login/start",
+                    "/api/v1/auth/customer/register",
+                    "/api/v1/auth/business/login/start",
+                    "/api/v1/auth/business/register",
+                    "/api/v1/auth/verify",
+                    "/oauth2/**",
+                    "/login/oauth2/**"
+                )
+            )
             .cors(withDefaults())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
@@ -73,8 +97,7 @@ public class SecurityConfig {
                     "/api/v1/businesses/*/brand-profile",
                     "/api/v1/businesses/*/storefront",
                     "/api/v1/businesses/*/drops",
-                    "/api/v1/chat/files/*",
-                    "/api/v1/auth/email-info"
+                    "/api/v1/legal/documents"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/search",
@@ -83,8 +106,7 @@ public class SecurityConfig {
                     "/api/v1/auth/customer/register",
                     "/api/v1/auth/business/login/start",
                     "/api/v1/auth/business/register",
-                    "/api/v1/auth/verify",
-                    "/api/v1/auth/select-role"
+                    "/api/v1/auth/verify"
                 ).permitAll()
                 .requestMatchers(
                     "/oauth2/**",

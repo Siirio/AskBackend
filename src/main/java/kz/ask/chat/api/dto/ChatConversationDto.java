@@ -20,6 +20,9 @@ public class ChatConversationDto {
     private UUID customerId;
     private String customerName;
     private String subject;
+    private String conversationType;
+    private String conversationStatus;
+    private UUID managedImportRequestId;
     private Integer customerUnreadCount;
     private Integer businessUnreadCount;
     private Instant lastMessageAt;
