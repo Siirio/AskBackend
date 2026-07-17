@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-17 | Staging deploy hardening: meili healthcheck localhost→127.0.0.1 (busybox wget resolves ::1, meili binds IPv4 only); ASK_CONTACT_* env passthrough restored to both app services (required no-default placeholders in application-prod.yml); SERVER_FORWARD_HEADERS_STRATEGY=framework so OAuth redirect_uri behind Caddy is https; committed chunked resumable VPS upload/run tools; V4 checksum repaired on stage DB after post-apply edit — prod will need same repair on next deploy | deploy/vps/compose.yml, tools/deploy/*, .claude/skills/deploy-staging.md
+
 ## 2026-07-14 | Cross-repo lookups fixed: the frontend rebuilt on Next.js + Vertical Slice Architecture, and its feature folders are named after ITS slices, not our modules (messaging→chats, service→services, request→requests, identity→auth+profile, offers/import→business-cabinet/catalog). Feature Index gained a Frontend slice column as the lookup key; paths corrected from ../ask-frontend to ../Ask_Frontend | CLAUDE.md, AGENTS.md
 2026-07-13 | AI system V2.0: self-bootstrapping CLAUDE.md orchestrator replaces AGENTS.md-only setup | CLAUDE.md, AGENTS.md, AI_Knowledge/*
 ## 2026-07-13 | AI system V2.0: self-bootstrapping CLAUDE.md orchestrator replaces AGENTS.md-only setup | CLAUDE.md, AGENTS.md, AI_Knowledge/*
