@@ -25,3 +25,4 @@ Frontend groups results:
 - distanceMeters returned only when calculated from real coordinates (customer lat/lon + branch lat/lon)
 - Nullable — missing coordinates → null
 - Never calculated from city name or address text
+- AI enrichment controls are platform-only and support one product from edit mode or a bulk product selection.

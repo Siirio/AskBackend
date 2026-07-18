@@ -8,12 +8,14 @@ import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.enums.BusinessModerationStatus;
+import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.catalog.domain.dto.ProductDto;
 import kz.ask.catalog.domain.service.ProductService;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
+import kz.ask.moderation.api.dto.CatalogReviewBusinessResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
 import kz.ask.moderation.domain.entity.ContentReport;
 import kz.ask.moderation.domain.enums.ContentReportStatus;
@@ -25,7 +27,9 @@ import kz.ask.search.domain.SearchVisibilityService;
 import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
+import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.NotFoundException;
+import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,16 +69,52 @@ public class ModerationProcessor {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CatalogReviewBusinessResponse> listCatalogReviews(AskPrincipal principal) {
+        requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        return businessRepository.findByCatalogStatusOrderByCreatedAtAsc(CatalogStatus.REVIEW_REQUIRED)
+                .stream()
+                .map(business -> CatalogReviewBusinessResponse.builder()
+                        .businessId(business.getId())
+                        .businessName(business.getName())
+                        .catalogStatus(business.getCatalogStatus().name())
+                        .build())
+                .toList();
+    }
+
+    @Transactional
+    public void reviewCatalog(AskPrincipal principal, UUID businessId, Boolean approved) {
+        requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        Business business = businessRepository.findById(businessId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND, businessId));
+        if (business.getCatalogStatus() != CatalogStatus.REVIEW_REQUIRED) {
+            throw new ConflictException(ErrorCode.CATALOG_SETUP_ALREADY_COMPLETED);
+        }
+        business.setCatalogStatus(Boolean.TRUE.equals(approved)
+                ? CatalogStatus.COMPLETED
+                : CatalogStatus.RESTRICTED);
+        searchVisibilityService.republishBusinessOffers(businessId);
+    }
+
     @Transactional
     public ContentReportResponse resolve(
             AskPrincipal principal,
             UUID reportId,
-            ContentReportStatus status) {
+            ContentReportStatus status,
+            String resolution) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        if (status != ContentReportStatus.RESOLVED
+                && status != ContentReportStatus.REJECTED) {
+            throw new ValidationException(ErrorCode.CONTENT_REPORT_INVALID_STATUS);
+        }
         ContentReport report = contentReportRepository.findById(reportId)
                 .orElseThrow(() -> new NotFoundException(
                         ErrorCode.CONTENT_REPORT_NOT_FOUND, reportId));
+        if (report.getStatus() != ContentReportStatus.OPEN) {
+            throw new ConflictException(ErrorCode.CONTENT_REPORT_ALREADY_RESOLVED);
+        }
         report.setStatus(status);
+        report.setResolution(resolution);
         report.setResolvedBy(appUserRepository.getReferenceById(principal.getUserId()));
         report.setResolvedAt(Instant.now());
         return toResponse(report);
@@ -144,9 +184,11 @@ public class ModerationProcessor {
                 .reasonCode(report.getReasonCode())
                 .details(report.getDetails())
                 .status(report.getStatus().name())
+                .resolution(report.getResolution())
                 .reporterUserId(report.getReporter().getId())
                 .reporterName(report.getReporter().getDisplayName())
                 .createdAt(report.getCreatedAt())
+                .resolvedAt(report.getResolvedAt())
                 .build();
     }
 }

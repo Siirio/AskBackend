@@ -91,9 +91,6 @@ public class LoginProcessor {
     }
 
     private BusinessRegistrationResult resolveBusiness(AppUserDto user) {
-        if (!isBusinessRole(user.getRole())) {
-            return null;
-        }
         BusinessRegistrationResult bizResult = businessService.findByOwner(user.getId());
         if (bizResult != null) {
             return bizResult;
@@ -134,7 +131,7 @@ public class LoginProcessor {
                 .remembered(session.getRemembered())
                 .activationRequired(session.getActivationRequired())
                 .role(session.getAuthority())
-                .startRoute(resolveStartRoute(session.getAuthority(), user))
+                .startRoute(resolveStartRoute(session.getAuthority(), bizResult))
                 .user(buildUserResponse(user))
                 .allRoles(allRoles);
         sessionCapabilitiesProcessor.apply(builder, user);
@@ -164,13 +161,11 @@ public class LoginProcessor {
                 .build();
     }
 
-    private String resolveStartRoute(String authority, AppUserDto user) {
+    private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult) {
+        if (bizResult != null) {
+            return "BUSINESS_CABINET";
+        }
         return "CLIENT_SEARCH";
     }
 
-    private boolean isBusinessRole(AppRole role) {
-        return role == AppRole.BUSINESS_OWNER
-                || role == AppRole.BUSINESS_MANAGER
-                || role == AppRole.BUSINESS_WORKER;
-    }
 }

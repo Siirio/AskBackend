@@ -10,13 +10,13 @@ import kz.ask.chat.api.dto.SendMessageRequest;
 import kz.ask.chat.domain.entity.ChatAttachment;
 import kz.ask.chat.domain.entity.ChatConversation;
 import kz.ask.chat.domain.entity.ChatMessage;
+import kz.ask.chat.domain.event.ChatFilesDeletionRequested;
 import kz.ask.chat.domain.enums.MessageSenderType;
 import kz.ask.chat.domain.enums.ConversationStatus;
 import kz.ask.chat.domain.enums.ConversationType;
 import kz.ask.chat.domain.repository.ChatAttachmentRepository;
 import kz.ask.chat.domain.repository.ChatConversationRepository;
 import kz.ask.chat.domain.repository.ChatMessageRepository;
-import kz.ask.chat.infrastructure.ChatFileStorage;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.shared.error.ErrorCode;
@@ -24,6 +24,7 @@ import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,12 +34,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatServiceImpl implements ChatService {
 
     private static final int MAX_CONVERSATIONS = 50;
+    private static final String FILE_URL_PREFIX = "/api/v1/chat/files/";
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final ChatAttachmentRepository attachmentRepository;
     private final AppUserRepository appUserRepository;
-    private final ChatFileStorage chatFileStorage;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -91,7 +93,8 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage msg = new ChatMessage();
         msg.setConversationId(conversationId);
         msg.setSenderType(MessageSenderType.valueOf(senderType));
-        msg.setText(req.getText());
+        msg.setText(req.getText() == null ? "" : req.getText());
+        msg.setAttachmentUrl(validateAttachmentUrl(conversationId, req.getAttachmentUrl()));
         msg = messageRepository.save(msg);
 
         return toMessageDto(msg);
@@ -197,11 +200,21 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public void deleteConversation(UUID conversationId) {
-        attachmentRepository.findByConversationId(conversationId)
-                .forEach(attachment -> chatFileStorage.delete(attachment.getStoredName()));
+        List<String> storedNames = attachmentRepository.findByConversationId(conversationId)
+                .stream()
+                .map(attachment -> attachment.getStoredName())
+                .toList();
         attachmentRepository.deleteByConversationId(conversationId);
         messageRepository.deleteByConversationId(conversationId);
         conversationRepository.deleteById(conversationId);
+        eventPublisher.publishEvent(new ChatFilesDeletionRequested(storedNames));
+    }
+
+    @Override
+    @Transactional
+    public void deleteCustomerConversations(UUID customerId) {
+        conversationRepository.findAllByCustomerId(customerId)
+                .forEach(conversation -> deleteConversation(conversation.getId()));
     }
 
     @Override
@@ -211,6 +224,7 @@ public class ChatServiceImpl implements ChatService {
                 .map(this::toConversationDto)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CONVERSATION_NOT_FOUND));
     }
+
 
     @Override
     @Transactional
@@ -310,8 +324,25 @@ public class ChatServiceImpl implements ChatService {
                 .conversationId(msg.getConversationId())
                 .senderType(msg.getSenderType().name())
                 .text(msg.getText())
+                .attachmentUrl(msg.getAttachmentUrl())
                 .readAt(msg.getReadAt())
                 .createdAt(msg.getCreatedAt())
                 .build();
+    }
+
+    private String validateAttachmentUrl(UUID conversationId, String attachmentUrl) {
+        if (attachmentUrl == null || attachmentUrl.isBlank()) {
+            return null;
+        }
+        if (!attachmentUrl.startsWith(FILE_URL_PREFIX)) {
+            throw new ValidationException(ErrorCode.FILE_INVALID);
+        }
+        String storedName = attachmentUrl.substring(FILE_URL_PREFIX.length());
+        ChatAttachment attachment = attachmentRepository.findByStoredName(storedName)
+                .orElseThrow(() -> new ValidationException(ErrorCode.FILE_INVALID));
+        if (!conversationId.equals(attachment.getConversationId())) {
+            throw new ValidationException(ErrorCode.FILE_INVALID);
+        }
+        return attachmentUrl;
     }
 }

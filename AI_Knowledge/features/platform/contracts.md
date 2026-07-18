@@ -25,3 +25,6 @@
 - Platform chat: see features/messaging/contracts.md
 - Catalog capabilities for platform members: see features/catalog/contracts.md
 - Managed imports: /api/v1/platform/managed-imports (PlatformManagedImportController), /api/v1/businesses/{businessId}/managed-imports (BusinessManagedImportController)
+- Resolving a content report requires a `RESOLVED` or `REJECTED` status plus a non-blank resolution; only an `OPEN` report can transition.
+- `GET/PATCH /api/v1/platform/catalog-reviews` provides moderator decisions for partial seven-day catalogs.
+- `POST /api/v1/platform/ai-enrichment` queues selected documents and requires `USE_AI_CATALOG_TOOLS`.

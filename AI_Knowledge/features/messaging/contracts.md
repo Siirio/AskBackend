@@ -33,10 +33,11 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 | POST | /api/v1/chat/upload?conversationId={id} | Participant | Upload attachment (multipart `file`) → `{ url }` |
 | GET | /api/v1/chat/files/{storedName} | Participant | Download attachment |
 
-- Participant = conversation customer, member of conversation business, or active platform member.
+- Participant = conversation customer or member of conversation business. Platform access is limited to MANAGED_IMPORT conversations, an active grant, and MANAGE_MANAGED_IMPORTS or MANAGE_SUPPORT_CHATS.
 - Upload validation: non-empty, size ≤ `ask.chat.max-file-size`, extension + declared content-type whitelists (`ask.chat.allowed-extensions`, `ask.chat.allowed-content-types`), magic-byte check in storage.
 - Stored name is a random UUID + extension; original name only returned via Content-Disposition (UTF-8 encoded builder, no header injection).
 - Download responds with `X-Content-Type-Options: nosniff` + `Content-Disposition: attachment`.
+- Conversation deletion removes database rows transactionally and deletes physical files only after commit.
 
 ## ChatConversation Model
 - conversationId, businessId, customerId, customerName, subject
@@ -47,7 +48,7 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 
 ## ChatMessage Model
 - messageId, conversationId, senderType (CUSTOMER/BUSINESS/PLATFORM)
-- text; attachments registered separately (storedName, originalName, contentType, size)
+- text, optional attachmentUrl; uploaded attachments are registered separately and must belong to the same conversation
 - readAt, createdAt
 
 ## Unread Count Rules

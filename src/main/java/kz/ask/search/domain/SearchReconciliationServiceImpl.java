@@ -121,9 +121,10 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
         return Boolean.TRUE.equals(offer.getEnabled())
                 && offer.getStatus() == RecordStatus.ACTIVE
                 && offer.getProduct().getStatus() == RecordStatus.ACTIVE
+                && !Boolean.TRUE.equals(offer.getProduct().getHiddenByModerator())
                 && business.getStatus() == RecordStatus.ACTIVE
                 && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
-                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
+                && business.getCatalogStatus() == CatalogStatus.COMPLETED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 
@@ -134,7 +135,7 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
                 && offer.getServiceOffering().getStatus() == RecordStatus.ACTIVE
                 && business.getStatus() == RecordStatus.ACTIVE
                 && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
-                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
+                && business.getCatalogStatus() == CatalogStatus.COMPLETED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 

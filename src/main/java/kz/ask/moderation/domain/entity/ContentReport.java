@@ -47,5 +47,7 @@ public class ContentReport extends BaseUuidV7Entity {
     @JoinColumn(name = "resolved_by_user_id")
     private AppUser resolvedBy;
 
+    private String resolution;
+
     private Instant resolvedAt;
 }

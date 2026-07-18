@@ -71,6 +71,7 @@ public class SearchAiEnrichmentServiceImpl implements SearchAiEnrichmentService 
         document.setAiEnrichmentAttemptCount(0);
         document.setAiEnrichmentError(null);
         document.setAiEnrichmentDead(Boolean.FALSE);
+        document.setAiEnrichmentRequested(Boolean.FALSE);
         outboxService.republish(
                 item.getAggregateType(), item.getAggregateId(),
                 SearchEventType.UPSERT, item.getDocumentVersion());

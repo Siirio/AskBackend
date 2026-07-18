@@ -1,7 +1,6 @@
 package kz.ask.chat.api.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import java.util.UUID;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +14,13 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SendMessageRequest {
 
-    @NotBlank
     private String text;
+
+    private String attachmentUrl;
+
+    @AssertTrue(message = "Message text or attachment is required")
+    public boolean hasContent() {
+        return text != null && !text.isBlank()
+                || attachmentUrl != null && !attachmentUrl.isBlank();
+    }
 }

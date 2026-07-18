@@ -40,6 +40,8 @@ public interface ChatService {
 
     void deleteConversation(UUID conversationId);
 
+    void deleteCustomerConversations(UUID customerId);
+
     void requireCustomerAccess(UUID conversationId, UUID userId);
 
     void requireBusinessAccess(UUID conversationId, UUID businessId);

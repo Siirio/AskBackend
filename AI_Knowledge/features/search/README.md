@@ -20,4 +20,4 @@ Reindex uses bounded keyset batches, writes a replacement versioned index, valid
 
 ## AI enrichment
 
-AI enrichment is enabled by default through `ASK_SEARCH_AI_ENRICHMENT_ENABLED=true`. Without `DEEPSEEK_API_KEY`, the worker safely no-ops. With a key, it claims bounded batches, validates a strict schema, stores confidence/evidence/model/schema metadata in `search_ai_metadata`, and publishes a new projection version without changing products or services.
+AI enrichment workers run only for documents explicitly requested by a platform user with `USE_AI_CATALOG_TOOLS`. They claim bounded batches, validate a strict schema, store evidence-bearing metadata, and never change canonical products or services.

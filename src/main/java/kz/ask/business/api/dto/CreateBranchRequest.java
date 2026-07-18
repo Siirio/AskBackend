@@ -13,6 +13,7 @@ public class CreateBranchRequest {
     @NotBlank
     private String name;
     private String address;
+    private String addressDetails;
     private UUID cityId;
     private Boolean onlineOnly;
     @NotNull

@@ -14,4 +14,6 @@ public interface BusinessRepository extends JpaRepository<Business, UUID> {
     List<Business> findByCatalogStatusAndCatalogDeadlineAtBefore(
             CatalogStatus catalogStatus,
             Instant deadline);
+
+    List<Business> findByCatalogStatusOrderByCreatedAtAsc(CatalogStatus catalogStatus);
 }

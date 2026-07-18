@@ -47,11 +47,7 @@ public interface IdentityService {
 
     List<AppUserDto> findAllActiveByEmail(String email);
 
-    AppUserDto findByEmailAndRole(String email, AppRole role);
-
     Boolean emailExists(String email);
-
-    Boolean emailExistsForRole(String email, AppRole role);
 
     Boolean verifyPassword(String rawPassword, String encodedPassword);
 

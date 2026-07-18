@@ -193,6 +193,9 @@ public class StaffManagementProcessor {
         if (branchRole == BranchMemberRole.WORKER && req.getBranchId() == null) {
             throw new ValidationException(ErrorCode.BRANCH_REQUIRED_FOR_WORKER);
         }
+        if (req.getBranchId() != null) {
+            requireBranchExists(businessId, req.getBranchId());
+        }
 
         AppRole appRole = branchRole == BranchMemberRole.MANAGER ? AppRole.BUSINESS_MANAGER : AppRole.BUSINESS_WORKER;
 
@@ -225,6 +228,7 @@ public class StaffManagementProcessor {
         verifyManagementAccess(principal.getUserId(), businessId);
         List<BusinessMemberDto> members = businessMemberService.findByBusiness(businessId);
         return members.stream()
+                .filter(member -> !BusinessMemberRole.OWNER.name().equals(member.getRole()))
                 .map(m -> buildEmployeeResponseFromDto(m, businessId))
                 .toList();
     }

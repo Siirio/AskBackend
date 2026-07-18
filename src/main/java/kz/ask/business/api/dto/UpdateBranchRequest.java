@@ -10,6 +10,7 @@ import lombok.Setter;
 public class UpdateBranchRequest {
     private String name;
     private String address;
+    private String addressDetails;
     private UUID cityId;
     private Boolean onlineOnly;
     private BigDecimal latitude;

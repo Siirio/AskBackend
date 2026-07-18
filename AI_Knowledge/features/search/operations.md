@@ -18,6 +18,8 @@ Rollback keeps PostgreSQL canonical. Point `MEILISEARCH_INDEX_NAME` at the last 
 
 Set `ASK_SEARCH_RECONCILIATION_ENABLED=true` to schedule bounded comparison. `ASK_SEARCH_RECONCILIATION_REPAIR=true` enqueues repairs for missing or stale documents and removes confirmed orphans. Review counts and sampled IDs before enabling repair in a new environment.
 
+Moderator-hidden products are non-live in both projection and reconciliation, so repair cannot reintroduce them.
+
 ## Dead outbox events
 
 Dead events are retained in `search_outbox_event`; never delete them as a retry mechanism. Confirm the canonical aggregate version and failure cause, restore the dependency or data invariant, then reset only the selected event to the retryable state with its availability time set to the current time. The worker still applies stale-version protection.

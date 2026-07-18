@@ -15,14 +15,8 @@ import lombok.Setter;
 public class ChangePasswordRequest {
 
     @NotBlank
-    private String role;
-
-    @NotBlank
     private String currentPassword;
 
     @NotBlank
     private String newPassword;
-
-    @NotBlank
-    private String passwordConfirmation;
 }

@@ -28,5 +28,6 @@ public class ManagedImportDto {
     private UUID responsiblePlatformUserId;
     private Instant createdAt;
     private Instant activatedAt;
+    private Instant expiresAt;
     private Instant completedAt;
 }

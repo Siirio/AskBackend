@@ -34,6 +34,9 @@ public class ChatMessage {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
 
+    @Column(name = "attachment_url", length = 512)
+    private String attachmentUrl;
+
     @Column(name = "read_at")
     private Instant readAt;
 

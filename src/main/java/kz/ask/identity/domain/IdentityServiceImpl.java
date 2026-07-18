@@ -271,23 +271,11 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    public Boolean emailExistsForRole(String email, AppRole role) {
-        return appUserRepository.existsByEmailIgnoreCaseAndRole(email, role);
-    }
-
-    @Override
     public String maskEmail(String email) {
         if (email == null) return null;
         int at = email.indexOf('@');
         if (at <= 2) return email;
         return email.charAt(0) + "***" + email.charAt(at - 1) + email.substring(at);
-    }
-
-    @Override
-    public AppUserDto findByEmailAndRole(String email, AppRole role) {
-        return appUserRepository.findByEmailIgnoreCaseAndRole(email, role)
-                .map(authMapper::toAppUserDto)
-                .orElse(null);
     }
 
     @Override

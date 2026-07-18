@@ -26,3 +26,4 @@
 ## Profile
 - PATCH /api/v1/auth/profile: partial update (only non-null fields changed)
 - Can update displayName, email, phone independently
+- Profile settings expose account deletion but no account-data export action.

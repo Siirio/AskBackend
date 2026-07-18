@@ -24,3 +24,5 @@
 - Branch has: name, city, address, onlineOnly flag, coordinates (optional)
 - Online-only branches can skip physical address
 - Contacts managed per-branch (registration contact = initial public contact)
+- Branch creation/editing has no manual city dropdown or address field: the map selection resolves both values. Only `addressDetails` is entered separately.
+- Staff creation endpoints create and return the actual member immediately; invitations are a separate workflow.

@@ -6,7 +6,10 @@ import kz.ask.business.api.dto.BranchResponse;
 import kz.ask.business.api.dto.CreateBranchRequest;
 import kz.ask.business.api.dto.UpdateBranchRequest;
 import kz.ask.business.domain.BusinessBranchService;
+import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
+import kz.ask.catalog.domain.CatalogCapabilityService;
+import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.ErrorCode;
@@ -20,19 +23,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class BranchManagementProcessor {
 
     private final BusinessService businessService;
+    private final BusinessMemberService businessMemberService;
     private final BusinessBranchService businessBranchService;
+    private final CatalogCapabilityService catalogCapabilityService;
 
     @Transactional
     public BranchResponse createBranch(AskPrincipal principal, UUID businessId, CreateBranchRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranchDto dto = businessBranchService.create(
-                businessId, req.getCityId(), req.getName(), req.getAddress(), req.getOnlineOnly(),
+                businessId, req.getCityId(), req.getName(), req.getAddress(), req.getAddressDetails(), req.getOnlineOnly(),
                 req.getLatitude(), req.getLongitude());
         return toResponse(dto);
     }
 
     public List<BranchResponse> listBranches(AskPrincipal principal, UUID businessId) {
-        verifyOwnerAccess(principal.getUserId(), businessId);
+        verifyReadAccess(principal.getUserId(), businessId);
         return businessBranchService.listByBusiness(businessId)
                 .stream()
                 .map(this::toResponse)
@@ -43,13 +48,21 @@ public class BranchManagementProcessor {
     public BranchResponse updateBranch(AskPrincipal principal, UUID businessId, UUID branchId, UpdateBranchRequest req) {
         verifyOwnerAccess(principal.getUserId(), businessId);
         BusinessBranchDto dto = businessBranchService.update(
-                branchId, req.getName(), req.getAddress(), req.getCityId(), req.getOnlineOnly(),
+                branchId, req.getName(), req.getAddress(), req.getAddressDetails(), req.getCityId(), req.getOnlineOnly(),
                 req.getLatitude(), req.getLongitude());
         return toResponse(dto);
     }
 
     private void verifyOwnerAccess(UUID userId, UUID businessId) {
         if (!businessService.isOwnerOfBusiness(businessId, userId)) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void verifyReadAccess(UUID userId, UUID businessId) {
+        var member = businessMemberService.findByBusinessAndUser(businessId, userId);
+        if ((member == null || !RecordStatus.ACTIVE.name().equals(member.getStatus()))
+                && !catalogCapabilityService.hasPlatformCatalogAccess(userId, businessId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }
@@ -63,6 +76,7 @@ public class BranchManagementProcessor {
                 .cityName(dto.getCityName())
                 .name(dto.getName())
                 .address(dto.getAddress())
+                .addressDetails(dto.getAddressDetails())
                 .onlineOnly(dto.getOnlineOnly())
                 .status(dto.getStatus())
                 .latitude(dto.getLatitude())

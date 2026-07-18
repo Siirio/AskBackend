@@ -37,7 +37,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             name = separator > 0 ? email.substring(0, separator) : email;
         }
 
-        AppUserDto user = identityService.findByEmailAndRole(email, AppRole.CUSTOMER);
+        AppUserDto user = identityService.findAllByEmail(email).stream()
+                .findFirst()
+                .orElse(null);
         if (user == null) {
             byte[] randomBytes = new byte[32];
             secureRandom.nextBytes(randomBytes);

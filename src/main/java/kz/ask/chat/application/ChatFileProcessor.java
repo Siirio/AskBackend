@@ -13,7 +13,10 @@ import kz.ask.chat.api.dto.ChatFileUploadResponse;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.chat.infrastructure.ChatFileStorage;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.platform.domain.PlatformMembershipService;
+import kz.ask.platform.domain.dto.PlatformMembershipDto;
+import kz.ask.platform.domain.enums.PlatformPermission;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -32,6 +35,7 @@ public class ChatFileProcessor {
     private final ChatFileStorage chatFileStorage;
     private final BusinessMemberService businessMemberService;
     private final PlatformMembershipService platformMembershipService;
+    private final ManagedImportService managedImportService;
     private final Long maxFileSize;
     private final Set<String> allowedExtensions;
     private final Set<String> allowedContentTypes;
@@ -41,6 +45,7 @@ public class ChatFileProcessor {
             ChatFileStorage chatFileStorage,
             BusinessMemberService businessMemberService,
             PlatformMembershipService platformMembershipService,
+            ManagedImportService managedImportService,
             @Value("${ask.chat.max-file-size:10485760}") Long maxFileSize,
             @Value("${ask.chat.allowed-extensions:png,jpg,jpeg,pdf,txt,md,csv,xlsx}") String allowedExtensions,
             @Value("${ask.chat.allowed-content-types:image/png,image/jpeg,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}") String allowedContentTypes) {
@@ -48,6 +53,7 @@ public class ChatFileProcessor {
         this.chatFileStorage = chatFileStorage;
         this.businessMemberService = businessMemberService;
         this.platformMembershipService = platformMembershipService;
+        this.managedImportService = managedImportService;
         this.maxFileSize = maxFileSize;
         this.allowedExtensions = splitConfig(allowedExtensions);
         this.allowedContentTypes = splitConfig(allowedContentTypes);
@@ -104,10 +110,21 @@ public class ChatFileProcessor {
                 && businessMemberService.findByBusinessAndUser(conversation.getBusinessId(), userId) != null) {
             return;
         }
-        if (platformMembershipService.findActiveByUser(userId) != null) {
+        PlatformMembershipDto platformMembership =
+                platformMembershipService.findActiveByUser(userId);
+        if (platformMembership != null
+                && "MANAGED_IMPORT".equals(conversation.getConversationType())
+                && conversation.getBusinessId() != null
+                && managedImportService.hasActiveGrant(conversation.getBusinessId(), userId)
+                && hasManagedImportPermission(platformMembership)) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+    }
+
+    private boolean hasManagedImportPermission(PlatformMembershipDto membership) {
+        return membership.getPermissions().contains(PlatformPermission.MANAGE_MANAGED_IMPORTS)
+                || membership.getPermissions().contains(PlatformPermission.MANAGE_SUPPORT_CHATS);
     }
 
     private Set<String> splitConfig(String value) {

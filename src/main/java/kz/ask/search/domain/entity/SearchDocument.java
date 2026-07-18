@@ -161,4 +161,7 @@ public class SearchDocument extends BaseUuidV7Entity {
 
     @Column(name = "ai_enrichment_dead", nullable = false)
     private Boolean aiEnrichmentDead = Boolean.FALSE;
+
+    @Column(name = "ai_enrichment_requested", nullable = false)
+    private Boolean aiEnrichmentRequested = Boolean.FALSE;
 }

@@ -8,6 +8,7 @@ import kz.ask.chat.api.dto.SendMessageRequest;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.chat.domain.enums.ConversationType;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.platform.domain.enums.PlatformPermission;
@@ -25,19 +26,24 @@ public class PlatformChatProcessor {
 
     private final ChatService chatService;
     private final PlatformMembershipService platformMembershipService;
+    private final ManagedImportService managedImportService;
 
     @Transactional(readOnly = true)
     public List<ChatConversationDto> listConversations(AskPrincipal principal) {
         requireAnyPermission(principal,
                 PlatformPermission.MANAGE_MANAGED_IMPORTS, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        return chatService.listPlatformConversations();
+        return chatService.listPlatformConversations().stream()
+                .filter(conversation -> conversation.getBusinessId() != null
+                        && managedImportService.hasActiveGrant(
+                                conversation.getBusinessId(), principal.getUserId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ChatMessageDto> getMessages(AskPrincipal principal, UUID conversationId) {
         requireAnyPermission(principal,
                 PlatformPermission.MANAGE_MANAGED_IMPORTS, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(conversationId);
+        requireManagedImportConversation(principal, conversationId);
         return chatService.getMessages(conversationId);
     }
 
@@ -45,7 +51,7 @@ public class PlatformChatProcessor {
     public ChatMessageDto sendMessage(AskPrincipal principal, UUID conversationId, SendMessageRequest request) {
         requireAnyPermission(principal,
                 PlatformPermission.MANAGE_MANAGED_IMPORTS, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(conversationId);
+        requireManagedImportConversation(principal, conversationId);
         return chatService.sendMessage(conversationId, principal.getUserId(), PLATFORM_SENDER, request);
     }
 
@@ -53,20 +59,23 @@ public class PlatformChatProcessor {
     public void markRead(AskPrincipal principal, UUID conversationId) {
         requireAnyPermission(principal,
                 PlatformPermission.MANAGE_MANAGED_IMPORTS, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(conversationId);
+        requireManagedImportConversation(principal, conversationId);
         chatService.markRead(conversationId, PLATFORM_SENDER);
     }
 
     @Transactional
     public ChatConversationDto closeConversation(AskPrincipal principal, UUID conversationId) {
         requireAnyPermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(conversationId);
+        requireManagedImportConversation(principal, conversationId);
         return chatService.closeConversation(conversationId);
     }
 
-    private void requireManagedImportConversation(UUID conversationId) {
+    private void requireManagedImportConversation(AskPrincipal principal, UUID conversationId) {
         ChatConversationDto conversation = chatService.getConversation(conversationId);
-        if (!ConversationType.MANAGED_IMPORT.name().equals(conversation.getConversationType())) {
+        if (!ConversationType.MANAGED_IMPORT.name().equals(conversation.getConversationType())
+                || conversation.getBusinessId() == null
+                || !managedImportService.hasActiveGrant(
+                        conversation.getBusinessId(), principal.getUserId())) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

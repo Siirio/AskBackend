@@ -1,5 +1,6 @@
 package kz.ask.managedimport.domain;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -24,10 +25,7 @@ public interface ManagedImportService {
 
     ManagedImportDto activate(UUID requestId, UUID platformUserId);
 
-    ManagedImportDto complete(
-            UUID requestId,
-            UUID platformUserId,
-            Integer productsPublishedCount);
+    Boolean hasActiveGrant(UUID businessId, UUID platformUserId);
 
-    Boolean hasActiveGrant(UUID businessId);
+    void expireDue(Instant now);
 }

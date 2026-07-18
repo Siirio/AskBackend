@@ -17,6 +17,8 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
     @Query("SELECT c FROM ChatConversation c WHERE c.customerId = :customerId ORDER BY c.lastMessageAt DESC NULLS LAST, c.createdAt DESC")
     List<ChatConversation> findByCustomerId(@Param("customerId") UUID customerId, Pageable pageable);
 
+    List<ChatConversation> findAllByCustomerId(UUID customerId);
+
     @Query("SELECT c FROM ChatConversation c WHERE c.businessId = :businessId ORDER BY c.lastMessageAt DESC NULLS LAST, c.createdAt DESC")
     List<ChatConversation> findAllByBusinessId(@Param("businessId") UUID businessId, Pageable pageable);
 

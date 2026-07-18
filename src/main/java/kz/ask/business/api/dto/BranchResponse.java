@@ -14,6 +14,7 @@ public class BranchResponse {
     private String cityName;
     private String name;
     private String address;
+    private String addressDetails;
     private Boolean onlineOnly;
     private String status;
     private BigDecimal latitude;

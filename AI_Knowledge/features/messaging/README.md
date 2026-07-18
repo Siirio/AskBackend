@@ -10,3 +10,4 @@ Universal text-only chat with unread counts. Chat is always available from concr
 - Auto supplier check must NOT create customer-visible chat or unread notification.
 - System events (confirmations, time changes, cancellations) appear as system messages in conversation.
 - Open for brand extension: links, quick replies, FAQs, AI assistant allowed. Cannot break user flow, spam, or change system statuses.
+- Managed-import chat is created on request activation, belongs to the assigned platform user and business, supports validated attachments, and is deleted at grant expiry.

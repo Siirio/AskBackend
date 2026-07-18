@@ -61,6 +61,7 @@ public enum ErrorCode {
     ACCOUNT_OWNER_TRANSFER_REQUIRED("Transfer ownership or delete the owned business before deleting the account"),
     SELLER_ONBOARDING_INVALID("Seller onboarding data is invalid"),
     MANAGED_IMPORT_NOT_FOUND("Managed import request not found"),
+    MANAGED_IMPORT_ACTIVE_EXISTS("An active managed import already exists for this business"),
     MANAGED_IMPORT_FORBIDDEN("Managed import access is not allowed"),
     FILE_INVALID("Uploaded file is not allowed"),
     ATTACHMENT_NOT_FOUND("Attachment not found"),
@@ -69,7 +70,10 @@ public enum ErrorCode {
     PLATFORM_MEMBERSHIP_EXISTS("Platform membership already exists"),
     BUSINESS_MEMBER_NOT_FOUND("Участник бизнеса не найден"),
     BUSINESS_MEMBER_ROLE_NOT_ALLOWED("Эту роль нельзя назначить участнику"),
-    CONTENT_REPORT_NOT_FOUND("Content report not found");
+    CONTENT_REPORT_NOT_FOUND("Content report not found"),
+    CONTENT_REPORT_INVALID_STATUS("Content report can only be resolved or rejected"),
+    CONTENT_REPORT_ALREADY_RESOLVED("Content report is already closed"),
+    CATALOG_SETUP_ALREADY_COMPLETED("Catalog setup is not awaiting moderation");
 
     private final String template;
 

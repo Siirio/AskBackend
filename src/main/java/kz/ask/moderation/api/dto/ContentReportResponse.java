@@ -15,7 +15,9 @@ public class ContentReportResponse {
     private String reasonCode;
     private String details;
     private String status;
+    private String resolution;
     private UUID reporterUserId;
     private String reporterName;
     private Instant createdAt;
+    private Instant resolvedAt;
 }

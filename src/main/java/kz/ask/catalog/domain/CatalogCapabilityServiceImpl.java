@@ -42,6 +42,6 @@ public class CatalogCapabilityServiceImpl implements CatalogCapabilityService {
         PlatformMembershipDto membership = platformMembershipService.findActiveByUser(userId);
         return membership != null
                 && membership.getPermissions().contains(PlatformPermission.EDIT_CATALOG_DURING_IMPORT)
-                && Boolean.TRUE.equals(managedImportService.hasActiveGrant(businessId));
+                && Boolean.TRUE.equals(managedImportService.hasActiveGrant(businessId, userId));
     }
 }

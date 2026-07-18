@@ -19,6 +19,7 @@ public class ChatMessageDto {
     private UUID conversationId;
     private String senderType;
     private String text;
+    private String attachmentUrl;
     private Instant readAt;
     private Instant createdAt;
 }

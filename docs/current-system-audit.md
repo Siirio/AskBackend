@@ -12,7 +12,7 @@ The outbox worker uses bounded `SKIP LOCKED` claims, retained retry/dead state, 
 
 Meilisearch v1.10.3 is the primary bounded candidate engine. PostgreSQL full-text/trigram SQL is the bounded fallback. Hydration is batched, preserves engine order, and revalidates active/version state. No full-catalog `findAll`, `findActiveCandidates`, or outreach dependency remains in production search.
 
-Query interpretation is deterministic and self-contained. Optional DeepSeek interpretation has strict timeouts and validation; explicit filters and overrides take precedence. AI enrichment is enabled by default but safely no-ops without a key.
+Query interpretation is deterministic and self-contained. Optional DeepSeek interpretation has strict timeouts and validation; explicit filters and overrides take precedence. AI enrichment runs only for documents explicitly queued by an authorized platform user and safely no-ops without a key.
 
 The public response preserves the raw query, reports interpreted constraints, separates exact and relaxed alternatives, paginates, provides honest availability warnings and match reasons, and includes nonvisual operational diagnostics. Search never creates requests, chats, recipients, broadcasts, or notifications.
 

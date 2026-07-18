@@ -68,6 +68,8 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
 
     private Instant activatedAt;
 
+    private Instant expiresAt;
+
     private Instant completedAt;
 
     private Integer productsPublishedCount;

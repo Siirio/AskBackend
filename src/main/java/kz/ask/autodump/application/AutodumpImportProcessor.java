@@ -29,7 +29,6 @@ import kz.ask.autodump.domain.enums.DraftItemStatus;
 import kz.ask.autodump.domain.enums.ImportSessionStatus;
 import kz.ask.autodump.domain.enums.SourceType;
 import kz.ask.business.domain.BusinessBranchService;
-import kz.ask.business.domain.CategoryService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.catalog.domain.CatalogCapabilityService;
 import kz.ask.catalog.domain.dto.CreateProductDto;
@@ -42,9 +41,6 @@ import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.search.domain.SearchOutboxService;
 import kz.ask.search.domain.enums.SearchAggregateType;
 import kz.ask.search.domain.enums.SearchEventType;
-import kz.ask.service.api.dto.BusinessServiceCreateRequest;
-import kz.ask.service.application.ServiceBranchOfferDto;
-import kz.ask.service.domain.ServiceService;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
 import kz.ask.shared.error.ForbiddenException;
@@ -67,10 +63,8 @@ public class AutodumpImportProcessor {
     private final AutodumpExtractionClient extractionClient;
     private final BusinessBranchService businessBranchService;
     private final CatalogCapabilityService catalogCapabilityService;
-    private final CategoryService categoryService;
     private final ProductService productService;
     private final ProductOfferService productOfferService;
-    private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
     private final ObjectMapper objectMapper;
 
@@ -228,6 +222,10 @@ public class AutodumpImportProcessor {
         int published = 0;
         int skipped = 0;
         for (DraftItemDto draft : approved) {
+            if (isServiceDraft(draft)) {
+                skipped++;
+                continue;
+            }
             publishDraft(session, branchId, draft);
             auditService.recordEvent(sessionId, draft.getId(), principal.getUserId(),
                     AuditEventType.DRAFTS_PUBLISHED, null);
@@ -248,11 +246,6 @@ public class AutodumpImportProcessor {
     }
 
     private void publishDraft(ImportSessionDto session, UUID branchId, DraftItemDto draft) {
-        if (isServiceDraft(draft)) {
-            ServiceBranchOfferDto offer = publishServiceDraft(session, branchId, draft);
-            draftService.markPublished(draft.getId(), null, offer.getServiceBranchOfferId());
-            return;
-        }
         ProductOfferDto offer = publishProductDraft(session, branchId, draft);
         draftService.markPublished(draft.getId(), offer.getId(), null);
     }
@@ -273,23 +266,6 @@ public class AutodumpImportProcessor {
                 .build());
         searchOutboxService.publish(
                 SearchAggregateType.PRODUCT_OFFER, offer.getId(),
-                SearchEventType.UPSERT, offer.getSearchVersion());
-        return offer;
-    }
-
-    private ServiceBranchOfferDto publishServiceDraft(ImportSessionDto session, UUID branchId, DraftItemDto draft) {
-        UUID categoryId = categoryService.resolveServiceImportCategoryId(resolveCategoryLabel(draft));
-        ServiceBranchOfferDto offer = serviceService.createService(session.getBusinessId(), branchId,
-                BusinessServiceCreateRequest.builder()
-                        .categoryId(categoryId)
-                        .name(resolveTitle(draft))
-                        .description(draft.getDescription())
-                        .basePrice(draft.getPrice())
-                        .scheduleText(resolveScheduleText(draft))
-                        .active(Boolean.TRUE)
-                        .build());
-        searchOutboxService.publish(
-                SearchAggregateType.SERVICE_BRANCH_OFFER, offer.getServiceBranchOfferId(),
                 SearchEventType.UPSERT, offer.getSearchVersion());
         return offer;
     }
@@ -334,17 +310,6 @@ public class AutodumpImportProcessor {
             characteristics.put("source_reference", draft.getSourceReference());
         }
         return characteristics;
-    }
-
-    private String resolveScheduleText(DraftItemDto draft) {
-        Map<String, String> attributes = parseStringMap(draft.getCustomAttributesJson());
-        for (String key : List.of("duration", "duration_text", "schedule", "time", "длительность", "время")) {
-            String value = attributes.get(key);
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return null;
     }
 
     private String draftSourceText(DraftItemDto draft) {

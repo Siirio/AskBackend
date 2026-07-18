@@ -18,6 +18,7 @@ import kz.ask.legal.domain.LegalService;
 import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
 import kz.ask.legal.domain.enums.LegalDocumentCode;
 import kz.ask.managedimport.domain.ManagedImportService;
+import kz.ask.managedimport.domain.dto.ManagedImportDto;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -69,8 +70,9 @@ public class SellerOnboardingProcessor {
                 normalizeCountry(request.getCountryCode()),
                 normalizeLocale(request.getLocale()),
                 LegalAcceptanceChannel.SELLER_ONBOARDING);
+        ManagedImportDto managedImport = null;
         if (request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT) {
-            managedImportService.create(
+            managedImport = managedImportService.create(
                     result.getBusinessId(),
                     principal.getUserId(),
                     sources,
@@ -83,6 +85,7 @@ public class SellerOnboardingProcessor {
                 .businessId(result.getBusinessId())
                 .catalogSetupMode(result.getCatalogSetupMode())
                 .catalogDeadlineAt(result.getCatalogDeadlineAt())
+                .conversationId(managedImport == null ? null : managedImport.getConversationId())
                 .startRoute(result.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
                         ? "MANAGED_IMPORT"
                         : "BUSINESS_CABINET")

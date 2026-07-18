@@ -34,6 +34,9 @@ public class BusinessBranch extends BaseUuidV7Entity {
 
     private String address;
 
+    @Column(length = 512)
+    private String addressDetails;
+
     private BigDecimal latitude;
 
     private BigDecimal longitude;

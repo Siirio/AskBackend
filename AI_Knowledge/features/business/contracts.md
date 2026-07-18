@@ -42,7 +42,7 @@
 ## Seller Onboarding
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/seller/onboarding | Bearer | Create business + branch + OWNER membership for current user |
+| POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership; response includes managed-import conversationId when applicable |
 
 ## Public Reference
 | Method | Path | Auth | Purpose |
@@ -56,4 +56,11 @@
 - CreateStaffRequest: name, role (default WORKER), login (email)
 - UpdateStaffRequest: role, status
 - StaffResponse: id, displayName, email, role, status, branchName, tempPassword (only while pending), activatedAt
-- BranchResponse: id, businessId, cityId, cityName, name, address, onlineOnly, status, latitude, longitude
+- BranchResponse: id, businessId, cityId, cityName, name, address, addressDetails, onlineOnly, status, latitude, longitude
+
+## Catalog Setup
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/businesses/{businessId}/catalog-setup | Business member or assigned platform importer | Read IN_PROGRESS, REVIEW_REQUIRED, COMPLETED, or RESTRICTED |
+
+There is no manual completion endpoint. `GET /api/v1/platform/catalog-reviews` lists partial catalogs and `PATCH /api/v1/platform/catalog-reviews/{businessId}` accepts `{ approved }`.

@@ -20,6 +20,15 @@ public interface ProductOfferRepository extends JpaRepository<ProductOffer, UUID
     List<ProductOffer> findByBusinessId(@Param("businessId") UUID businessId);
 
     @Query("""
+        select count(distinct po.product.id) from ProductOffer po
+        where po.product.business.id = :businessId
+          and po.product.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
+          and po.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
+          and po.enabled = true
+        """)
+    long countActiveProductsByBusinessId(@Param("businessId") UUID businessId);
+
+    @Query("""
         select po from ProductOffer po
         join fetch po.product p
         join fetch p.category c

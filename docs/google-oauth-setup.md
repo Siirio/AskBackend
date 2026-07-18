@@ -1,6 +1,6 @@
 # Google OAuth setup
 
-ASK uses Google's server-side authorization-code flow. A verified Google email creates or reuses only the `CUSTOMER` role; business owners and staff continue through their dedicated onboarding.
+ASK uses Google's server-side authorization-code flow. A verified Google email reuses the single ASK identity for that email. If the email is new, ASK creates a customer identity; business and staff access still comes from their dedicated onboarding and memberships.
 
 ## Google Cloud Console
 
@@ -43,4 +43,4 @@ Never commit the real client secret. When either the client ID or secret is empt
 
 ## Frontend flow
 
-The frontend opens `{API_BASE_URL}/oauth2/authorization/google`. After Google verification, the backend redirects to the configured frontend callback with the ASK opaque session token in the URL fragment. The callback removes the fragment immediately, validates the session through `/api/v1/auth/session`, then persists the session.
+The frontend opens `{API_BASE_URL}/oauth2/authorization/google`. After Google verification, the backend writes the ASK session cookie and redirects to the configured frontend callback. The callback validates the session through `/api/v1/auth/session`.

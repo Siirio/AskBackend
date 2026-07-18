@@ -20,6 +20,15 @@ public interface ServiceBranchOfferRepository extends JpaRepository<ServiceBranc
     List<ServiceBranchOffer> findByBusinessId(@Param("businessId") UUID businessId);
 
     @Query("""
+        select count(distinct sbo.serviceOffering.id) from ServiceBranchOffer sbo
+        where sbo.serviceOffering.business.id = :businessId
+          and sbo.serviceOffering.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
+          and sbo.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
+          and sbo.active = true
+        """)
+    long countActiveServicesByBusinessId(@Param("businessId") UUID businessId);
+
+    @Query("""
         select sbo from ServiceBranchOffer sbo
         join fetch sbo.serviceOffering so
         join fetch so.category c

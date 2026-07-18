@@ -10,16 +10,13 @@ import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.business.infrastructure.repository.BusinessInvitationRepository;
 import kz.ask.business.infrastructure.repository.BusinessMemberBranchRepository;
 import kz.ask.business.infrastructure.repository.BusinessMemberRepository;
-import kz.ask.identity.api.dto.AccountExportResponse;
+import kz.ask.chat.domain.ChatService;
 import kz.ask.identity.api.dto.LogoutResponse;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.entity.CustomerProfile;
 import kz.ask.identity.infrastructure.repository.CustomerProfileRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.legal.domain.entity.LegalAcceptance;
-import kz.ask.legal.infrastructure.repository.LegalAcceptanceRepository;
-import kz.ask.platform.domain.entity.PlatformMembership;
 import kz.ask.platform.infrastructure.repository.PlatformMembershipRepository;
 import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.shared.error.ConflictException;
@@ -38,36 +35,8 @@ public class AccountLifecycleProcessor {
     private final BusinessInvitationRepository businessInvitationRepository;
     private final PlatformMembershipRepository platformMembershipRepository;
     private final CustomerProfileRepository customerProfileRepository;
-    private final LegalAcceptanceRepository legalAcceptanceRepository;
     private final SignificantEventService significantEventService;
-
-    @Transactional(readOnly = true)
-    public AccountExportResponse export(AskPrincipal principal) {
-        AppUserDto user = identityService.findById(principal.getUserId());
-        List<AccountExportResponse.BusinessMembershipExport> memberships =
-                businessMemberRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE)
-                        .stream()
-                        .map(this::toBusinessMembership)
-                        .toList();
-        AccountExportResponse.PlatformMembershipExport platform =
-                platformMembershipRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE)
-                        .map(this::toPlatformMembership)
-                        .orElse(null);
-        List<AccountExportResponse.LegalAcceptanceExport> acceptances =
-                legalAcceptanceRepository.findByUserIdOrderByAcceptedAtAsc(user.getId())
-                        .stream()
-                        .map(this::toLegalAcceptance)
-                        .toList();
-        return AccountExportResponse.builder()
-                .userId(user.getId())
-                .email(user.getEmail())
-                .displayName(user.getDisplayName())
-                .status(user.getStatus().name())
-                .businessMemberships(memberships)
-                .platformMembership(platform)
-                .legalAcceptances(acceptances)
-                .build();
-    }
+    private final ChatService chatService;
 
     @Transactional
     public LogoutResponse delete(AskPrincipal principal) {
@@ -92,6 +61,7 @@ public class AccountLifecycleProcessor {
                 .ifPresent(membership -> membership.setStatus(RecordStatus.INACTIVE));
         customerProfileRepository.findByUserId(user.getId())
                 .ifPresent(this::anonymizeProfile);
+        chatService.deleteCustomerConversations(user.getId());
         identityService.anonymizeAccount(user.getId());
         significantEventService.record(
                 user.getId(), SignificantEventType.ACCOUNT_DELETED, null, user.getId(), Map.of());
@@ -111,33 +81,4 @@ public class AccountLifecycleProcessor {
         profile.setIconUrl(null);
     }
 
-    private AccountExportResponse.BusinessMembershipExport toBusinessMembership(BusinessMember membership) {
-        return AccountExportResponse.BusinessMembershipExport.builder()
-                .businessId(membership.getBusiness().getId())
-                .businessName(membership.getBusiness().getName())
-                .role(membership.getRole().name())
-                .status(membership.getStatus().name())
-                .build();
-    }
-
-    private AccountExportResponse.PlatformMembershipExport toPlatformMembership(
-            PlatformMembership membership) {
-        return AccountExportResponse.PlatformMembershipExport.builder()
-                .role(membership.getRole().name())
-                .status(membership.getStatus().name())
-                .permissions(membership.getPermissions().stream().map(Enum::name).sorted().toList())
-                .build();
-    }
-
-    private AccountExportResponse.LegalAcceptanceExport toLegalAcceptance(
-            LegalAcceptance acceptance) {
-        return AccountExportResponse.LegalAcceptanceExport.builder()
-                .documentCode(acceptance.getDocumentCode().name())
-                .documentVersion(acceptance.getDocumentVersion())
-                .countryCode(acceptance.getCountryCode())
-                .locale(acceptance.getLocale())
-                .acceptanceChannel(acceptance.getAcceptanceChannel().name())
-                .acceptedAt(acceptance.getAcceptedAt())
-                .build();
-    }
 }

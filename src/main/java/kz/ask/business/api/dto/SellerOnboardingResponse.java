@@ -13,5 +13,6 @@ public class SellerOnboardingResponse {
     private UUID businessId;
     private CatalogSetupMode catalogSetupMode;
     private Instant catalogDeadlineAt;
+    private UUID conversationId;
     private String startRoute;
 }

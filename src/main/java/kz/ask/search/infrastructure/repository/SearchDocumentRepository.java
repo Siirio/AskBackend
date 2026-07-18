@@ -65,6 +65,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
     @Query(value = """
         select * from search_document
         where status = 'ACTIVE'
+          and ai_enrichment_requested = true
           and ai_enrichment_dead = false
           and (ai_enrichment_version is null or ai_enrichment_version < document_version)
           and ai_enrichment_available_at <= :now
@@ -95,7 +96,8 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
     @Query(value = """
         update search_document
         set ai_enrichment_started_at = null, ai_enrichment_worker_id = null,
-            ai_enrichment_dead = true, ai_enrichment_error = :error, updated_at = :now
+            ai_enrichment_dead = true, ai_enrichment_requested = false,
+            ai_enrichment_error = :error, updated_at = :now
         where id = :documentId and ai_enrichment_worker_id = :workerId
         """, nativeQuery = true)
     int markAiEnrichmentDead(@Param("documentId") UUID documentId,

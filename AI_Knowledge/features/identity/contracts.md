@@ -7,8 +7,8 @@
 | POST | /api/v1/auth/customer/register | No | Register customer |
 | POST | /api/v1/auth/verify | No | Verify 6-digit code → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | Unified login for ALL roles (email + password) |
-| GET | /oauth2/authorization/google | No | Start Google OAuth. Creates/reuses CUSTOMER after Google returns a verified email |
-| GET | /login/oauth2/code/google | Google callback | Complete Google OAuth and redirect to configured frontend `/oauth/callback#token=...` |
+| GET | /oauth2/authorization/google | No | Start Google OAuth. Reuses the single identity for a verified email or creates a customer identity |
+| GET | /login/oauth2/code/google | Google callback | Complete Google OAuth, write the session cookie, and redirect to configured frontend `/oauth/callback` |
 
 ## Business Auth
 | Method | Path | Auth | Purpose |
@@ -36,7 +36,7 @@
 |--------|------|------|---------|
 | POST | /api/v1/auth/select-role | No | Select role when account has multiple roles |
 | POST | /api/v1/auth/switch-role | Bearer | Switch active role between sessions |
-| POST | /api/v1/auth/change-password | Bearer | Change password (authenticated) |
+| POST | /api/v1/auth/change-password | Bearer | Change the authenticated identity password (`currentPassword`, `newPassword`) |
 | POST | /api/v1/auth/toggle-2fa | Bearer | Enable/disable two-factor auth |
 | GET | /api/v1/auth/email-info | No | Get email provider info for login hint |
 
@@ -54,7 +54,6 @@ DTO field names in this document use camelCase (Java convention). Always map to 
 ## Account Lifecycle
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/account/export | Bearer | Export account data (memberships, platform role, legal acceptances) |
 | DELETE | /api/v1/account | Bearer | Delete account: anonymize profile + user, deactivate memberships, revoke sessions, delete challenges. 409 ACCOUNT_OWNER_TRANSFER_REQUIRED if sole business OWNER. Records ACCOUNT_DELETION_REQUESTED / ACCOUNT_DELETED significant events |
 
 ## Config

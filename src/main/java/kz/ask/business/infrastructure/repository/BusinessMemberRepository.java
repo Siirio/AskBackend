@@ -11,11 +11,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BusinessMemberRepository extends JpaRepository<BusinessMember, UUID> {
 
-    BusinessMember findByUserIdAndRoleAndStatus(UUID userId, BusinessMemberRole role, RecordStatus status);
+    List<BusinessMember> findByUserIdAndRoleAndStatus(UUID userId, BusinessMemberRole role, RecordStatus status);
 
     List<BusinessMember> findByUserIdAndStatus(UUID userId, RecordStatus status);
 
-    BusinessMember findByBusinessIdAndUserId(UUID businessId, UUID userId);
+    List<BusinessMember> findByBusinessIdAndUserId(UUID businessId, UUID userId);
 
     List<BusinessMember> findByBusinessIdAndStatus(UUID businessId, RecordStatus status);
 }

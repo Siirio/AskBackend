@@ -14,7 +14,12 @@ Base: /api/v1/business-admin/branches/{branchId}/product-imports
 ## AI Autodump Import
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/business-admin/branches/{branchId}/autodump-sessions/files | OWNER/WORKER | Upload .txt/.md/.pdf for AI processing |
+| POST | /api/v1/business-admin/branches/{branchId}/autodump-sessions/files | Assigned platform importer | Upload .txt/.md/.pdf for AI processing |
+
+## Managed Import
+- `POST /api/v1/businesses/{businessId}/managed-imports` creates a PENDING request without a grant or chat.
+- `POST /api/v1/platform/managed-imports/{requestId}/activate` assigns the request, creates the seven-day product-catalog grant, and starts the chat.
+- There is no manual completion endpoint. Expiry records product count, revokes the grant, and deletes chat attachments.
 
 ## Import Statuses
 CatalogImportStatus: UPLOADED → MAPPING_REQUIRED → PREVIEW_READY → IMPORTED / FAILED / CANCELLED

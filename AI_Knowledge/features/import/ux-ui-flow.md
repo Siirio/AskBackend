@@ -19,3 +19,5 @@
 - Excel: .xlsx only (fastexcel, not Apache POI)
 - AI Autodump: .txt, .md, .pdf only
 - Unsupported formats rejected before upload with clear error message
+- Business users see Excel only. Assigned platform importers see Excel plus TXT/MD/PDF AI Autodump.
+- The business can request catalog help from onboarding or the product-import area.

@@ -11,3 +11,8 @@ Excel (.xlsx) import via fastexcel streaming parser with auto-mapping engine, pl
 - AI Autodump: raw dump → import session → AI job → draft cards → business preview → approve → publish.
 - AI creates drafts only. Business approval required before products become searchable.
 - Both Excel and AI Autodump sync to search_document on publish.
+
+## Access and managed-import lifecycle
+- Business cabinets expose ordinary `.xlsx` import only.
+- AI Autodump is a platform capability and publishes products only.
+- A request stays PENDING until one platform user activates it. Activation creates that user's grant and a seven-day chat; expiry revokes access and deletes the chat and files automatically.

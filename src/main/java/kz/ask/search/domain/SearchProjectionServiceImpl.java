@@ -203,6 +203,7 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
             document.setAiEnrichmentAttemptCount(0);
             document.setAiEnrichmentError(null);
             document.setAiEnrichmentDead(Boolean.FALSE);
+            document.setAiEnrichmentRequested(Boolean.FALSE);
         }
         document.setDocumentVersion(version);
     }
@@ -215,7 +216,7 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
                 && !Boolean.TRUE.equals(offer.getProduct().getHiddenByModerator())
                 && business.getStatus() == RecordStatus.ACTIVE
                 && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
-                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
+                && business.getCatalogStatus() == CatalogStatus.COMPLETED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 
@@ -226,7 +227,7 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
                 && offer.getServiceOffering().getStatus() == RecordStatus.ACTIVE
                 && business.getStatus() == RecordStatus.ACTIVE
                 && business.getModerationStatus() == BusinessModerationStatus.VISIBLE
-                && business.getCatalogStatus() != CatalogStatus.RESTRICTED
+                && business.getCatalogStatus() == CatalogStatus.COMPLETED
                 && offer.getBranch().getStatus() == RecordStatus.ACTIVE;
     }
 

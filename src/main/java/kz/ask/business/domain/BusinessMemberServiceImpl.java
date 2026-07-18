@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     private final BusinessMemberRepository businessMemberRepository;
@@ -46,9 +47,9 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     @Override
     public BusinessMemberDto findByOwner(UUID userId) {
-        BusinessMember member = businessMemberRepository.findByUserIdAndRoleAndStatus(
+        List<BusinessMember> members = businessMemberRepository.findByUserIdAndRoleAndStatus(
                 userId, BusinessMemberRole.OWNER, RecordStatus.ACTIVE);
-        return member != null ? businessMapper.toBusinessMemberDto(member) : null;
+        return members.isEmpty() ? null : businessMapper.toBusinessMemberDto(members.get(0));
     }
 
     @Override
@@ -66,8 +67,8 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     @Override
     public BusinessMemberDto findByBusinessAndUser(UUID businessId, UUID userId) {
-        BusinessMember member = businessMemberRepository.findByBusinessIdAndUserId(businessId, userId);
-        return member != null ? businessMapper.toBusinessMemberDto(member) : null;
+        List<BusinessMember> members = businessMemberRepository.findByBusinessIdAndUserId(businessId, userId);
+        return members.isEmpty() ? null : businessMapper.toBusinessMemberDto(members.get(0));
     }
 
     @Override

@@ -44,13 +44,14 @@ public class BusinessMapper {
     }
 
     public BusinessBranch toBranchEntity(Business business, City city, String name,
-                                          String address, Boolean onlineOnly,
+                                          String address, String addressDetails, Boolean onlineOnly,
                                           BigDecimal latitude, BigDecimal longitude) {
         BusinessBranch branch = new BusinessBranch();
         branch.setBusiness(business);
         branch.setCity(city);
         branch.setName(name);
         branch.setAddress(address);
+        branch.setAddressDetails(addressDetails);
         branch.setOnlineOnly(onlineOnly);
         branch.setLatitude(latitude);
         branch.setLongitude(longitude);
@@ -161,6 +162,7 @@ public class BusinessMapper {
                 .cityName(city != null ? city.getName() : null)
                 .name(entity.getName())
                 .address(entity.getAddress())
+                .addressDetails(entity.getAddressDetails())
                 .onlineOnly(entity.getOnlineOnly())
                 .status(entity.getStatus().name())
                 .latitude(entity.getLatitude())

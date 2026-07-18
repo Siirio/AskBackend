@@ -45,7 +45,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
 
     @Override
     @Transactional
-    public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, Boolean onlineOnly,
+    public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails, Boolean onlineOnly,
                                      BigDecimal latitude, BigDecimal longitude) {
         Business business = businessRepository.getReferenceById(businessId);
         City city = null;
@@ -54,7 +54,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
             city = cityRepository.getReferenceById(cityId);
         }
         BusinessBranch entity = businessBranchRepository.save(
-                businessMapper.toBranchEntity(business, city, name, address, onlineOnly, latitude, longitude));
+                businessMapper.toBranchEntity(business, city, name, address, addressDetails, onlineOnly, latitude, longitude));
         return businessMapper.toBusinessBranchDto(entity);
     }
 
@@ -78,12 +78,13 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
 
     @Override
     @Transactional
-    public BusinessBranchDto update(UUID branchId, String name, String address, UUID cityId, Boolean onlineOnly,
+    public BusinessBranchDto update(UUID branchId, String name, String address, String addressDetails, UUID cityId, Boolean onlineOnly,
                                      BigDecimal latitude, BigDecimal longitude) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null) return null;
         if (name != null) branch.setName(name);
         if (address != null) branch.setAddress(address);
+        if (addressDetails != null) branch.setAddressDetails(addressDetails);
         if (cityId != null) {
             cityService.findById(cityId);
             branch.setCity(cityRepository.getReferenceById(cityId));

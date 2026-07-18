@@ -17,3 +17,4 @@
 - contactActionId pattern: frontend receives opaque ID, backend resolves to redirect/deep-link/display value
 - Action types: REDIRECT, DISPLAY, DEEP_LINK, CHAT
 - Never raw phone/username exposed to frontend
+- Managed-import participants can exchange text, external contact links, and uploaded files during the seven-day access window.
