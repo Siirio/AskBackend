@@ -21,10 +21,7 @@ auth:
   jwt:
     secret: local-development-secret-key-at-least-256-bits-long
   verification:
-    email:
-      enabled: false
-    sms:
-      enabled: false
+    test-mode: true
     staging-bypass: true
 
 ask:

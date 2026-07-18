@@ -22,4 +22,4 @@ LOCKED | Email-based auth for MVP | Password/OTP and Google OAuth use verified e
 LOCKED | Single modular monolith with feature-first packages | One backend for all clients (Android, iOS, web) | kz.ask.* package structure
 LOCKED | Layer: Controller → Processor → DomainService → Repository | Processors work with DTOs only. Mappers called only from service impls. No cycles | All feature packages
 LOCKED | Entities never leak outside domain service | Return DTOs, not entities. Even service interfaces must not expose entities | All service interfaces
-LOCKED | No tests, no Maven auto-run | Project rule until explicitly reversed | Build, CI
+LOCKED | Unit tests are Mockito-only (no Spring context, no DB); Maven runs only on explicit user request | Spec section 25 mandates unit tests; builds stay user-controlled | Build, CI, src/test

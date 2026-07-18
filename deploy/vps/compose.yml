@@ -1,7 +1,14 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - app-prod
       - app-stage
@@ -18,6 +25,7 @@ services:
   db-prod:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ask_prod
       POSTGRES_USER: ask_prod
@@ -35,6 +43,7 @@ services:
   db-stage:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ask_stage
       POSTGRES_USER: ask_stage
@@ -55,6 +64,7 @@ services:
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_PROD_MASTER_KEY:?MEILI_PROD_MASTER_KEY must be set}
+    logging: *default-logging
     volumes:
       - meili_prod:/meili_data
     healthcheck:
@@ -71,6 +81,7 @@ services:
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_STAGE_MASTER_KEY:?MEILI_STAGE_MASTER_KEY must be set}
+    logging: *default-logging
     volumes:
       - meili_stage:/meili_data
     healthcheck:
@@ -86,6 +97,7 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       db-prod:
         condition: service_healthy
@@ -102,8 +114,6 @@ services:
       AUTH_STAFF_TEMP_PASSWORD_KEY: ${AUTH_PROD_STAFF_TEMP_PASSWORD_KEY:?AUTH_PROD_STAFF_TEMP_PASSWORD_KEY must be set}
       ASK_CONTACT_HMAC_SECRET: ${ASK_CONTACT_HMAC_SECRET:?ASK_CONTACT_HMAC_SECRET must be set}
       ASK_CONTACT_ENCRYPTION_KEY: ${ASK_CONTACT_ENCRYPTION_KEY:?ASK_CONTACT_ENCRYPTION_KEY must be set}
-      AUTH_VERIFICATION_EMAIL_ENABLED: ${AUTH_PROD_VERIFICATION_EMAIL_ENABLED:-true}
-      AUTH_VERIFICATION_SMS_ENABLED: ${AUTH_PROD_VERIFICATION_SMS_ENABLED:-false}
       AUTH_VERIFICATION_TEST_MODE: "false"
       AUTH_VERIFICATION_STAGING_BYPASS: "false"
       OAUTH2_GOOGLE_CLIENT_ID: ${OAUTH2_PROD_GOOGLE_CLIENT_ID:-}
@@ -133,6 +143,7 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       db-stage:
         condition: service_healthy
@@ -149,8 +160,6 @@ services:
       AUTH_STAFF_TEMP_PASSWORD_KEY: ${AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY:?AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY must be set}
       ASK_CONTACT_HMAC_SECRET: ${ASK_CONTACT_HMAC_SECRET:?ASK_CONTACT_HMAC_SECRET must be set}
       ASK_CONTACT_ENCRYPTION_KEY: ${ASK_CONTACT_ENCRYPTION_KEY:?ASK_CONTACT_ENCRYPTION_KEY must be set}
-      AUTH_VERIFICATION_EMAIL_ENABLED: ${AUTH_STAGE_VERIFICATION_EMAIL_ENABLED:-true}
-      AUTH_VERIFICATION_SMS_ENABLED: ${AUTH_STAGE_VERIFICATION_SMS_ENABLED:-false}
       AUTH_VERIFICATION_TEST_MODE: "false"
       AUTH_VERIFICATION_STAGING_BYPASS: "false"
       OAUTH2_GOOGLE_CLIENT_ID: ${OAUTH2_STAGE_GOOGLE_CLIENT_ID:-}

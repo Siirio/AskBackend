@@ -118,4 +118,11 @@ public interface SearchOutboxEventRepository extends JpaRepository<SearchOutboxE
         where status = 'PROCESSING' and processing_started_at < :staleBefore
         """, nativeQuery = true)
     int recoverAbandoned(@Param("staleBefore") Instant staleBefore, @Param("now") Instant now);
+
+    @Modifying
+    @Query(value = """
+        delete from search_outbox_event
+        where status = 'COMPLETED' and processed_at < :cutoff
+        """, nativeQuery = true)
+    int deleteCompletedBefore(@Param("cutoff") Instant cutoff);
 }

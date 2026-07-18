@@ -22,6 +22,10 @@ Set `ASK_SEARCH_RECONCILIATION_ENABLED=true` to schedule bounded comparison. `AS
 
 Dead events are retained in `search_outbox_event`; never delete them as a retry mechanism. Confirm the canonical aggregate version and failure cause, restore the dependency or data invariant, then reset only the selected event to the retryable state with its availability time set to the current time. The worker still applies stale-version protection.
 
+## Completed outbox retention
+
+`SearchOutboxRetentionScheduler` deletes `COMPLETED` events whose `processed_at` is older than `ASK_SEARCH_OUTBOX_RETENTION` (default `P3D`), running every `ASK_SEARCH_OUTBOX_RETENTION_INTERVAL` (default `PT1H`). Only `COMPLETED` rows are purged — `DEAD` rows stay for diagnosis, and idempotent dedup is unaffected because `completeSuperseded` plus stale-version protection guard against replays, not the presence of old completed rows.
+
 ## AI enrichment failures
 
 AI metadata is derived and can be rebuilt. Inspect attempt count, error, worker claim, and dead state on the search document plus evidence rows in `search_ai_metadata`. Missing API keys require no repair. After provider or schema recovery, reset only selected dead enrichment claims; canonical product/service data is unaffected.

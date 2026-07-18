@@ -125,6 +125,8 @@ ask:
       retry-base-delay: ${ASK_SEARCH_OUTBOX_RETRY_BASE_DELAY:PT5S}
       retry-max-delay: ${ASK_SEARCH_OUTBOX_RETRY_MAX_DELAY:PT10M}
       processing-timeout: ${ASK_SEARCH_OUTBOX_PROCESSING_TIMEOUT:PT5M}
+      retention: ${ASK_SEARCH_OUTBOX_RETENTION:P3D}
+      retention-interval: ${ASK_SEARCH_OUTBOX_RETENTION_INTERVAL:PT1H}
     reindex:
       batch-size: ${ASK_SEARCH_REINDEX_BATCH_SIZE:250}
       on-startup: ${ASK_SEARCH_REINDEX_ON_STARTUP:false}
