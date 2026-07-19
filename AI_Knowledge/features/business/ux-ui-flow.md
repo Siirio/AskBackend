@@ -7,6 +7,12 @@
 - Company/branch profile
 - Future: AI Autodump Import preview
 
+## Seller catalog onboarding
+1. Ask whether the business sells products, provides services, or does both.
+2. Ask whether the seller will prepare that catalog independently or request managed import.
+3. Managed import explains the paid service, expected benefit, selected sources, source links, notes, and contact channel before legal acceptance.
+4. Existing business members go to their cabinet instead of seeing another create-business entry.
+
 ## Staff management flow
 1. Owner opens branch → Staff tab → "Add Staff"
 2. Fills name, role (STAFF), login email

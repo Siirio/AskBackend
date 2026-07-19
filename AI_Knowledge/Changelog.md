@@ -2,6 +2,12 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-19 | Removed generated Graphify output, obsolete package placeholders, unused SQL seed files, and local build/cache artifacts; ignored Graphify output to keep it from returning | graphify-out, .gitkeep files, db/testdata, Test1 seed, .gitignore
+
+2026-07-19 | Squashed the complete PostgreSQL schema history into a single fresh-deploy Flyway V1 baseline because production and local databases will be recreated from empty containers | db/migration/V1__init.sql, removed V2-V19
+
+2026-07-19 | Completed Bearer-only OAuth bridge and catalog-scope onboarding: Google callback cookie is exchanged once for an HS256 JWT tied to a revocable server session; seller and managed-import requests distinguish products, services, or both | identity, business, managedimport, SecurityConfig, V1 baseline, frontend auth/onboarding/business cabinet
+
 2026-07-18 | Reworked managed catalog onboarding: 2GIS-derived branch location, actual staff creation, automatic seven-day catalog approval/review/restriction, assigned-user expiring import grants and file chat, platform-only Autodump and manual AI enrichment, and removal of account export | business, catalog, import, messaging, search, platform, identity, V15-V18, frontend business/platform/profile/import surfaces
 
 2026-07-18 | Review fixes: constrained platform attachment access to managed-import permission plus active grant, prevented concurrent active grants, enforced attachment/legal integrity in V12, aligned hidden-product reconciliation, returned managed-import conversation context from seller onboarding, made public login-start responses non-enumerating, deleted account chats/files after commit, and required explicit moderation resolutions | chat, managedimport, search, business onboarding, identity, moderation, V12, V14

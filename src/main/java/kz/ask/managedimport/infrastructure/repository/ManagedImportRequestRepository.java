@@ -40,7 +40,9 @@ public interface ManagedImportRequestRepository
     @EntityGraph(attributePaths = {"selectedSourceTypes"})
     List<ManagedImportRequest> findByBusinessIdOrderByCreatedAtDesc(UUID businessId);
 
-    boolean existsByBusinessIdAndStatusIn(UUID businessId, List<ManagedImportStatus> statuses);
+    List<ManagedImportRequest> findByBusinessIdAndStatusIn(
+            UUID businessId,
+            List<ManagedImportStatus> statuses);
 
     @EntityGraph(attributePaths = {
             "business", "requestedBy", "responsiblePlatformUser", "selectedSourceTypes"

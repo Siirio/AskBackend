@@ -50,6 +50,7 @@ public class ManagedImportProcessor {
         return managedImportService.create(
                 businessId,
                 principal.getUserId(),
+                request.getCatalogScope(),
                 request.getSourceTypes(),
                 request.getPreferredContactChannel(),
                 request.getPreferredContactValue(),
@@ -93,7 +94,11 @@ public class ManagedImportProcessor {
         if (!managedImportService.hasActiveGrant(businessId, principal.getUserId())) {
             throw new ForbiddenException(ErrorCode.MANAGED_IMPORT_FORBIDDEN);
         }
-        return ManagedImportAccessResponse.builder().allowed(true).build();
+        return ManagedImportAccessResponse.builder()
+                .allowed(true)
+                .catalogScope(managedImportService.activeScope(
+                        businessId, principal.getUserId()))
+                .build();
     }
 
     private void requirePermission(

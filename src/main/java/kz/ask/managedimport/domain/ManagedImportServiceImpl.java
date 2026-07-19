@@ -9,6 +9,7 @@ import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.domain.enums.CatalogSourceType;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
@@ -56,19 +57,20 @@ public class ManagedImportServiceImpl implements ManagedImportService {
     public ManagedImportDto create(
             UUID businessId,
             UUID requestedByUserId,
+            CatalogScope catalogScope,
             Set<CatalogSourceType> sourceTypes,
             PreferredContactChannel preferredContactChannel,
             String preferredContactValue,
             String sourceLinks,
             String sourceNotes) {
-        if (requestRepository.existsByBusinessIdAndStatusIn(
-                businessId, List.of(ManagedImportStatus.PENDING, ManagedImportStatus.ACTIVE))) {
+        if (hasOpenScopeConflict(businessId, catalogScope)) {
             throw new ConflictException(ErrorCode.MANAGED_IMPORT_ACTIVE_EXISTS);
         }
         ManagedImportRequest request = new ManagedImportRequest();
         request.setBusiness(businessRepository.getReferenceById(businessId));
         request.setRequestedBy(appUserRepository.getReferenceById(requestedByUserId));
         request.setStatus(ManagedImportStatus.PENDING);
+        request.setCatalogScope(catalogScope);
         request.setSelectedSourceTypes(sourceTypes);
         request.setPreferredContactChannel(preferredContactChannel);
         request.setPreferredContactValue(preferredContactValue);
@@ -192,6 +194,14 @@ public class ManagedImportServiceImpl implements ManagedImportService {
         return grantRepository.findActiveAccess(businessId, platformUserId, Instant.now()).isPresent();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CatalogScope activeScope(UUID businessId, UUID platformUserId) {
+        return grantRepository.findActiveAccess(businessId, platformUserId, Instant.now())
+                .map(grant -> grant.getManagedImportRequest().getCatalogScope())
+                .orElse(null);
+    }
+
     private ManagedImportRequest find(UUID requestId) {
         return requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException(
@@ -204,6 +214,17 @@ public class ManagedImportServiceImpl implements ManagedImportService {
                 : sourceTypes.stream().map(CatalogSourceType::name).toList();
     }
 
+    private boolean hasOpenScopeConflict(UUID businessId, CatalogScope catalogScope) {
+        return requestRepository.findByBusinessIdAndStatusIn(
+                        businessId,
+                        List.of(ManagedImportStatus.PENDING, ManagedImportStatus.ACTIVE))
+                .stream()
+                .map(ManagedImportRequest::getCatalogScope)
+                .anyMatch(existingScope -> existingScope == CatalogScope.BOTH
+                        || catalogScope == CatalogScope.BOTH
+                        || existingScope == catalogScope);
+    }
+
     private ManagedImportDto toDto(ManagedImportRequest request) {
         return ManagedImportDto.builder()
                 .id(request.getId())
@@ -212,6 +233,7 @@ public class ManagedImportServiceImpl implements ManagedImportService {
                 .requestedByUserId(request.getRequestedBy().getId())
                 .requestedByName(request.getRequestedBy().getDisplayName())
                 .status(request.getStatus())
+                .catalogScope(request.getCatalogScope())
                 .sourceTypes(request.getSelectedSourceTypes())
                 .preferredContactChannel(request.getPreferredContactChannel())
                 .preferredContactValue(request.getPreferredContactValue())

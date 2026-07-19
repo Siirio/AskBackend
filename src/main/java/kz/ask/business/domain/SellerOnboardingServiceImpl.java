@@ -9,6 +9,7 @@ import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessDeliveryProfile;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.CatalogSetupMode;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.DeliveryScope;
@@ -52,6 +53,7 @@ public class SellerOnboardingServiceImpl implements SellerOnboardingService {
             String deliveryTermsKk,
             String deliveryTermsEn,
             CatalogSetupMode catalogSetupMode,
+            CatalogScope catalogScope,
             Set<CatalogSourceType> catalogSources,
             String catalogSourceLinks,
             String catalogSourceNotes) {
@@ -65,6 +67,7 @@ public class SellerOnboardingServiceImpl implements SellerOnboardingService {
         business.setPreferredContactChannel(preferredContactChannel);
         business.setPreferredContactValue(preferredContactValue);
         business.setCatalogSetupMode(catalogSetupMode);
+        business.setCatalogScope(catalogScope);
         business.setCatalogSources(catalogSources);
         business.setCatalogSourceLinks(catalogSourceLinks);
         business.setCatalogSourceNotes(catalogSourceNotes);

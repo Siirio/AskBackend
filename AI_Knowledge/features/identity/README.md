@@ -1,15 +1,15 @@
 # Identity & Auth
 
-Customer and business authentication: email-based login/registration, Google OAuth, 6-digit verification codes, BCrypt passwords, opaque sessions, remember-me, and staff activation via temporary passwords.
+Customer and business authentication: email-based login/registration, Google OAuth, 6-digit verification codes, BCrypt passwords, signed JWT access tokens, revocable server-side sessions, remember-me, and staff activation via temporary passwords.
 
 ## Key decisions
 - Email is the real MVP verification channel. SMS disabled until real provider connected.
 - Customer and business registration/login both use email (phone optional).
 - Google OAuth accepts only Google-verified email and reuses the single AppUser for that email. A first-time Google login creates a CUSTOMER identity.
-- OAuth uses the backend authorization-code callback, writes the ASK session cookie, and redirects to the configured frontend callback.
+- OAuth uses the backend authorization-code callback, writes a short-lived bridge cookie, and redirects to the configured frontend callback. `GET /auth/session` exchanges that cookie for a signed JWT and clears it.
 - Exactly one primary login identifier required. Password stored only as hash.
 - Verification codes: 6 digits, stored hashed.
-- Session tokens: random opaque Bearer tokens, token hash stored.
+- Access tokens are HS256 JWTs signed with `auth.jwt.secret`. The `sid` claim points to a hashed, revocable server-side session so logout and expiry remain enforceable.
 - Remember-me extends session TTL via backend config.
 - Successful OTP, password, and Google logins update `lastLoginAt`.
 - Business onboarding: creates Business + BusinessBranch + BusinessMember + BusinessContact.

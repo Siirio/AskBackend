@@ -31,13 +31,13 @@
 
 - CatalogCapability: MANUAL_PRODUCT_EDIT, EXCEL_IMPORT, AI_DUMPER, AI_ENRICHER, SOURCE_PARSER
 - Active business member → MANUAL_PRODUCT_EDIT + EXCEL_IMPORT only
-- Platform member with EDIT_CATALOG_DURING_IMPORT + active managed-import grant for the business → all 5
+- Platform member with EDIT_CATALOG_DURING_IMPORT + active PRODUCTS or BOTH managed-import grant for the business → all 5
 - Everyone else → empty set (endpoint itself is not gated)
 
 ## Access Rules
-- Product CRUD: manager-or-above of business OR branch staff OR platform-with-grant
-- Excel import: business owner OR branch staff OR platform-with-grant
-- Autodump (AI_DUMPER): platform-with-grant ONLY — business members lost direct access per spec §11
+- Product CRUD: manager-or-above of business OR branch staff OR platform-with-PRODUCTS-or-BOTH-grant
+- Excel import: business owner OR branch staff OR platform-with-PRODUCTS-or-BOTH-grant
+- Autodump (AI_DUMPER): platform-with-PRODUCTS-or-BOTH-grant ONLY — business members lost direct access per spec §11
 
 ## Excel Import
 | Method | Path | Auth | Purpose |

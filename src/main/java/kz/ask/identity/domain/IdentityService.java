@@ -31,6 +31,8 @@ public interface IdentityService {
 
     AuthSessionDto findSessionByToken(String token);
 
+    AuthSessionDto findSessionById(UUID sessionId);
+
     void activateUser(UUID userId);
 
     void activateStaff(UUID userId, String newPassword);

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.enums.CatalogSourceType;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
 import lombok.Builder;
@@ -19,6 +20,7 @@ public class ManagedImportDto {
     private UUID requestedByUserId;
     private String requestedByName;
     private ManagedImportStatus status;
+    private CatalogScope catalogScope;
     private Set<CatalogSourceType> sourceTypes;
     private PreferredContactChannel preferredContactChannel;
     private String preferredContactValue;

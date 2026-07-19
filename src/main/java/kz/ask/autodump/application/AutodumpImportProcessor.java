@@ -362,7 +362,7 @@ public class AutodumpImportProcessor {
 
     private void verifyBranchAccess(UUID userId, UUID branchId) {
         BusinessBranchDto branch = requireBranch(branchId);
-        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
+        if (catalogCapabilityService.hasPlatformProductAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

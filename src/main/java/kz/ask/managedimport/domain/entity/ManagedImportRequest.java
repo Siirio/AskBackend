@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.enums.CatalogSourceType;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
@@ -40,6 +41,10 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ManagedImportStatus status;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private CatalogScope catalogScope;
 
     @ElementCollection
     @CollectionTable(

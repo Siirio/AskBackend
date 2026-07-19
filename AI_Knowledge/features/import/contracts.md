@@ -17,8 +17,9 @@ Base: /api/v1/business-admin/branches/{branchId}/product-imports
 | POST | /api/v1/business-admin/branches/{branchId}/autodump-sessions/files | Assigned platform importer | Upload .txt/.md/.pdf for AI processing |
 
 ## Managed Import
-- `POST /api/v1/businesses/{businessId}/managed-imports` creates a PENDING request without a grant or chat.
-- `POST /api/v1/platform/managed-imports/{requestId}/activate` assigns the request, creates the seven-day product-catalog grant, and starts the chat.
+- `POST /api/v1/businesses/{businessId}/managed-imports` creates a PENDING request without a grant or chat. Request requires `catalog_scope` = PRODUCTS, SERVICES, or BOTH, plus source types, source details, contact channel/value, and legal acceptance.
+- `POST /api/v1/platform/managed-imports/{requestId}/activate` assigns the request, creates the seven-day grant for the request's catalog scope, and starts the chat.
+- `GET /api/v1/platform/managed-imports/businesses/{businessId}/catalog-access` returns `allowed` and the active `catalogScope`; the assigned importer can edit products and/or services inside that scope.
 - There is no manual completion endpoint. Expiry records product count, revokes the grant, and deletes chat attachments.
 
 ## Import Statuses

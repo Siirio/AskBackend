@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import kz.ask.identity.api.dto.AuthChallengeResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.BusinessLoginStartRequest;
@@ -20,6 +21,7 @@ import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.application.AuthProcessor;
 import kz.ask.identity.application.LoginProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.identity.infrastructure.security.AuthCookieService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +41,7 @@ public class AuthController {
 
     private final AuthProcessor authProcessor;
     private final LoginProcessor loginProcessor;
+    private final AuthCookieService authCookieService;
 
     @PostMapping("/login")
     public ResponseEntity<AuthSessionResponse> login(@Valid @RequestBody LoginRequest req) {
@@ -84,8 +87,12 @@ public class AuthController {
     @Operation(summary = "Get current session", description = "Returns the authenticated session for the current principal")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/session")
-    public ResponseEntity<AuthSessionResponse> currentSession(@AuthenticationPrincipal AskPrincipal principal) {
-        return ResponseEntity.ok(authProcessor.currentSession(principal));
+    public ResponseEntity<AuthSessionResponse> currentSession(
+            @AuthenticationPrincipal AskPrincipal principal,
+            HttpServletResponse response) {
+        AuthSessionResponse session = authProcessor.currentSession(principal);
+        authCookieService.clear(response);
+        return ResponseEntity.ok(session);
     }
 
     @Operation(summary = "Logout", description = "Invalidates the current authenticated session")

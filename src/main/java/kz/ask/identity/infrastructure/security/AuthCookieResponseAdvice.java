@@ -1,7 +1,6 @@
 package kz.ask.identity.infrastructure.security;
 
 import jakarta.servlet.http.HttpServletResponse;
-import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.LogoutResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.MethodParameter;
@@ -36,11 +35,7 @@ public class AuthCookieResponseAdvice implements ResponseBodyAdvice<Object> {
             return body;
         }
         HttpServletResponse httpResponse = servletResponse.getServletResponse();
-        if (body instanceof AuthSessionResponse session
-                && session.getAccessToken() != null
-                && session.getExpiresAt() != null) {
-            authCookieService.write(httpResponse, session.getAccessToken(), session.getExpiresAt());
-        } else if (body instanceof LogoutResponse logout && Boolean.TRUE.equals(logout.getSuccess())) {
+        if (body instanceof LogoutResponse logout && Boolean.TRUE.equals(logout.getSuccess())) {
             authCookieService.clear(httpResponse);
         }
         return body;

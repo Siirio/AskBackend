@@ -72,7 +72,7 @@ public class ProductImportProcessor {
         if (branchMemberService.isStaffOfBranch(branchId, userId)) {
             return;
         }
-        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
+        if (catalogCapabilityService.hasPlatformProductAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

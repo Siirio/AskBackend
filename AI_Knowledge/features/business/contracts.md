@@ -42,7 +42,7 @@
 ## Seller Onboarding
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership; response includes managed-import conversationId when applicable |
+| POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership. Request includes `catalogScope` = PRODUCTS, SERVICES, or BOTH and response includes managed-import conversationId when applicable |
 
 ## Public Reference
 | Method | Path | Auth | Purpose |

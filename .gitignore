@@ -5,3 +5,4 @@ docs/api/
 deploy/vps/.env
 .claude/machine-bootstrap.lock
 __pycache__/
+graphify-out/

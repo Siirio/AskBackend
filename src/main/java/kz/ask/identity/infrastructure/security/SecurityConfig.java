@@ -59,12 +59,7 @@ public class SecurityConfig {
                 .csrfTokenRepository(csrfTokenRepository)
                 .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                 .ignoringRequestMatchers(
-                    "/api/v1/auth/login",
-                    "/api/v1/auth/customer/login/start",
-                    "/api/v1/auth/customer/register",
-                    "/api/v1/auth/business/login/start",
-                    "/api/v1/auth/business/register",
-                    "/api/v1/auth/verify",
+                    "/api/v1/**",
                     "/oauth2/**",
                     "/login/oauth2/**"
                 )

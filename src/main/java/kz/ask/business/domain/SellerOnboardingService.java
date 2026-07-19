@@ -5,6 +5,7 @@ import java.util.UUID;
 import kz.ask.business.domain.dto.SellerOnboardingResult;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.CatalogSetupMode;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.DeliveryScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
@@ -27,6 +28,7 @@ public interface SellerOnboardingService {
             String deliveryTermsKk,
             String deliveryTermsEn,
             CatalogSetupMode catalogSetupMode,
+            CatalogScope catalogScope,
             Set<CatalogSourceType> catalogSources,
             String catalogSourceLinks,
             String catalogSourceNotes);

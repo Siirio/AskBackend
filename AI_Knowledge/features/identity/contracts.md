@@ -8,7 +8,7 @@
 | POST | /api/v1/auth/verify | No | Verify 6-digit code → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | Unified login for ALL roles (email + password) |
 | GET | /oauth2/authorization/google | No | Start Google OAuth. Reuses the single identity for a verified email or creates a customer identity |
-| GET | /login/oauth2/code/google | Google callback | Complete Google OAuth, write the session cookie, and redirect to configured frontend `/oauth/callback` |
+| GET | /login/oauth2/code/google | Google callback | Complete Google OAuth, write the `ASK_SESSION` bridge cookie, and redirect to configured frontend `/oauth/callback` |
 
 ## Business Auth
 | Method | Path | Auth | Purpose |
@@ -20,13 +20,13 @@
 ## Session
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/auth/session | Bearer | Current session info |
+| GET | /api/v1/auth/session | Bearer or OAuth bridge cookie | Validate the current server session, return a signed JWT, and clear the bridge cookie |
 | POST | /api/v1/auth/logout | Bearer | Revoke session |
 | POST | /api/v1/auth/profile | Bearer | Update displayName/email/phone |
 
 ## Key DTOs
 - AuthChallengeResponse: authChallengeId, role, purpose, channel, maskedDestination, expiresAt
-- AuthSessionResponse: accessToken, tokenType, expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, authChallengeId, suggestRoleExpansion
+- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, authChallengeId, suggestRoleExpansion
 - AuthUserResponse: userId, displayName, email, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
 - startRoute values: CLIENT_SEARCH, OWNER_BRANCHES, BRANCH_WORKSPACE
@@ -45,6 +45,7 @@ All API responses and requests use **snake_case** property naming. Jackson is co
 
 Examples:
 - `accessToken` on the wire → `access_token`
+- `expiresIn` → `expires_in`
 - `authChallengeId` → `auth_challenge_id`
 - `requiresRoleSelection` → `requires_role_selection`
 - `businessId` → `business_id`
@@ -65,4 +66,5 @@ DTO field names in this document use camelCase (Java convention). Always map to 
 - auth.oauth2.google.client-id / `OAUTH2_GOOGLE_CLIENT_ID`
 - auth.oauth2.google.client-secret / `OAUTH2_GOOGLE_CLIENT_SECRET`
 - auth.oauth2.frontend-redirect-uri / `OAUTH2_FRONTEND_REDIRECT_URI`
+- auth.jwt.secret / `AUTH_JWT_SECRET` — minimum 256-bit secret for HS256 access-token signing
 - Google Console redirect URI: `{backendBaseUrl}/login/oauth2/code/google`

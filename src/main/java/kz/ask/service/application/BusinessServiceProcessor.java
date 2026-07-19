@@ -6,6 +6,7 @@ import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.CategoryService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
+import kz.ask.catalog.domain.CatalogCapabilityService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.api.dto.BusinessServiceListResponse;
@@ -36,6 +37,7 @@ public class BusinessServiceProcessor {
     private final CategoryService categoryService;
     private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
+    private final CatalogCapabilityService catalogCapabilityService;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, UUID categoryId,
@@ -121,6 +123,10 @@ public class BusinessServiceProcessor {
             return;
         }
         if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {
+            return;
+        }
+        if (Boolean.TRUE.equals(catalogCapabilityService.hasPlatformServiceAccess(
+                userId, branch.getBusinessId()))) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

@@ -161,6 +161,17 @@ public class IdentityServiceImpl implements IdentityService {
     public AuthSessionDto findSessionByToken(String token) {
         String hash = hashToken(token);
         AuthSession session = authSessionRepository.findByTokenHash(hash).orElse(null);
+        return activeSession(session);
+    }
+
+    @Override
+    @Transactional
+    public AuthSessionDto findSessionById(UUID sessionId) {
+        AuthSession session = authSessionRepository.findById(sessionId).orElse(null);
+        return activeSession(session);
+    }
+
+    private AuthSessionDto activeSession(AuthSession session) {
         if (session == null || session.getRevokedAt() != null) {
             return null;
         }

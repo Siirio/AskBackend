@@ -136,7 +136,7 @@ public class BusinessProductProcessor {
         if (branchMemberService.isStaffOfBranch(branch.getId(), userId)) {
             return;
         }
-        if (catalogCapabilityService.hasPlatformCatalogAccess(userId, branch.getBusinessId())) {
+        if (catalogCapabilityService.hasPlatformProductAccess(userId, branch.getBusinessId())) {
             return;
         }
         throw new ForbiddenException(ErrorCode.ACCESS_DENIED);

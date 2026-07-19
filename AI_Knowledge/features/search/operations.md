@@ -34,4 +34,4 @@ AI metadata is derived and can be rebuilt. Inspect attempt count, error, worker 
 
 ## Verification
 
-Run the backend package, frontend build, Flyway V1–V4 on an isolated database, migration hashes, `git diff --check`, architecture scans, the evaluation runner, PostgreSQL query plans, and the parameterized k6 profile. An outage drill must prove the fallback response and the visible separator log before release.
+Run the backend package, frontend build, Flyway V1 baseline on an isolated database, migration hash, `git diff --check`, architecture scans, the evaluation runner, PostgreSQL query plans, and the parameterized k6 profile. An outage drill must prove the fallback response and the visible separator log before release.

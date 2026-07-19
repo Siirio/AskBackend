@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.CatalogSetupMode;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.DeliveryScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
@@ -51,6 +52,9 @@ public class CompleteSellerOnboardingRequest {
 
     @NotNull
     private CatalogSetupMode catalogSetupMode;
+
+    @NotNull
+    private CatalogScope catalogScope;
 
     private Set<CatalogSourceType> catalogSources = new LinkedHashSet<>();
 

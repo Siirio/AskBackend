@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import kz.ask.business.domain.enums.CatalogSourceType;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateManagedImportRequest {
+
+    @NotNull
+    private CatalogScope catalogScope;
 
     @NotEmpty
     private Set<CatalogSourceType> sourceTypes = new LinkedHashSet<>();

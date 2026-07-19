@@ -17,6 +17,7 @@ import java.time.Instant;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.BusinessModerationStatus;
 import kz.ask.business.domain.enums.CatalogSetupMode;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.PreferredContactChannel;
@@ -52,6 +53,10 @@ public class Business extends BaseUuidV7Entity {
 
     @Enumerated(EnumType.STRING)
     private CatalogSetupMode catalogSetupMode;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private CatalogScope catalogScope;
 
     @ElementCollection
     @CollectionTable(

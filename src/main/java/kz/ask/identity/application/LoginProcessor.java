@@ -1,6 +1,8 @@
 package kz.ask.identity.application;
 
 import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
@@ -18,6 +20,7 @@ import kz.ask.identity.domain.enums.AuthChallengePurpose;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.identity.infrastructure.mail.EmailCodeSender;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.identity.infrastructure.security.JwtTokenService;
 import kz.ask.shared.error.AuthException;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ValidationException;
@@ -33,6 +36,7 @@ public class LoginProcessor {
     private final BusinessService businessService;
     private final EmailCodeSender emailSender;
     private final SessionCapabilitiesProcessor sessionCapabilitiesProcessor;
+    private final JwtTokenService jwtTokenService;
 
     public AuthSessionResponse login(LoginRequest req) {
         List<AppUserDto> users = identityService.findAllByEmail(req.getEmail());
@@ -126,7 +130,10 @@ public class LoginProcessor {
                                                       BusinessRegistrationResult bizResult, List<String> allRoles) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
-                .accessToken(session.getPlainToken())
+                .accessToken(jwtTokenService.issue(
+                        new AskPrincipal(user.getId(), session.getId(), user.getDisplayName(), session.getAuthority()),
+                        session.getExpiresAt()))
+                .expiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()))
                 .expiresAt(session.getExpiresAt())
                 .remembered(session.getRemembered())
                 .activationRequired(session.getActivationRequired())

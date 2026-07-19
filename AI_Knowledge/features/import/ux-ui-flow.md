@@ -20,4 +20,4 @@
 - AI Autodump: .txt, .md, .pdf only
 - Unsupported formats rejected before upload with clear error message
 - Business users see Excel only. Assigned platform importers see Excel plus TXT/MD/PDF AI Autodump.
-- The business can request catalog help from onboarding or the product-import area.
+- The business can request catalog help from onboarding, the product area, or the service area. Product and service buttons preselect the matching scope and explain the service, pricing state, sources, and deliverable before submission.

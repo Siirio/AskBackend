@@ -24,6 +24,7 @@ import kz.ask.business.domain.enums.BranchMemberRole;
 import kz.ask.business.domain.enums.UniqueOfferStatus;
 import kz.ask.business.domain.enums.UniqueOfferType;
 import kz.ask.business.domain.enums.BusinessMemberRole;
+import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.ContactVisibility;
 import kz.ask.business.domain.enums.ContactType;
 import kz.ask.business.domain.dto.UniqueOfferDto;
@@ -40,6 +41,7 @@ public class BusinessMapper {
         business.setName(name);
         business.setCurrency("KZT");
         business.setStatus(RecordStatus.ACTIVE);
+        business.setCatalogScope(CatalogScope.BOTH);
         return business;
     }
 

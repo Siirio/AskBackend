@@ -14,6 +14,7 @@ public class AuthSessionResponse {
 
     private String accessToken;
     private String tokenType;
+    private Long expiresIn;
     private Instant expiresAt;
     private Boolean remembered;
     private Boolean activationRequired;

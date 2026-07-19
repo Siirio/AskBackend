@@ -58,6 +58,7 @@ public class SellerOnboardingProcessor {
                 request.getDeliveryTermsKk(),
                 request.getDeliveryTermsEn(),
                 request.getCatalogSetupMode(),
+                request.getCatalogScope(),
                 sources,
                 request.getSourceLinks(),
                 request.getSourceNotes());
@@ -75,6 +76,7 @@ public class SellerOnboardingProcessor {
             managedImport = managedImportService.create(
                     result.getBusinessId(),
                     principal.getUserId(),
+                    request.getCatalogScope(),
                     sources,
                     request.getPreferredContactChannel(),
                     request.getPreferredContactValue(),

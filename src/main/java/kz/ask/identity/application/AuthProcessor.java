@@ -3,6 +3,7 @@ package kz.ask.identity.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,7 @@ import kz.ask.identity.domain.enums.AuthChallengePurpose;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.identity.infrastructure.mail.EmailCodeSender;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.identity.infrastructure.security.JwtTokenService;
 import kz.ask.legal.domain.LegalService;
 import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
 import kz.ask.legal.domain.enums.LegalDocumentCode;
@@ -60,6 +62,7 @@ public class AuthProcessor {
     private final SessionCapabilitiesProcessor sessionCapabilitiesProcessor;
     private final LegalService legalService;
     private final SignificantEventService significantEventService;
+    private final JwtTokenService jwtTokenService;
 
     @Value("${auth.verification.test-mode:false}")
     private Boolean testMode;
@@ -206,6 +209,10 @@ public class AuthProcessor {
         if (user == null || user.getStatus() != UserStatus.ACTIVE) {
             throw new UnauthorizedException(ErrorCode.SESSION_INVALID);
         }
+        AuthSessionDto session = identityService.findSessionById(principal.getSessionId());
+        if (session == null) {
+            throw new UnauthorizedException(ErrorCode.SESSION_INVALID);
+        }
         List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                 .map(u -> u.getRole().name())
@@ -214,7 +221,10 @@ public class AuthProcessor {
 
         BusinessRegistrationResult bizResult = resolveBusinessContext(user);
         AuthSessionResponse resp = buildSessionResponse(null, user, bizResult);
-        resp.setAccessToken(null);
+        resp.setAccessToken(jwtTokenService.issue(principal, session.getExpiresAt()));
+        resp.setTokenType("Bearer");
+        resp.setExpiresAt(session.getExpiresAt());
+        resp.setExpiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()));
         resp.setAllRoles(allRoles);
         return resp;
     }
@@ -423,7 +433,10 @@ public class AuthProcessor {
                 .user(buildUserResponse(user));
 
         if (session != null) {
-            builder.accessToken(session.getPlainToken())
+            builder.accessToken(jwtTokenService.issue(
+                            new AskPrincipal(user.getId(), session.getId(), user.getDisplayName(), session.getAuthority()),
+                            session.getExpiresAt()))
+                    .expiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()))
                     .expiresAt(session.getExpiresAt())
                     .remembered(session.getRemembered())
                     .activationRequired(session.getActivationRequired())

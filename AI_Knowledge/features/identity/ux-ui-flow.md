@@ -7,9 +7,17 @@
 
 ## Login flow (unified)
 - POST /auth/login with email + password works for ALL roles
+- Every successful login returns a signed Bearer JWT. The client stores it in session-scoped storage and sends it through `Authorization`.
 - Normal session: activationRequired=false → enter app
 - Activation session (5min TTL): activationRequired=true → navigate to password change screen
 - Password change: newPassword + confirmation → creates full session, revokes activation session
+
+## Google OAuth bridge
+1. Google redirects to the backend callback.
+2. Backend creates a revocable session, writes `ASK_SESSION`, and redirects to `/oauth/callback`.
+3. Frontend calls `GET /api/v1/auth/session` with credentials.
+4. Backend validates the cookie session, returns `access_token`, `token_type=Bearer`, and `expires_in`, then clears `ASK_SESSION`.
+5. All later API requests use the Bearer JWT without cookies.
 
 ## Staff activation
 - Owner creates staff: fills name, role (STAFF), email → gets temp password visible once

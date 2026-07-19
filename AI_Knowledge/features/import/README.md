@@ -14,5 +14,6 @@ Excel (.xlsx) import via fastexcel streaming parser with auto-mapping engine, pl
 
 ## Access and managed-import lifecycle
 - Business cabinets expose ordinary `.xlsx` import only.
-- AI Autodump is a platform capability and publishes products only.
+- AI Autodump is a platform capability and publishes products only. Ordinary service create/update remains available to an assigned platform importer for service-scoped managed requests.
+- Each request declares PRODUCTS, SERVICES, or BOTH. Product and service requests can coexist; overlapping scopes cannot.
 - A request stays PENDING until one platform user activates it. Activation creates that user's grant and a seven-day chat; expiry revokes access and deletes the chat and files automatically.
