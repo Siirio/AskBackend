@@ -16,4 +16,11 @@ public interface LegalService {
                                String countryCode,
                                String locale,
                                LegalAcceptanceChannel channel);
+
+    Boolean hasAcceptedActiveDocuments(UUID userId,
+                                       Collection<LegalDocumentCode> codes,
+                                       String countryCode,
+                                       String locale);
+
+    Boolean hasAcceptedAnyDocuments(UUID userId, Collection<LegalDocumentCode> codes);
 }

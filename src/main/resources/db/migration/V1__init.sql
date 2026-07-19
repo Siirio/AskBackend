@@ -1410,6 +1410,7 @@ FROM (
         ('USER_TERMS', '/legal/user-terms'),
         ('PRIVACY_POLICY', '/legal/privacy'),
         ('SELLER_TERMS', '/legal/seller-terms'),
+        ('PERSONAL_DATA_CONSENT', '/legal/personal-data-consent'),
         ('MANAGED_IMPORT_TERMS', '/legal/import-service'),
         ('PROHIBITED_PRODUCTS_POLICY', '/legal/prohibited-products'),
         ('CONTENT_POLICY', '/legal/content-policy')

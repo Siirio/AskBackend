@@ -1,6 +1,5 @@
 package kz.ask.business.api.dto;
 
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.LinkedHashSet;
@@ -64,10 +63,4 @@ public class CompleteSellerOnboardingRequest {
 
     private String locale = "ru";
 
-    private Boolean legalAccepted;
-
-    @AssertTrue(message = "Applicable legal documents must be accepted")
-    public boolean legalAccepted() {
-        return Boolean.TRUE.equals(legalAccepted);
-    }
 }

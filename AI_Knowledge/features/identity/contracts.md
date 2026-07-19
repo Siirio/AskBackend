@@ -23,6 +23,7 @@
 | GET | /api/v1/auth/session | Bearer or OAuth bridge cookie | Validate the current server session, return a signed JWT, and clear the bridge cookie |
 | POST | /api/v1/auth/logout | Bearer | Revoke session |
 | POST | /api/v1/auth/profile | Bearer | Update displayName/email/phone |
+| POST | /api/v1/legal/registration-acceptances | Bearer | Accept the active legal documents selected for the chosen registration role |
 
 ## Key DTOs
 - AuthChallengeResponse: authChallengeId, role, purpose, channel, maskedDestination, expiresAt
@@ -68,3 +69,4 @@ DTO field names in this document use camelCase (Java convention). Always map to 
 - auth.oauth2.frontend-redirect-uri / `OAUTH2_FRONTEND_REDIRECT_URI`
 - auth.jwt.secret / `AUTH_JWT_SECRET` — minimum 256-bit secret for HS256 access-token signing
 - Google Console redirect URI: `{backendBaseUrl}/login/oauth2/code/google`
+- Customer registration request does not accept legal flags. After verification, the client submits `USER_TERMS` + `PRIVACY_POLICY` for a customer or `SELLER_TERMS` + `PERSONAL_DATA_CONSENT` for a seller.

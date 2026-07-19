@@ -66,6 +66,26 @@ public class LegalServiceImpl implements LegalService {
         }
     }
 
+    @Override
+    public Boolean hasAcceptedActiveDocuments(UUID userId,
+                                              Collection<LegalDocumentCode> codes,
+                                              String countryCode,
+                                              String locale) {
+        return codes.stream().allMatch(code -> legalDocumentRepository
+                .findFirstByCodeAndCountryCodeAndLocaleAndActiveTrueAndEffectiveAtLessThanEqualOrderByEffectiveAtDesc(
+                        code, countryCode, locale, Instant.now())
+                .filter(document -> legalAcceptanceRepository
+                        .existsByUserIdAndDocumentCodeAndDocumentVersionAndCountryCodeAndLocale(
+                                userId, code, document.getVersion(), countryCode, locale))
+                .isPresent());
+    }
+
+    @Override
+    public Boolean hasAcceptedAnyDocuments(UUID userId, Collection<LegalDocumentCode> codes) {
+        return legalAcceptanceRepository.findByUserIdOrderByAcceptedAtAsc(userId).stream()
+                .anyMatch(acceptance -> codes.contains(acceptance.getDocumentCode()));
+    }
+
     private LegalDocumentDto toDto(LegalDocument document) {
         return LegalDocumentDto.builder()
                 .code(document.getCode())

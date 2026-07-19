@@ -15,7 +15,6 @@ import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.DeliveryScope;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.legal.domain.LegalService;
-import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
 import kz.ask.legal.domain.enums.LegalDocumentCode;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.managedimport.domain.dto.ManagedImportDto;
@@ -38,7 +37,7 @@ public class SellerOnboardingProcessor {
     public SellerOnboardingResponse complete(
             AskPrincipal principal,
             CompleteSellerOnboardingRequest request) {
-        validate(request);
+        validate(principal, request);
         Set<CatalogSourceType> sources = request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
                 ? new LinkedHashSet<>(request.getCatalogSources())
                 : Set.of();
@@ -65,12 +64,6 @@ public class SellerOnboardingProcessor {
         significantEventService.record(principal.getUserId(),
                 SignificantEventType.BUSINESS_CREATED,
                 result.getBusinessId(), result.getBusinessId(), Map.of());
-        legalService.acceptActiveDocuments(
-                principal.getUserId(),
-                legalCodes(request.getCatalogSetupMode()),
-                normalizeCountry(request.getCountryCode()),
-                normalizeLocale(request.getLocale()),
-                LegalAcceptanceChannel.SELLER_ONBOARDING);
         ManagedImportDto managedImport = null;
         if (request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT) {
             managedImport = managedImportService.create(
@@ -94,7 +87,14 @@ public class SellerOnboardingProcessor {
                 .build();
     }
 
-    private void validate(CompleteSellerOnboardingRequest request) {
+    private void validate(AskPrincipal principal, CompleteSellerOnboardingRequest request) {
+        if (!legalService.hasAcceptedActiveDocuments(
+                principal.getUserId(),
+                Set.of(LegalDocumentCode.SELLER_TERMS, LegalDocumentCode.PERSONAL_DATA_CONSENT),
+                normalizeCountry(request.getCountryCode()),
+                normalizeLocale(request.getLocale()))) {
+            throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
+        }
         if (request.getLegalForm() != BusinessLegalForm.NONE
                 && (isBlank(request.getLegalIdentifier()) || isBlank(request.getLegalName()))) {
             throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
@@ -115,19 +115,6 @@ public class SellerOnboardingProcessor {
             return Set.of();
         }
         return new LinkedHashSet<>(request.getSelectedCityIds());
-    }
-
-    private Set<LegalDocumentCode> legalCodes(CatalogSetupMode mode) {
-        Set<LegalDocumentCode> codes = new LinkedHashSet<>(Set.of(
-                LegalDocumentCode.USER_TERMS,
-                LegalDocumentCode.PRIVACY_POLICY,
-                LegalDocumentCode.SELLER_TERMS,
-                LegalDocumentCode.PROHIBITED_PRODUCTS_POLICY,
-                LegalDocumentCode.CONTENT_POLICY));
-        if (mode == CatalogSetupMode.ASK_MANAGED_IMPORT) {
-            codes.add(LegalDocumentCode.MANAGED_IMPORT_TERMS);
-        }
-        return codes;
     }
 
     private String normalizeCountry(String countryCode) {

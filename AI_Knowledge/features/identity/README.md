@@ -7,6 +7,7 @@ Customer and business authentication: email-based login/registration, Google OAu
 - Customer and business registration/login both use email (phone optional).
 - Google OAuth accepts only Google-verified email and reuses the single AppUser for that email. A first-time Google login creates a CUSTOMER identity.
 - OAuth uses the backend authorization-code callback, writes a short-lived bridge cookie, and redirects to the configured frontend callback. `GET /auth/session` exchanges that cookie for a signed JWT and clears it.
+- Customer registration collects legal acceptance only after email verification and role choice. Customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 - Exactly one primary login identifier required. Password stored only as hash.
 - Verification codes: 6 digits, stored hashed.
 - Access tokens are HS256 JWTs signed with `auth.jwt.secret`. The `sid` claim points to a hashed, revocable server-side session so logout and expiry remain enforceable.

@@ -69,7 +69,7 @@ auth:
     google:
       client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
       client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
-    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:3000/oauth/callback}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://127.0.0.1:5173/oauth/callback}
   cookie:
     name: ${AUTH_COOKIE_NAME:ASK_SESSION}
     path: /

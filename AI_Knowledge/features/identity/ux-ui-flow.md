@@ -17,7 +17,8 @@
 2. Backend creates a revocable session, writes `ASK_SESSION`, and redirects to `/oauth/callback`.
 3. Frontend calls `GET /api/v1/auth/session` with credentials.
 4. Backend validates the cookie session, returns `access_token`, `token_type=Bearer`, and `expires_in`, then clears `ASK_SESSION`.
-5. All later API requests use the Bearer JWT without cookies.
+5. A first-time OAuth user with no accepted role documents is redirected to the role-choice screen.
+6. All later API requests use the Bearer JWT without cookies.
 
 ## Staff activation
 - Owner creates staff: fills name, role (STAFF), email → gets temp password visible once
@@ -27,7 +28,9 @@
 - Owner can reset password → new temp password → status PASSWORD_RESET_REQUIRED
 
 ## Registration
-- Customer: displayName, email, password, passwordConfirmation, acceptedUserAgreement
+- Customer registration form: displayName, email, password, passwordConfirmation
+- After email verification, role choice is mandatory. Customer choice requires `USER_TERMS` and `PRIVACY_POLICY`; seller choice requires `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
+- Seller onboarding is available only after the seller-role documents were accepted.
 - Business: email, password, businessName, branchName, branchCityId, branchAddress, onlineOnly, acceptedBusinessRules
 - If onlineOnly=true, physical address optional
 

@@ -26,7 +26,6 @@ public class CustomerRegisterRequest {
     private String password;
     @NotBlank
     private String passwordConfirmation;
-    private Boolean acceptedUserAgreement;
     private Boolean rememberMe;
     private String countryCode = "KZ";
     private String locale = "ru";
@@ -34,10 +33,5 @@ public class CustomerRegisterRequest {
     @AssertTrue(message = "Password and confirmation must match")
     public boolean passwordsMatch() {
         return password != null && password.equals(passwordConfirmation);
-    }
-
-    @AssertTrue(message = "User agreement must be accepted")
-    public boolean agreementAccepted() {
-        return acceptedUserAgreement != null && acceptedUserAgreement;
     }
 }

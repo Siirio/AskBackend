@@ -183,12 +183,14 @@ public class AuthProcessor {
         BusinessRegistrationPayload registrationPayload = deserializeRegistrationPayload(
                 challenge.getRegistrationData());
         if (isNewRegistration && registrationPayload != null) {
-            legalService.acceptActiveDocuments(
-                    user.getId(),
-                    registrationPayload.getAcceptedDocumentCodes(),
-                    registrationPayload.getCountryCode(),
-                    registrationPayload.getLocale(),
-                    LegalAcceptanceChannel.WEB_REGISTRATION);
+            if (!registrationPayload.getAcceptedDocumentCodes().isEmpty()) {
+                legalService.acceptActiveDocuments(
+                        user.getId(),
+                        registrationPayload.getAcceptedDocumentCodes(),
+                        registrationPayload.getCountryCode(),
+                        registrationPayload.getLocale(),
+                        LegalAcceptanceChannel.WEB_REGISTRATION);
+            }
             if (registrationPayload.getBusinessName() != null) {
                 bizResult = createBusiness(user, registrationPayload);
             }
@@ -365,9 +367,8 @@ public class AuthProcessor {
         payload.setCountryCode(req.getCountryCode());
         payload.setLocale(req.getLocale());
         payload.setAcceptedDocumentCodes(Set.of(
-                LegalDocumentCode.USER_TERMS,
-                LegalDocumentCode.PRIVACY_POLICY,
-                LegalDocumentCode.SELLER_TERMS));
+                LegalDocumentCode.SELLER_TERMS,
+                LegalDocumentCode.PERSONAL_DATA_CONSENT));
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
@@ -379,9 +380,7 @@ public class AuthProcessor {
         BusinessRegistrationPayload payload = new BusinessRegistrationPayload();
         payload.setCountryCode(req.getCountryCode());
         payload.setLocale(req.getLocale());
-        payload.setAcceptedDocumentCodes(Set.of(
-                LegalDocumentCode.USER_TERMS,
-                LegalDocumentCode.PRIVACY_POLICY));
+        payload.setAcceptedDocumentCodes(Set.of());
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
@@ -430,6 +429,9 @@ public class AuthProcessor {
     private AuthSessionResponse buildSessionResponse(AuthSessionDto session, AppUserDto user, BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
+                .requiresRoleSelection(!legalService.hasAcceptedAnyDocuments(
+                        user.getId(),
+                        Set.of(LegalDocumentCode.USER_TERMS, LegalDocumentCode.SELLER_TERMS)))
                 .user(buildUserResponse(user));
 
         if (session != null) {

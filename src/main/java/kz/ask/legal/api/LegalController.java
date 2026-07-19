@@ -35,12 +35,26 @@ public class LegalController {
     public ResponseEntity<Void> accept(
             @AuthenticationPrincipal AskPrincipal principal,
             @Valid @RequestBody AcceptLegalDocumentsRequest request) {
+        return accept(principal, request, LegalAcceptanceChannel.ACCOUNT_SETTINGS);
+    }
+
+    @PostMapping("/registration-acceptances")
+    public ResponseEntity<Void> acceptRegistration(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody AcceptLegalDocumentsRequest request) {
+        return accept(principal, request, LegalAcceptanceChannel.WEB_REGISTRATION);
+    }
+
+    private ResponseEntity<Void> accept(
+            AskPrincipal principal,
+            AcceptLegalDocumentsRequest request,
+            LegalAcceptanceChannel channel) {
         legalService.acceptActiveDocuments(
                 principal.getUserId(),
                 request.getDocumentCodes(),
                 request.getCountryCode(),
                 request.getLocale(),
-                LegalAcceptanceChannel.ACCOUNT_SETTINGS);
+                channel);
         return ResponseEntity.noContent().build();
     }
 }
