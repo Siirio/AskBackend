@@ -69,7 +69,7 @@ auth:
     google:
       client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
       client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
-    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth/callback}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:3000/oauth/callback}
   cookie:
     name: ${AUTH_COOKIE_NAME:ASK_SESSION}
     path: /
@@ -84,7 +84,7 @@ auth:
 
 ask:
   frontend:
-    base-url: ${ASK_FRONTEND_BASE_URL:http://localhost:5173}
+    base-url: ${ASK_FRONTEND_BASE_URL:http://localhost:3000}
   cors:
     allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,https://ask.com.kz,https://stage.ask.com.kz,https://ask-frontend-stage-ask7.vercel.app}
   contact:
