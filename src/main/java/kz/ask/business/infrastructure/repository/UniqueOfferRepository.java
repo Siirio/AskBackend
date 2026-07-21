@@ -17,4 +17,8 @@ public interface UniqueOfferRepository extends JpaRepository<UniqueOffer, UUID> 
     Optional<UniqueOffer> findByIdAndBusinessId(UUID id, UUID businessId);
 
     List<UniqueOffer> findByStatusIn(List<UniqueOfferStatus> statuses);
+
+    Long countByStatusIn(List<UniqueOfferStatus> statuses);
+
+    Long countByBusinessIdAndStatusIn(UUID businessId, List<UniqueOfferStatus> statuses);
 }

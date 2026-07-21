@@ -4,6 +4,7 @@ public enum CatalogSourceType {
     TELEGRAM,
     INSTAGRAM,
     KASPI,
+    WILDBERRIES,
     OZON,
     WEBSITE,
     EXCEL,

@@ -35,6 +35,7 @@ public class ChatServiceImpl implements ChatService {
 
     private static final int MAX_CONVERSATIONS = 50;
     private static final String FILE_URL_PREFIX = "/api/v1/chat/files/";
+    private static final String PLATFORM_SUPPORT_SUBJECT = "Поддержка Ask";
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
@@ -64,6 +65,28 @@ public class ChatServiceImpl implements ChatService {
         conv.setLastMessageAt(Instant.now());
         conv = conversationRepository.save(conv);
         return toConversationDto(conv);
+    }
+
+    @Override
+    @Transactional
+    public ChatConversationDto getOrCreatePlatformSupportConversation(UUID customerId, UUID businessId) {
+        var existingConversation = businessId == null
+                ? conversationRepository.findFirstByCustomerIdAndBusinessIdIsNullAndConversationTypeOrderByCreatedAtDesc(
+                        customerId, ConversationType.PLATFORM_SUPPORT)
+                : conversationRepository.findFirstByCustomerIdAndBusinessIdAndConversationTypeOrderByCreatedAtDesc(
+                        customerId, businessId, ConversationType.PLATFORM_SUPPORT);
+        return existingConversation
+                .map(this::toConversationDto)
+                .orElseGet(() -> {
+                    ChatConversation conversation = new ChatConversation();
+                    conversation.setCustomerId(customerId);
+                    conversation.setBusinessId(businessId);
+                    conversation.setSubject(PLATFORM_SUPPORT_SUBJECT);
+                    conversation.setConversationType(ConversationType.PLATFORM_SUPPORT);
+                    conversation.setConversationStatus(ConversationStatus.PENDING);
+                    conversation.setLastMessageAt(Instant.now());
+                    return toConversationDto(conversationRepository.save(conversation));
+                });
     }
 
     @Override
@@ -121,8 +144,10 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ChatConversationDto> listPlatformConversations() {
-        return conversationRepository.findByConversationType(
-                        ConversationType.MANAGED_IMPORT, PageRequest.of(0, MAX_CONVERSATIONS))
+        return conversationRepository.findPlatformConversations(
+                        ConversationType.PLATFORM_SUPPORT,
+                        ConversationType.MANAGED_IMPORT,
+                        PageRequest.of(0, MAX_CONVERSATIONS))
                 .stream()
                 .map(this::toConversationDto)
                 .toList();

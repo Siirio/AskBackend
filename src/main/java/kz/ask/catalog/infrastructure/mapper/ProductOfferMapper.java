@@ -21,6 +21,7 @@ public class ProductOfferMapper {
         Product product = new Product();
         product.setBusiness(businessRef);
         product.setCategory(categoryRef);
+        product.setCategoryLabel(req.getCategoryLabel());
         product.setName(req.getName().trim());
         product.setDescription(req.getDescription());
         product.setSku(normalizeSku(req.getSku()));

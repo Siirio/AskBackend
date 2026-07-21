@@ -10,6 +10,7 @@ import kz.ask.chat.api.dto.ChatMessageListResponse;
 import kz.ask.chat.api.dto.SendMessageRequest;
 import kz.ask.chat.api.dto.SystemNotifyRequest;
 import kz.ask.chat.domain.ChatService;
+import kz.ask.chat.application.SupportProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatController {
 
     private final ChatService chatService;
+    private final SupportProcessor supportProcessor;
 
     @PostMapping("/conversations")
     public ChatConversationDto startConversation(@AuthenticationPrincipal AskPrincipal principal,
@@ -40,6 +42,13 @@ public class ChatController {
     public ChatConversationListResponse listConversations(@AuthenticationPrincipal AskPrincipal principal) {
         List<ChatConversationDto> items = chatService.listCustomerConversations(principal.getUserId());
         return ChatConversationListResponse.builder().items(items).build();
+    }
+
+    @PostMapping("/support")
+    public ChatConversationDto openSupportConversation(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @RequestParam(required = false) UUID businessId) {
+        return supportProcessor.open(principal.getUserId(), businessId);
     }
 
     @GetMapping("/conversations/{conversationId}/messages")

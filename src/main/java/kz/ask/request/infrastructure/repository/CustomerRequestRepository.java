@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface CustomerRequestRepository extends JpaRepository<CustomerRequest, UUID> {
 
     List<CustomerRequest> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    List<CustomerRequest> findAllByOrderByCreatedAtDesc();
 }

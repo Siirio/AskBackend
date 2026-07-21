@@ -52,7 +52,9 @@ public class ServiceServiceImpl implements ServiceService {
 
         Business businessRef = businessRepository.getReferenceById(businessId);
         BusinessBranch branchRef = businessBranchRepository.getReferenceById(branchId);
-        Category categoryRef = categoryRepository.getReferenceById(req.getCategoryId());
+        Category categoryRef = req.getCategoryId() != null
+                ? categoryRepository.getReferenceById(req.getCategoryId())
+                : resolveCategoryByLabel(req.getCategoryLabel());
 
         ServiceOffering offering = serviceOfferingRepository.save(
                 mapper.toServiceOfferingEntity(req, businessRef, categoryRef));
@@ -82,5 +84,12 @@ public class ServiceServiceImpl implements ServiceService {
     private ServiceBranchOffer findOfferOrThrow(UUID serviceOfferingId, UUID branchId) {
         return serviceBranchOfferRepository.findByServiceOfferingIdAndBranchId(serviceOfferingId, branchId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+    }
+
+    private Category resolveCategoryByLabel(String categoryLabel) {
+        if (categoryLabel == null || categoryLabel.isBlank()) {
+            return null;
+        }
+        return categoryRepository.findByNameIgnoreCase(categoryLabel.trim()).orElse(null);
     }
 }

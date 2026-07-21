@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.Category;
+import kz.ask.catalog.domain.enums.ProductModerationStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import kz.ask.shared.domain.enums.RecordStatus;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -73,6 +74,13 @@ public class Product extends BaseUuidV7Entity {
 
     @Column(name = "hidden_by_moderator", nullable = false)
     private Boolean hiddenByModerator = Boolean.FALSE;
+
+    @Column(name = "moderation_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ProductModerationStatus moderationStatus = ProductModerationStatus.PENDING;
+
+    @Column(name = "moderation_note")
+    private String moderationNote;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")

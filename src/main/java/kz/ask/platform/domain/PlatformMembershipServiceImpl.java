@@ -82,4 +82,18 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
         membership.setStatus(RecordStatus.INACTIVE);
         return platformMembershipMapper.toDto(platformMembershipRepository.save(membership));
     }
+
+    @Override
+    @Transactional
+    public void delete(UUID membershipId) {
+        PlatformMembership membership = platformMembershipRepository.findById(membershipId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PLATFORM_MEMBERSHIP_NOT_FOUND));
+        platformMembershipRepository.delete(membership);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByRole(PlatformRole role) {
+        return platformMembershipRepository.countByRoleAndStatus(role, RecordStatus.ACTIVE);
+    }
 }

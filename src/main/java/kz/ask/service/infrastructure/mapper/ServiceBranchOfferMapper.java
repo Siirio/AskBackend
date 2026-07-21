@@ -19,6 +19,7 @@ public class ServiceBranchOfferMapper {
         ServiceOffering offering = new ServiceOffering();
         offering.setBusiness(businessRef);
         offering.setCategory(categoryRef);
+        offering.setCategoryLabel(req.getCategoryLabel());
         offering.setName(req.getName().trim());
         offering.setDescription(req.getDescription());
         offering.setImageUrl(req.getImageUrl());
@@ -31,6 +32,7 @@ public class ServiceBranchOfferMapper {
         offer.setServiceOffering(offering);
         offer.setBranch(branchRef);
         offer.setServiceMode(ServiceMode.ON_DEMAND);
+        offer.setCategoryLabel(req.getCategoryLabel());
         offer.setBasePrice(req.getBasePrice());
         offer.setScheduleText(req.getScheduleText());
         offer.setActive(req.getActive() == null ? Boolean.TRUE : req.getActive());
@@ -72,7 +74,7 @@ public class ServiceBranchOfferMapper {
                 .businessId(offering.getBusiness().getId())
                 .branchId(offer.getBranch().getId())
                 .categoryId(category != null ? category.getId() : null)
-                .categoryLabel(category != null ? category.getName() : null)
+                .categoryLabel(category != null ? category.getName() : offering.getCategoryLabel())
                 .name(offering.getName())
                 .description(offering.getDescription())
                 .basePrice(offer.getBasePrice())

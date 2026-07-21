@@ -38,6 +38,9 @@ public class ServiceBranchOffer extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private ServiceMode serviceMode;
 
+    @Column(name = "category_label")
+    private String categoryLabel;
+
     private BigDecimal basePrice;
 
     private String scheduleText;

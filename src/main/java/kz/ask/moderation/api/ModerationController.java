@@ -9,10 +9,13 @@ import kz.ask.moderation.api.dto.CatalogReviewBusinessResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
 import kz.ask.moderation.api.dto.ModerateBusinessRequest;
 import kz.ask.moderation.api.dto.ModerateProductRequest;
+import kz.ask.moderation.api.dto.ProductModerationItemResponse;
+import kz.ask.moderation.api.dto.RejectProductRequest;
 import kz.ask.moderation.api.dto.ResolveContentReportRequest;
 import kz.ask.moderation.api.dto.ReviewCatalogRequest;
 import kz.ask.moderation.application.ModerationProcessor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -87,6 +91,31 @@ public class ModerationController {
             @Valid @RequestBody ModerateProductRequest request) {
         moderationProcessor.moderateProduct(
                 principal, productId, request.getHidden());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/platform/moderation/queue")
+    public ResponseEntity<Page<ProductModerationItemResponse>> moderationQueue(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(moderationProcessor.listModerationQueue(principal, page, size));
+    }
+
+    @PostMapping("/platform/moderation/queue/{productId}/approve")
+    public ResponseEntity<Void> approveProduct(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @PathVariable UUID productId) {
+        moderationProcessor.approveProduct(principal, productId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/platform/moderation/queue/{productId}/reject")
+    public ResponseEntity<Void> rejectProduct(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @PathVariable UUID productId,
+            @RequestBody RejectProductRequest request) {
+        moderationProcessor.rejectProduct(principal, productId, request);
         return ResponseEntity.noContent().build();
     }
 }

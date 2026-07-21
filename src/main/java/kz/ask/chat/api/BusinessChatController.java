@@ -35,7 +35,7 @@ public class BusinessChatController {
     @GetMapping
     public ChatConversationListResponse listConversations(@AuthenticationPrincipal AskPrincipal principal,
                                                            @RequestParam UUID businessId) {
-        requireBusinessOwner(businessId, principal.getUserId());
+        requireBusinessMember(businessId, principal.getUserId());
         List<ChatConversationDto> items = chatService.listBusinessActiveConversations(businessId);
         return ChatConversationListResponse.builder().items(items).build();
     }
@@ -44,7 +44,7 @@ public class BusinessChatController {
     public ChatMessageListResponse getMessages(@AuthenticationPrincipal AskPrincipal principal,
                                                @PathVariable UUID conversationId,
                                                @RequestParam UUID businessId) {
-        requireBusinessOwner(businessId, principal.getUserId());
+        requireBusinessMember(businessId, principal.getUserId());
         chatService.requireBusinessAccess(conversationId, businessId);
         List<ChatMessageDto> items = chatService.getMessages(conversationId);
         return ChatMessageListResponse.builder().items(items).build();
@@ -55,7 +55,7 @@ public class BusinessChatController {
                                        @PathVariable UUID conversationId,
                                        @RequestParam UUID businessId,
                                        @RequestBody SendMessageRequest req) {
-        requireBusinessOwner(businessId, principal.getUserId());
+        requireBusinessMember(businessId, principal.getUserId());
         chatService.requireBusinessAccess(conversationId, businessId);
         return chatService.sendMessage(conversationId, null, "BUSINESS", req);
     }
@@ -65,13 +65,13 @@ public class BusinessChatController {
     public void markRead(@AuthenticationPrincipal AskPrincipal principal,
                          @PathVariable UUID conversationId,
                          @RequestParam UUID businessId) {
-        requireBusinessOwner(businessId, principal.getUserId());
+        requireBusinessMember(businessId, principal.getUserId());
         chatService.requireBusinessAccess(conversationId, businessId);
         chatService.markRead(conversationId, "BUSINESS");
     }
 
-    private void requireBusinessOwner(UUID businessId, UUID userId) {
-        if (!businessService.isOwnerOfBusiness(businessId, userId)) {
+    private void requireBusinessMember(UUID businessId, UUID userId) {
+        if (!businessService.isManagerOrAboveOfBusiness(businessId, userId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

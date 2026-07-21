@@ -5,9 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import kz.ask.business.domain.BranchMemberService;
 import kz.ask.business.domain.BusinessBranchService;
-import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.catalog.api.dto.ApproveResponse;
 import kz.ask.catalog.api.dto.CancelResponse;
@@ -16,6 +14,7 @@ import kz.ask.catalog.api.dto.MappingRequest;
 import kz.ask.catalog.api.dto.PreviewResponse;
 import kz.ask.catalog.api.dto.UploadResponse;
 import kz.ask.catalog.domain.CatalogCapabilityService;
+import kz.ask.catalog.domain.enums.CatalogCapability;
 import kz.ask.catalog.domain.dto.CatalogImportColumnMappingDto;
 import kz.ask.catalog.domain.dto.CatalogImportDto;
 import kz.ask.catalog.domain.dto.RawCatalogRowDto;
@@ -39,9 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ProductImportProcessor {
 
-    private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
-    private final BranchMemberService branchMemberService;
     private final CatalogCapabilityService catalogCapabilityService;
     private final CatalogImportService catalogImportService;
     private final CatalogImportColumnMappingService catalogImportColumnMappingService;
@@ -66,16 +63,10 @@ public class ProductImportProcessor {
         if (branch == null) {
             throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
-        if (businessService.isOwnerOfBusiness(branch.getBusinessId(), userId)) {
-            return;
+        if (!catalogCapabilityService.capabilitiesFor(userId, branch.getBusinessId())
+                .contains(CatalogCapability.EXCEL_IMPORT)) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
-        if (branchMemberService.isStaffOfBranch(branchId, userId)) {
-            return;
-        }
-        if (catalogCapabilityService.hasPlatformProductAccess(userId, branch.getBusinessId())) {
-            return;
-        }
-        throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
     }
 
     @Transactional

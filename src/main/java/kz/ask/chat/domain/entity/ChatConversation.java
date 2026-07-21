@@ -26,7 +26,7 @@ public class ChatConversation {
     @Id
     private UUID id;
 
-    @Column(name = "business_id", nullable = false)
+    @Column(name = "business_id")
     private UUID businessId;
 
     @Column(name = "customer_id")

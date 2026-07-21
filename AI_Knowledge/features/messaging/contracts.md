@@ -55,3 +55,8 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 - CUSTOMER message → increments businessUnreadCount
 - BUSINESS/PLATFORM message → increments customerUnreadCount
 - markRead resets the reader-side counter; PLATFORM reads as the "business side" of MANAGED_IMPORT conversations
+## Customer Support
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | /api/v1/chat/support | Bearer | Return the existing permanent `PLATFORM_SUPPORT` conversation or create it. Optional `businessId` opens business-to-platform context after membership validation |

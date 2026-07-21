@@ -12,9 +12,11 @@ import kz.ask.catalog.api.dto.BusinessProductUpdateRequest;
 import kz.ask.catalog.application.ProductOfferDto;
 import kz.ask.catalog.domain.entity.Product;
 import kz.ask.catalog.domain.entity.ProductOffer;
+import kz.ask.catalog.domain.enums.ProductModerationStatus;
 import kz.ask.catalog.infrastructure.mapper.ProductOfferMapper;
 import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
 import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.moderation.domain.ModerationKeywords;
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
@@ -54,11 +56,32 @@ public class ProductServiceImpl implements ProductService {
 
         Business businessRef = businessRepository.getReferenceById(businessId);
         BusinessBranch branchRef = businessBranchRepository.getReferenceById(branchId);
-        Category categoryRef = categoryRepository.getReferenceById(req.getCategoryId());
+        Category categoryRef = req.getCategoryId() != null
+                ? categoryRepository.getReferenceById(req.getCategoryId())
+                : resolveCategoryByLabel(req.getCategoryLabel());
 
         Product product = productRepository.save(productOfferMapper.toProductEntity(req, businessRef, categoryRef));
+        applyAutoModeration(product);
         ProductOffer offer = productOfferRepository.save(productOfferMapper.toOfferEntity(req, product, branchRef));
         return productOfferMapper.toDto(offer);
+    }
+
+    private void applyAutoModeration(Product product) {
+        String name = product.getName();
+        String prohibited = ModerationKeywords.prohibitedMatch(name);
+        if (prohibited != null) {
+            product.setModerationStatus(ProductModerationStatus.REJECTED);
+            product.setHiddenByModerator(true);
+            product.setModerationNote("Auto-rejected: prohibited category — " + prohibited);
+            return;
+        }
+        String toyWeapon = ModerationKeywords.toyWeaponMatch(name);
+        if (toyWeapon != null) {
+            product.setModerationStatus(ProductModerationStatus.PENDING);
+            product.setModerationNote("Manual review: potential toy weapon — " + toyWeapon);
+            return;
+        }
+        product.setModerationStatus(ProductModerationStatus.PENDING);
     }
 
     @Override
@@ -101,5 +124,12 @@ public class ProductServiceImpl implements ProductService {
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private Category resolveCategoryByLabel(String categoryLabel) {
+        if (categoryLabel == null || categoryLabel.isBlank()) {
+            return null;
+        }
+        return categoryRepository.findByNameIgnoreCase(categoryLabel.trim()).orElse(null);
     }
 }

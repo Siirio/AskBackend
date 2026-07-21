@@ -11,12 +11,17 @@ import kz.ask.business.domain.enums.BusinessModerationStatus;
 import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.catalog.domain.dto.ProductDto;
+import kz.ask.catalog.domain.entity.Product;
+import kz.ask.catalog.domain.enums.ProductModerationStatus;
 import kz.ask.catalog.domain.service.ProductService;
+import kz.ask.catalog.infrastructure.repository.ProductRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
 import kz.ask.moderation.api.dto.CatalogReviewBusinessResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
+import kz.ask.moderation.api.dto.ProductModerationItemResponse;
+import kz.ask.moderation.api.dto.RejectProductRequest;
 import kz.ask.moderation.domain.entity.ContentReport;
 import kz.ask.moderation.domain.enums.ContentReportStatus;
 import kz.ask.moderation.infrastructure.repository.ContentReportRepository;
@@ -31,6 +36,8 @@ import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +50,7 @@ public class ModerationProcessor {
     private final AppUserRepository appUserRepository;
     private final PlatformMembershipService platformMembershipService;
     private final ProductService productService;
+    private final ProductRepository productRepository;
     private final SearchVisibilityService searchVisibilityService;
     private final SignificantEventService significantEventService;
 
@@ -174,6 +182,58 @@ public class ModerationProcessor {
         if (membership == null || !membership.getPermissions().contains(permission)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductModerationItemResponse> listModerationQueue(
+            AskPrincipal principal, int page, int size) {
+        requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safePage = Math.max(page, 0);
+        return productRepository
+                .findByModerationStatusOrderByCreatedAtAsc(
+                        ProductModerationStatus.PENDING, PageRequest.of(safePage, safeSize))
+                .map(this::toModerationItemResponse);
+    }
+
+    @Transactional
+    public void approveProduct(AskPrincipal principal, UUID productId) {
+        requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
+        product.setModerationStatus(ProductModerationStatus.APPROVED);
+        product.setHiddenByModerator(false);
+        searchVisibilityService.republishProductOffers(productId);
+    }
+
+    @Transactional
+    public void rejectProduct(AskPrincipal principal, UUID productId, RejectProductRequest request) {
+        requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
+        if (request.getReason() == null || request.getReason().isBlank()) {
+            throw new ValidationException(ErrorCode.MODERATION_REJECT_REASON_REQUIRED);
+        }
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
+        product.setModerationStatus(ProductModerationStatus.REJECTED);
+        product.setHiddenByModerator(true);
+        product.setModerationNote(request.getReason());
+        searchVisibilityService.republishProductOffers(productId);
+        significantEventService.record(principal.getUserId(),
+                SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
+                product.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
+    }
+
+    private ProductModerationItemResponse toModerationItemResponse(Product product) {
+        return ProductModerationItemResponse.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .businessId(product.getBusiness().getId())
+                .businessName(product.getBusiness().getName())
+                .imageUrl(product.getImageUrl())
+                .createdAt(product.getCreatedAt())
+                .moderationNote(product.getModerationNote())
+                .moderationStatus(product.getModerationStatus().name())
+                .build();
     }
 
     private ContentReportResponse toResponse(ContentReport report) {

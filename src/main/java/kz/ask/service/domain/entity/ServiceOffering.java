@@ -35,9 +35,12 @@ public class ServiceOffering extends BaseUuidV7Entity {
     @JoinColumn(name = "business_id", nullable = false)
     private Business business;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
+
+    @Column(name = "category_label")
+    private String categoryLabel;
 
     @Column(nullable = false)
     private String name;

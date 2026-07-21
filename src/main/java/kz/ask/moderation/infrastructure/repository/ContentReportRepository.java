@@ -13,4 +13,6 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
 
     @EntityGraph(attributePaths = {"reporter", "resolvedBy"})
     List<ContentReport> findByStatusOrderByCreatedAtAsc(ContentReportStatus status);
+
+    Long countByStatus(ContentReportStatus status);
 }

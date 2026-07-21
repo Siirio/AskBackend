@@ -98,6 +98,10 @@ ask:
     allowed-content-types: ${ASK_CHAT_ALLOWED_CONTENT_TYPES:image/png,image/jpeg,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
   platform:
     super-admin-email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:}
+    superadmins:
+      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:superadmin@ask.com}
+        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD:874365rg3Tur4ygfcGHFsydhjIHTDuy74wFGJH}
+        display-name: Superadmin
   ai:
     search:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}

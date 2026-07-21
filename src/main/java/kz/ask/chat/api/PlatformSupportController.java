@@ -21,22 +21,22 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/platform/chat/conversations")
+@RequestMapping("/api/v1/platform/support/conversations")
 @RequiredArgsConstructor
-public class PlatformChatController {
+public class PlatformSupportController {
 
     private final PlatformChatProcessor platformChatProcessor;
 
     @GetMapping
     public ChatConversationListResponse listConversations(@AuthenticationPrincipal AskPrincipal principal) {
-        List<ChatConversationDto> items = platformChatProcessor.listConversations(principal);
+        List<ChatConversationDto> items = platformChatProcessor.listSupportConversations(principal);
         return ChatConversationListResponse.builder().items(items).build();
     }
 
     @GetMapping("/{conversationId}/messages")
     public ChatMessageListResponse getMessages(@AuthenticationPrincipal AskPrincipal principal,
                                                @PathVariable UUID conversationId) {
-        List<ChatMessageDto> items = platformChatProcessor.getMessages(principal, conversationId);
+        List<ChatMessageDto> items = platformChatProcessor.getSupportMessages(principal, conversationId);
         return ChatMessageListResponse.builder().items(items).build();
     }
 
@@ -44,21 +44,19 @@ public class PlatformChatController {
     public ChatMessageDto sendMessage(@AuthenticationPrincipal AskPrincipal principal,
                                       @PathVariable UUID conversationId,
                                       @RequestBody SendMessageRequest request) {
-        return platformChatProcessor.sendMessage(principal, conversationId, request);
+        return platformChatProcessor.sendSupportMessage(principal, conversationId, request);
     }
 
     @PostMapping("/{conversationId}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markRead(@AuthenticationPrincipal AskPrincipal principal,
                          @PathVariable UUID conversationId) {
-        platformChatProcessor.markRead(principal, conversationId);
+        platformChatProcessor.markSupportRead(principal, conversationId);
     }
 
     @PostMapping("/{conversationId}/close")
     public ChatConversationDto closeConversation(@AuthenticationPrincipal AskPrincipal principal,
                                                  @PathVariable UUID conversationId) {
-        return platformChatProcessor.closeConversation(principal, conversationId);
+        return platformChatProcessor.closeSupportConversation(principal, conversationId);
     }
-
 }
-

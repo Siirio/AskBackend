@@ -2,7 +2,7 @@ package kz.ask.catalog.api.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -19,12 +19,15 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessProductCreateRequest {
 
-    @NotNull
     private UUID categoryId;
 
+    private String categoryLabel;
+
     @NotBlank
+    @Size(max = 255)
     private String name;
 
+    @Size(max = 2000)
     private String description;
 
     private String sku;

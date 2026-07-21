@@ -73,7 +73,10 @@ public enum ErrorCode {
     CONTENT_REPORT_NOT_FOUND("Content report not found"),
     CONTENT_REPORT_INVALID_STATUS("Content report can only be resolved or rejected"),
     CONTENT_REPORT_ALREADY_RESOLVED("Content report is already closed"),
-    CATALOG_SETUP_ALREADY_COMPLETED("Catalog setup is not awaiting moderation");
+    CATALOG_SETUP_ALREADY_COMPLETED("Catalog setup is not awaiting moderation"),
+    MODERATION_REJECT_REASON_REQUIRED("Причина отклонения обязательна"),
+    CANNOT_DELETE_SELF("Невозможно удалить собственный аккаунт администратора"),
+    CANNOT_DELETE_LAST_SUPER_ADMIN("Невозможно удалить последнего активного суперадминистратора");
 
     private final String template;
 

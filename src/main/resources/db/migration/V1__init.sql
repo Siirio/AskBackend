@@ -1,5 +1,5 @@
 -- =============================================================================
--- V1: Complete current schema + reference data
+-- V1: Unified base schema — all tables, indexes, constraints, and reference data
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -220,6 +220,9 @@ CREATE TABLE product (
     description         VARCHAR(255),
     sku                 VARCHAR(255),
     characteristics_json TEXT,
+    moderation_status   VARCHAR(32)  NOT NULL DEFAULT 'PENDING'
+        CHECK (moderation_status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    moderation_note     VARCHAR(500),
     status              VARCHAR(50)  NOT NULL
 );
 
@@ -289,14 +292,15 @@ CREATE TABLE raw_catalog_row (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE service_offering (
-    id          UUID        NOT NULL PRIMARY KEY,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL,
-    business_id UUID        NOT NULL REFERENCES business(id),
-    category_id UUID        NOT NULL REFERENCES category(id),
-    name        VARCHAR(255) NOT NULL,
-    description VARCHAR(255),
-    status      VARCHAR(50)  NOT NULL
+    id             UUID        NOT NULL PRIMARY KEY,
+    created_at     TIMESTAMPTZ NOT NULL,
+    updated_at     TIMESTAMPTZ NOT NULL,
+    business_id    UUID        NOT NULL REFERENCES business(id),
+    category_id    UUID        REFERENCES category(id),
+    category_label VARCHAR(255),
+    name           VARCHAR(255) NOT NULL,
+    description    VARCHAR(255),
+    status         VARCHAR(50)  NOT NULL
 );
 
 CREATE TABLE service_branch_offer (
@@ -309,6 +313,7 @@ CREATE TABLE service_branch_offer (
     base_price              NUMERIC,
     duration_minutes        INTEGER,
     schedule_text           VARCHAR(255),
+    category_label          VARCHAR(255),
     active                  BOOLEAN     NOT NULL DEFAULT TRUE,
     status                  VARCHAR(50)  NOT NULL
 );
@@ -587,6 +592,7 @@ CREATE INDEX idx_business_contact_branch   ON business_contact (branch_id);
 
 CREATE INDEX idx_product_business  ON product (business_id);
 CREATE INDEX idx_product_category  ON product (category_id);
+CREATE INDEX idx_product_moderation_status ON product (moderation_status, created_at);
 
 CREATE INDEX idx_product_offer_product ON product_offer (product_id);
 CREATE INDEX idx_product_offer_branch  ON product_offer (branch_id);
@@ -845,7 +851,7 @@ ALTER TABLE service_offering ADD COLUMN IF NOT EXISTS image_url VARCHAR(2048);
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS chat_conversation (
     id UUID PRIMARY KEY,
-    business_id UUID NOT NULL REFERENCES business(id),
+    business_id UUID REFERENCES business(id),
     customer_id UUID,
     subject VARCHAR(512) NOT NULL,
     last_message_at TIMESTAMPTZ,

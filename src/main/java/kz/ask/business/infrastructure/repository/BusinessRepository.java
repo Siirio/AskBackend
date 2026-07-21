@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.enums.CatalogStatus;
+import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,4 +17,6 @@ public interface BusinessRepository extends JpaRepository<Business, UUID> {
             Instant deadline);
 
     List<Business> findByCatalogStatusOrderByCreatedAtAsc(CatalogStatus catalogStatus);
+
+    Long countByStatus(RecordStatus status);
 }

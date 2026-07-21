@@ -18,4 +18,8 @@ public interface PlatformMembershipService {
     PlatformMembershipDto update(UUID membershipId, PlatformRole role, Set<PlatformPermission> permissions);
 
     PlatformMembershipDto deactivate(UUID membershipId);
+
+    void delete(UUID membershipId);
+
+    long countByRole(PlatformRole role);
 }

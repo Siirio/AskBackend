@@ -13,6 +13,8 @@ public interface ChatService {
 
     ChatConversationDto startSystemConversation(UUID businessId, String customerName);
 
+    ChatConversationDto getOrCreatePlatformSupportConversation(UUID customerId, UUID businessId);
+
     ChatMessageDto sendMessage(UUID conversationId, UUID senderUserId, String senderType, SendMessageRequest req);
 
     List<ChatConversationDto> listCustomerConversations(UUID customerId);

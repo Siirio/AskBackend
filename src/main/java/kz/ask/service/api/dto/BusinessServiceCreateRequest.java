@@ -1,7 +1,7 @@
 package kz.ask.service.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -17,12 +17,15 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessServiceCreateRequest {
 
-    @NotNull
     private UUID categoryId;
 
+    private String categoryLabel;
+
     @NotBlank
+    @Size(max = 255)
     private String name;
 
+    @Size(max = 2000)
     private String description;
 
     private BigDecimal basePrice;

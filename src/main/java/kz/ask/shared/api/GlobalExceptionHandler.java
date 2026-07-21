@@ -129,6 +129,15 @@ public class GlobalExceptionHandler {
         log.warn("Data integrity violation", ex);
         Throwable cause = ex.getMostSpecificCause();
         String detail = cause != null ? cause.getMessage() : ex.getMessage();
+        if (detail != null && detail.toLowerCase().contains("value too long")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ErrorResponse.builder()
+                            .timestamp(Instant.now())
+                            .errorCode("VALUE_TOO_LONG")
+                            .message("Значение поля превышает допустимую длину")
+                            .detail(detail)
+                            .build());
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.builder()
                         .timestamp(Instant.now())

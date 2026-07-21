@@ -75,7 +75,11 @@ public class LoginProcessor {
             return buildSessionResponse(session, user, bizResult, allRoles);
         }
 
-        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+        boolean isPlatformRole = user.getRole() == AppRole.PLATFORM_SUPER_ADMIN
+                || user.getRole() == AppRole.PLATFORM_ADMIN
+                || user.getRole() == AppRole.PLATFORM_MODERATOR;
+
+        if (!isPlatformRole && Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
             AuthChallengeDto challenge = identityService.createChallenge(
                     user.getId(), user.getEmail(),
                     AuthChallengeChannel.EMAIL, AuthChallengePurpose.LOGIN,
@@ -89,9 +93,18 @@ public class LoginProcessor {
                     .build();
         }
 
-        String authority = "ROLE_USER";
+        String authority = resolveAuthority(user.getRole());
         AuthSessionDto session = identityService.createSession(user.getId(), authority, false);
         return buildSessionResponse(session, user, bizResult, allRoles);
+    }
+
+    private String resolveAuthority(AppRole role) {
+        return switch (role) {
+            case PLATFORM_SUPER_ADMIN -> "ROLE_SUPER_ADMIN";
+            case PLATFORM_ADMIN -> "ROLE_ADMIN";
+            case PLATFORM_MODERATOR -> "ROLE_MODERATOR";
+            default -> "ROLE_USER";
+        };
     }
 
     private BusinessRegistrationResult resolveBusiness(AppUserDto user) {

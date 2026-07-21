@@ -77,6 +77,13 @@ public class CustomerRequestProcessor {
     }
 
     @Transactional(readOnly = true)
+    public List<CustomerRequestHistoryItem> listAll() {
+        return customerRequestRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::toHistoryItem)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<CustomerRequestHistoryItem> getHistory(AskPrincipal principal) {
         return customerRequestRepository.findByUserIdOrderByCreatedAtDesc(principal.getUserId()).stream()
                 .map(this::toHistoryItem)
