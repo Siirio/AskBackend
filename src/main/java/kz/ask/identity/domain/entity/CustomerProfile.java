@@ -21,8 +21,6 @@ public class CustomerProfile extends BaseUuidV7Entity {
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
 
-    private String displayName;
-
-    @Column(name = "icon_url")
-    private String iconUrl;
+    @Column(name = "icon_file_id")
+    private String iconFileId;
 }

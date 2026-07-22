@@ -8,14 +8,14 @@ import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.business.domain.dto.BusinessDto;
 import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.BusinessProfileDto;
-import kz.ask.business.domain.dto.CityDto;
+import kz.ask.shared.domain.dto.CityDto;
 import kz.ask.business.domain.dto.UniqueOfferDto;
 import kz.ask.business.domain.entity.BranchMember;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
 import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.entity.BusinessProfile;
-import kz.ask.business.domain.entity.City;
+import kz.ask.shared.domain.entity.City;
 import kz.ask.business.domain.entity.UniqueOffer;
 import kz.ask.business.domain.enums.BranchMemberRole;
 import kz.ask.business.domain.enums.BusinessMemberRole;
@@ -145,6 +145,8 @@ public class BusinessMapper {
                 .onlineOnly(entity.getOnlineOnly())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
+                .workingHourStart(entity.getWorkingHourStart())
+                .workingHourEnd(entity.getWorkingHourEnd())
                 .build();
     }
 

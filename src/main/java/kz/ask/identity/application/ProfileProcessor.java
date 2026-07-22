@@ -26,7 +26,7 @@ public class ProfileProcessor {
     }
 
     @Transactional
-    public CustomerProfileResponse updateIcon(AskPrincipal principal, String iconUrl) {
-        return customerProfileService.updateIcon(principal.getUserId(), iconUrl);
+    public CustomerProfileResponse updateIcon(AskPrincipal principal, String iconFileId) {
+        return customerProfileService.updateIcon(principal.getUserId(), iconFileId);
     }
 }

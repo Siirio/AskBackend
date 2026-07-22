@@ -80,54 +80,6 @@ public class PlatformChatProcessor {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<ChatConversationDto> listSupportConversations(AskPrincipal principal) {
-        requirePermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        return chatService.listPlatformConversations().stream()
-                .filter(conversation -> ConversationType.PLATFORM_SUPPORT.name()
-                        .equals(conversation.getConversationType()))
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<ChatMessageDto> getSupportMessages(AskPrincipal principal, UUID conversationId) {
-        requirePermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        ChatConversationDto conversation = chatService.getConversation(conversationId);
-        if (!ConversationType.PLATFORM_SUPPORT.name().equals(conversation.getConversationType())) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
-        }
-        return chatService.getMessages(conversationId);
-    }
-
-    @Transactional
-    public ChatMessageDto sendSupportMessage(AskPrincipal principal, UUID conversationId, SendMessageRequest request) {
-        requirePermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        ChatConversationDto conversation = chatService.getConversation(conversationId);
-        if (!ConversationType.PLATFORM_SUPPORT.name().equals(conversation.getConversationType())) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
-        }
-        return chatService.sendMessage(conversationId, principal.getUserId(), PLATFORM_SENDER, request);
-    }
-
-    @Transactional
-    public void markSupportRead(AskPrincipal principal, UUID conversationId) {
-        requirePermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        chatService.markRead(conversationId, PLATFORM_SENDER);
-    }
-
-    @Transactional
-    public ChatConversationDto closeSupportConversation(AskPrincipal principal, UUID conversationId) {
-        requirePermission(principal, PlatformPermission.MANAGE_SUPPORT_CHATS);
-        return chatService.closeConversation(conversationId);
-    }
-
-    private void requirePermission(AskPrincipal principal, PlatformPermission permission) {
-        PlatformMembershipDto membership = platformMembershipService.findActiveByUser(principal.getUserId());
-        if (membership == null || !membership.getPermissions().contains(permission)) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
-        }
-    }
-
     private void requireAnyPermission(AskPrincipal principal, PlatformPermission... permissions) {
         PlatformMembershipDto membership = platformMembershipService.findActiveByUser(principal.getUserId());
         if (membership == null) {

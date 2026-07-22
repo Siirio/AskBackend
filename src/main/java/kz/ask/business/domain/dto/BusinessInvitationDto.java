@@ -21,9 +21,5 @@ public class BusinessInvitationDto {
     private String invitedByDisplayName;
     private String status;
     private Instant expiresAt;
-    private UUID acceptedByUserId;
-    private Instant acceptedAt;
-    private Instant declinedAt;
-    private Instant revokedAt;
     private Set<UUID> branchIds;
 }

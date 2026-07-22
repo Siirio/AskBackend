@@ -11,9 +11,9 @@ import kz.ask.moderation.api.dto.ModerateBusinessRequest;
 import kz.ask.moderation.api.dto.ModerateProductRequest;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.moderation.api.dto.RejectProductRequest;
-import kz.ask.moderation.api.dto.ResolveContentReportRequest;
 import kz.ask.moderation.api.dto.ReviewCatalogRequest;
 import kz.ask.moderation.application.ModerationProcessor;
+import kz.ask.platform.domain.enums.ModerationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -53,10 +53,10 @@ public class ModerationController {
     public ResponseEntity<ContentReportResponse> resolve(
             @AuthenticationPrincipal AskPrincipal principal,
             @PathVariable UUID reportId,
-            @Valid @RequestBody ResolveContentReportRequest request) {
+            @RequestParam ModerationStatus status,
+            @RequestBody(required = false) String note) {
         return ResponseEntity.ok(
-                moderationProcessor.resolve(
-                        principal, reportId, request.getStatus(), request.getResolution()));
+                moderationProcessor.resolve(principal, reportId, status, note));
     }
 
     @PatchMapping("/platform/businesses/{businessId}/moderation")

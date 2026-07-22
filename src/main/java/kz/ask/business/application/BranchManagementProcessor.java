@@ -8,9 +8,12 @@ import kz.ask.business.api.dto.UpdateBranchRequest;
 import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
-import kz.ask.item.domain.CatalogCapabilityService;
+import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.platform.domain.PlatformMembershipService;
+import kz.ask.platform.domain.dto.PlatformMembershipDto;
+import kz.ask.platform.domain.enums.PlatformPermission;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +27,8 @@ public class BranchManagementProcessor {
     private final BusinessService businessService;
     private final BusinessMemberService businessMemberService;
     private final BusinessBranchService businessBranchService;
-    private final CatalogCapabilityService catalogCapabilityService;
+    private final PlatformMembershipService platformMembershipService;
+    private final ManagedImportService managedImportService;
 
     @Transactional
     public BranchResponse createBranch(AskPrincipal principal, UUID businessId, CreateBranchRequest req) {
@@ -60,10 +64,18 @@ public class BranchManagementProcessor {
 
     private void verifyReadAccess(UUID userId, UUID businessId) {
         var member = businessMemberService.findByBusinessAndUser(businessId, userId);
-        if (member == null
-                && !catalogCapabilityService.hasPlatformCatalogAccess(userId, businessId)) {
+        if (member == null && !hasPlatformCatalogAccess(userId, businessId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    private boolean hasPlatformCatalogAccess(UUID userId, UUID businessId) {
+        PlatformMembershipDto membership = platformMembershipService.findActiveByUser(userId);
+        if (membership == null
+                || !membership.getPermissions().contains(PlatformPermission.EDIT_CATALOG_DURING_IMPORT)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(managedImportService.hasActiveGrant(businessId, userId));
     }
 
     private BranchResponse toResponse(BusinessBranchDto dto) {

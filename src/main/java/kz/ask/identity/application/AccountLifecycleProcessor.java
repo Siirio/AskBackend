@@ -75,7 +75,7 @@ public class AccountLifecycleProcessor {
 
     private void anonymizeProfile(CustomerProfile profile) {
         profile.setDisplayName(null);
-        profile.setIconUrl(null);
+        profile.setIconFileId(null);
     }
 
 }

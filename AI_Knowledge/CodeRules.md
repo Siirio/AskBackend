@@ -32,6 +32,12 @@ Forbidden: Controller→Repository, Mapper→Service/Processor/Repository, Servi
 - Mappers: `{Domain}Mapper` — Entity ↔ DTO, pure field copying. One mapper per domain package. Hand-written only, no MapStruct.
 - DTOs: `*Request` (incoming), `*Response` (outgoing), `*Dto` (internal transfer). `@Builder` on all. Standalone files — no nested classes.
 
+## Domain service and DTO identity
+- A domain service exists only for exactly one entity and has the exact name `{Entity}Service` / `{Entity}ServiceImpl`. `Item` therefore uses `ItemService`; a differently named service is not a domain service.
+- A `*Dto` is the general DTO for exactly one entity and copies that entity's complete domain shape. Its name is `{Entity}Dto`.
+- `*Request` is transport input and `*Response` is transport output. No other DTO category is allowed: delete or replace `*Result`, `*Item`, `*Batch`, `*Payload`, `*Document`, and composite "context" DTOs.
+- A current caller is not a reason to keep a service or DTO. Keep it only when an active product document owns the behavior; then rename it to the allowed component type or move the behavior into its owning entity service.
+
 ## Entities
 - Every entity extends `BaseUuidV7Entity`. UUIDv7 assigned before first persist.
 - Audit: `createdAt`, `updatedAt`. Lombok `@Getter`/`@Setter`, no `@Data`.
@@ -51,6 +57,13 @@ Forbidden: Controller→Repository, Mapper→Service/Processor/Repository, Servi
 - `@Transactional` on mutation methods only. Read-only queries must NOT have `@Transactional`.
 - Use `@RequiredArgsConstructor`. Never throw `RuntimeException` — use `kz.ask.shared.error` hierarchy.
 - Never call `findAll()` — always filtered query methods with specific criteria.
+
+## Derived decisions and AI
+- A business decision must be represented by one explicit decision result with outcome, reason code, and evidence. Do not encode a growing set of domain examples as sequential `if` branches in a processor or service.
+- Contextual cases are inputs to a policy or enrichment decision, not separate execution flows. For example, a possible weapon in a toy context can require review without creating a toy-specific moderation branch.
+- AI is advisory. It may return proposed structured data, aliases, or query interpretation, but it never selects businesses, changes the user-selected search scope, invents operational facts, or mutates canonical entities directly.
+- Generic search must not hardcode one vertical's vocabulary. Curated vocabulary belongs to an owned policy/data source with documented scope, provenance, and removal criteria.
+- Create an AI class only with its real consumer in the same change. Empty role folders, placeholder enrichers, and speculative adapters are unused code.
 
 ## Controller rules
 - Every method returns `ResponseEntity<T>` from `org.springframework.http.ResponseEntity`.

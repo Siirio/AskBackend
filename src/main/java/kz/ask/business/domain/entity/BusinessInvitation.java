@@ -51,16 +51,6 @@ public class BusinessInvitation extends BaseUuidV7Entity {
     @Column(nullable = false)
     private Instant expiresAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "accepted_by_user_id")
-    private AppUser acceptedBy; //status of acceptance cannot be part of the invitation, we need a separate table for tracking the acceptance/declining. Actually Make one ENUM that says the status - accepted, declined, revoked or suspended by platform user(ModerationStatus) and it must have app user, creation and last updated time(base entity extension)
-
-    private Instant acceptedAt;
-
-    private Instant declinedAt;
-
-    private Instant revokedAt;
-
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
             name = "business_invitation_branch",

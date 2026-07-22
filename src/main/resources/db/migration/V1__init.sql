@@ -60,7 +60,7 @@ CREATE TABLE customer_profile (
     updated_at   TIMESTAMPTZ NOT NULL,
     user_id      UUID        NOT NULL UNIQUE REFERENCES app_user(id),
     display_name VARCHAR(255),
-    icon_url     VARCHAR(2048)
+    icon_file_id VARCHAR(2048)
 );
 
 -- ---------------------------------------------------------------------------
@@ -104,7 +104,9 @@ CREATE TABLE business_branch (
     address_details VARCHAR(512),
     latitude        NUMERIC,
     longitude       NUMERIC,
-    online_only     BOOLEAN     NOT NULL
+    online_only        BOOLEAN     NOT NULL,
+    working_hour_start TIMESTAMPTZ,
+    working_hour_end   TIMESTAMPTZ
 );
 
 CREATE TABLE business_member (
@@ -147,17 +149,22 @@ CREATE TABLE business_invitation (
     invited_by_user_id  UUID         NOT NULL REFERENCES app_user(id),
     status              VARCHAR(50)  NOT NULL,
     token_hash          VARCHAR(64)  NOT NULL UNIQUE,
-    expires_at          TIMESTAMPTZ  NOT NULL,
-    accepted_by_user_id UUID         REFERENCES app_user(id),
-    accepted_at         TIMESTAMPTZ,
-    declined_at         TIMESTAMPTZ,
-    revoked_at          TIMESTAMPTZ
+    expires_at          TIMESTAMPTZ  NOT NULL
 );
 
 CREATE TABLE business_invitation_branch (
     business_invitation_id UUID NOT NULL REFERENCES business_invitation(id) ON DELETE CASCADE,
     branch_id              UUID NOT NULL REFERENCES business_branch(id) ON DELETE CASCADE,
     PRIMARY KEY (business_invitation_id, branch_id)
+);
+
+CREATE TABLE business_invitation_action (
+    id              UUID        NOT NULL PRIMARY KEY,
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    invitation_id   UUID        NOT NULL REFERENCES business_invitation(id),
+    action_type     VARCHAR(32) NOT NULL,
+    acted_by_user_id UUID       REFERENCES app_user(id)
 );
 
 CREATE TABLE business_profile (
@@ -375,29 +382,17 @@ CREATE TABLE managed_import_request_source (
 -- Moderation
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE business_verification_history (
-    id          UUID        NOT NULL PRIMARY KEY,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL,
-    business_id UUID        NOT NULL REFERENCES business(id),
-    from_status VARCHAR(32),
-    to_status   VARCHAR(32) NOT NULL,
-    edited_by   UUID        REFERENCES app_user(id),
-    comment     TEXT
-);
-
-CREATE TABLE content_report (
-    id                  UUID        NOT NULL PRIMARY KEY,
-    created_at          TIMESTAMPTZ NOT NULL,
-    updated_at          TIMESTAMPTZ NOT NULL,
-    reporter_user_id    UUID        NOT NULL REFERENCES app_user(id),
-    target_type         VARCHAR(32) NOT NULL,
-    target_id           UUID        NOT NULL,
-    reason_code         VARCHAR(64) NOT NULL,
-    details             TEXT,
-    status              VARCHAR(32) NOT NULL,
-    resolved_by_user_id UUID        REFERENCES app_user(id),
-    resolved_at         TIMESTAMPTZ
+CREATE TABLE moderation_action (
+    id                UUID        NOT NULL PRIMARY KEY,
+    created_at        TIMESTAMPTZ NOT NULL,
+    updated_at        TIMESTAMPTZ NOT NULL,
+    target_type       VARCHAR(32) NOT NULL,
+    target_id         UUID        NOT NULL,
+    moderation_status VARCHAR(32) NOT NULL,
+    made_by_user_id   UUID        REFERENCES app_user(id),
+    reason_code       VARCHAR(64),
+    details           TEXT,
+    note              VARCHAR(2000)
 );
 
 -- ---------------------------------------------------------------------------
@@ -606,10 +601,10 @@ CREATE UNIQUE INDEX uq_chat_conversation_business_customer_general
 
 CREATE INDEX idx_managed_import_request_status ON managed_import_request (status, created_at);
 
-CREATE INDEX idx_verification_history_business ON business_verification_history (business_id, created_at);
+CREATE INDEX idx_moderation_action_status ON moderation_action (moderation_status, created_at);
+CREATE INDEX idx_moderation_action_target ON moderation_action (target_type, target_id);
 
-CREATE INDEX idx_content_report_status_created ON content_report (status, created_at);
-CREATE INDEX idx_content_report_target ON content_report (target_type, target_id);
+CREATE INDEX idx_business_invitation_action_invitation ON business_invitation_action (invitation_id);
 
 CREATE INDEX idx_legal_acceptance_user ON legal_acceptance (user_id, accepted_at DESC);
 

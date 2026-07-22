@@ -36,7 +36,7 @@ public class ProfileController {
 
     @PostMapping("/icon")
     public ResponseEntity<CustomerProfileResponse> updateIcon(@AuthenticationPrincipal AskPrincipal principal,
-                                                               @RequestParam String iconUrl) {
-        return ResponseEntity.ok(profileProcessor.updateIcon(principal, iconUrl));
+                                                               @RequestParam String iconFileId) {
+        return ResponseEntity.ok(profileProcessor.updateIcon(principal, iconFileId));
     }
 }

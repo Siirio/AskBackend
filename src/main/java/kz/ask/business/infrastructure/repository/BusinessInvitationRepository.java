@@ -13,10 +13,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BusinessInvitationRepository extends JpaRepository<BusinessInvitation, UUID> {
 
-    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy", "acceptedBy"})
+    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy"})
     List<BusinessInvitation> findByBusinessIdOrderByCreatedAtDesc(UUID businessId);
 
-    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy", "acceptedBy"})
+    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy"})
     List<BusinessInvitation> findByInvitedEmailIgnoreCaseAndStatusOrderByCreatedAtDesc(
             String invitedEmail,
             BusinessInvitationStatus status);
@@ -37,6 +37,6 @@ public interface BusinessInvitationRepository extends JpaRepository<BusinessInvi
             BusinessInvitationStatus status);
 
     @Override
-    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy", "acceptedBy"})
+    @EntityGraph(attributePaths = {"branchIds", "business", "invitedBy"})
     Optional<BusinessInvitation> findById(UUID id);
 }

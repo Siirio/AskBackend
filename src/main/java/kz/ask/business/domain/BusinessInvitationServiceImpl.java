@@ -13,9 +13,12 @@ import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessInvitationDto;
 import kz.ask.business.domain.dto.CreatedBusinessInvitationDto;
 import kz.ask.business.domain.entity.BusinessInvitation;
+import kz.ask.business.domain.entity.BusinessInvitationAction;
 import kz.ask.business.domain.enums.BusinessInvitationStatus;
 import kz.ask.business.domain.enums.BusinessMemberRole;
+import kz.ask.business.domain.enums.InvitationActionType;
 import kz.ask.business.infrastructure.mapper.BusinessInvitationMapper;
+import kz.ask.business.infrastructure.repository.BusinessInvitationActionRepository;
 import kz.ask.business.infrastructure.repository.BusinessInvitationRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
@@ -34,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BusinessInvitationServiceImpl implements BusinessInvitationService {
 
     private final BusinessInvitationRepository businessInvitationRepository;
+    private final BusinessInvitationActionRepository businessInvitationActionRepository;
     private final BusinessRepository businessRepository;
     private final AppUserRepository appUserRepository;
     private final BusinessInvitationMapper businessInvitationMapper;
@@ -124,8 +128,7 @@ public class BusinessInvitationServiceImpl implements BusinessInvitationService 
     public BusinessInvitationDto accept(UUID invitationId, UUID acceptedByUserId) {
         BusinessInvitation invitation = requirePending(invitationId);
         invitation.setStatus(BusinessInvitationStatus.ACCEPTED);
-        invitation.setAcceptedBy(appUserRepository.getReferenceById(acceptedByUserId));
-        invitation.setAcceptedAt(Instant.now());
+        recordAction(invitation, InvitationActionType.ACCEPTED, acceptedByUserId);
         return businessInvitationMapper.toDto(invitation);
     }
 
@@ -134,7 +137,7 @@ public class BusinessInvitationServiceImpl implements BusinessInvitationService 
     public BusinessInvitationDto decline(UUID invitationId) {
         BusinessInvitation invitation = requirePending(invitationId);
         invitation.setStatus(BusinessInvitationStatus.DECLINED);
-        invitation.setDeclinedAt(Instant.now());
+        recordAction(invitation, InvitationActionType.DECLINED, null);
         return businessInvitationMapper.toDto(invitation);
     }
 
@@ -143,8 +146,18 @@ public class BusinessInvitationServiceImpl implements BusinessInvitationService 
     public BusinessInvitationDto revoke(UUID invitationId) {
         BusinessInvitation invitation = requirePending(invitationId);
         invitation.setStatus(BusinessInvitationStatus.REVOKED);
-        invitation.setRevokedAt(Instant.now());
+        recordAction(invitation, InvitationActionType.REVOKED, null);
         return businessInvitationMapper.toDto(invitation);
+    }
+
+    private void recordAction(BusinessInvitation invitation, InvitationActionType actionType, UUID actedByUserId) {
+        BusinessInvitationAction action = new BusinessInvitationAction();
+        action.setInvitation(invitation);
+        action.setActionType(actionType);
+        if (actedByUserId != null) {
+            action.setActedBy(appUserRepository.getReferenceById(actedByUserId));
+        }
+        businessInvitationActionRepository.save(action);
     }
 
     private BusinessInvitation requirePending(UUID invitationId) {

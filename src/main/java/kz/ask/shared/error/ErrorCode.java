@@ -59,7 +59,7 @@ public enum ErrorCode {
     INVITATION_ROLE_NOT_ALLOWED("Эту роль нельзя назначить через приглашение"),
     LEGAL_DOCUMENT_NOT_FOUND("Active legal document not found"),
     ACCOUNT_OWNER_TRANSFER_REQUIRED("Transfer ownership or delete the owned business before deleting the account"),
-    SELLER_ONBOARDING_INVALID("Seller onboarding data is invalid"),
+    BUSINESS_ONBOARDING_INVALID("Business onboarding data is invalid"),
     MANAGED_IMPORT_NOT_FOUND("Managed import request not found"),
     MANAGED_IMPORT_ACTIVE_EXISTS("An active managed import already exists for this business"),
     MANAGED_IMPORT_FORBIDDEN("Managed import access is not allowed"),

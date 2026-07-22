@@ -9,14 +9,14 @@ import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.enums.BusinessModerationStatus;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
-import kz.ask.item.domain.entity.Item;
+import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.managedimport.domain.entity.ManagedImportRequest;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
 import kz.ask.managedimport.infrastructure.repository.ManagedImportRequestRepository;
 
-import kz.ask.item.domain.enums.ProductModerationStatus;
+import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 
-import kz.ask.item.infrastructure.repository.ProductRepository;
+import kz.ask.offer.item.infrastructure.repository.ProductRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
@@ -24,13 +24,14 @@ import kz.ask.moderation.api.dto.CatalogReviewBusinessResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.moderation.api.dto.RejectProductRequest;
-import kz.ask.moderation.domain.entity.ContentReport;
-import kz.ask.moderation.domain.enums.ContentReportStatus;
-import kz.ask.moderation.infrastructure.repository.ContentReportRepository;
+import kz.ask.moderation.infrastructure.repository.ModerationActionRepository;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
+import kz.ask.moderation.domain.entity.ModerationAction;
+import kz.ask.platform.domain.enums.ModerationStatus;
+import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.search.domain.SearchVisibilityService;
+import kz.ask.search.basic.domain.SearchVisibilityService;
 
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -47,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ModerationProcessor {
 
-    private final ContentReportRepository contentReportRepository;
+    private final ModerationActionRepository moderationActionRepository;
     private final BusinessRepository businessRepository;
     private final ManagedImportRequestRepository managedImportRequestRepository;
     private final AppUserRepository appUserRepository;
@@ -60,20 +61,21 @@ public class ModerationProcessor {
     public ContentReportResponse report(
             AskPrincipal principal,
             CreateContentReportRequest request) {
-        ContentReport report = new ContentReport();
-        report.setReporter(appUserRepository.getReferenceById(principal.getUserId()));
-        report.setTargetType(request.getTargetType());
-        report.setTargetId(request.getTargetId());
-        report.setReasonCode(request.getReasonCode());
-        report.setDetails(request.getDetails());
-        report.setStatus(ContentReportStatus.OPEN);
-        return toResponse(contentReportRepository.save(report));
+        ModerationAction action = new ModerationAction();
+        action.setTargetType(request.getTargetType());
+        action.setTargetId(request.getTargetId());
+        action.setReasonCode(request.getReasonCode());
+        action.setDetails(request.getDetails());
+        action.setModerationStatus(ModerationStatus.BEING_DISCUSSED);
+        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
+        return toResponse(moderationActionRepository.save(action));
     }
 
     @Transactional(readOnly = true)
     public List<ContentReportResponse> listOpen(AskPrincipal principal) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        return contentReportRepository.findByStatusOrderByCreatedAtAsc(ContentReportStatus.OPEN)
+        return moderationActionRepository
+                .findByModerationStatusOrderByCreatedAtAsc(ModerationStatus.BEING_DISCUSSED)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -118,24 +120,23 @@ public class ModerationProcessor {
     public ContentReportResponse resolve(
             AskPrincipal principal,
             UUID reportId,
-            ContentReportStatus status,
-            String resolution) {
+            ModerationStatus status,
+            String note) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        if (status != ContentReportStatus.RESOLVED
-                && status != ContentReportStatus.REJECTED) {
+        if (status != ModerationStatus.VALID
+                && status != ModerationStatus.BANNED) {
             throw new ValidationException(ErrorCode.CONTENT_REPORT_INVALID_STATUS);
         }
-        ContentReport report = contentReportRepository.findById(reportId)
+        ModerationAction action = moderationActionRepository.findById(reportId)
                 .orElseThrow(() -> new NotFoundException(
                         ErrorCode.CONTENT_REPORT_NOT_FOUND, reportId));
-        if (report.getStatus() != ContentReportStatus.OPEN) {
+        if (action.getModerationStatus() != ModerationStatus.BEING_DISCUSSED) {
             throw new ConflictException(ErrorCode.CONTENT_REPORT_ALREADY_RESOLVED);
         }
-        report.setStatus(status);
-
-        report.setResolvedBy(appUserRepository.getReferenceById(principal.getUserId()));
-        report.setResolvedAt(Instant.now());
-        return toResponse(report);
+        action.setModerationStatus(status);
+        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
+        action.setNote(note);
+        return toResponse(action);
     }
 
     @Transactional
@@ -148,6 +149,14 @@ public class ModerationProcessor {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND, businessId));
         business.setModerationStatus(status);
         searchVisibilityService.republishBusinessOffers(businessId);
+
+        ModerationAction action = new ModerationAction();
+        action.setTargetType(ModerationTargetType.BUSINESS);
+        action.setTargetId(businessId);
+        action.setModerationStatus(mapBusinessStatus(status));
+        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
+        moderationActionRepository.save(action);
+
         if (status == BusinessModerationStatus.SUSPENDED) {
             significantEventService.record(principal.getUserId(),
                     SignificantEventType.BUSINESS_SUSPENDED, businessId, businessId, Map.of());
@@ -170,6 +179,16 @@ public class ModerationProcessor {
                 ? ProductModerationStatus.REJECTED
                 : ProductModerationStatus.APPROVED);
         searchVisibilityService.republishProductOffers(productId);
+
+        ModerationAction action = new ModerationAction();
+        action.setTargetType(ModerationTargetType.PRODUCT);
+        action.setTargetId(productId);
+        action.setModerationStatus(Boolean.TRUE.equals(hidden)
+                ? ModerationStatus.BANNED
+                : ModerationStatus.VALID);
+        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
+        moderationActionRepository.save(action);
+
         if (Boolean.TRUE.equals(hidden)) {
             significantEventService.record(principal.getUserId(),
                     SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
@@ -185,6 +204,16 @@ public class ModerationProcessor {
             return PlatformPermission.SUSPEND_BUSINESS;
         }
         return PlatformPermission.MODERATE_CONTENT;
+    }
+
+    private ModerationStatus mapBusinessStatus(BusinessModerationStatus status) {
+        if (status == BusinessModerationStatus.BANNED) {
+            return ModerationStatus.BANNED;
+        }
+        if (status == BusinessModerationStatus.SUSPENDED) {
+            return ModerationStatus.BANNED;
+        }
+        return ModerationStatus.VALID;
     }
 
     private void requirePermission(AskPrincipal principal, PlatformPermission permission) {
@@ -243,18 +272,16 @@ public class ModerationProcessor {
                 .build();
     }
 
-    private ContentReportResponse toResponse(ContentReport report) {
+    private ContentReportResponse toResponse(ModerationAction action) {
         return ContentReportResponse.builder()
-                .id(report.getId())
-                .targetType(report.getTargetType().name())
-                .targetId(report.getTargetId())
-                .reasonCode(report.getReasonCode())
-                .details(report.getDetails())
-                .status(report.getStatus().name())
-                .reporterUserId(report.getReporter().getId())
-                .reporterName(report.getReporter().getDisplayName())
-                .createdAt(report.getCreatedAt())
-                .resolvedAt(report.getResolvedAt())
+                .id(action.getId())
+                .targetType(action.getTargetType().name())
+                .targetId(action.getTargetId())
+                .reasonCode(action.getReasonCode())
+                .details(action.getDetails())
+                .status(action.getModerationStatus().name())
+                .note(action.getNote())
+                .createdAt(action.getCreatedAt())
                 .build();
     }
 }

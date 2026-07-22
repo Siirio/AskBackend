@@ -57,6 +57,7 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
 
     private String sourceNotes;
 
+    @Column(nullable = false)
     private Instant expiresAt;
 
     private Instant completedAt;

@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 
 @Entity
@@ -30,6 +31,10 @@ public class BusinessBranch extends BaseUuidV7Entity {
 
     @Column(length = 512)
     private String addressDetails;
+
+    private OffsetDateTime workingHourStart;
+
+    private OffsetDateTime workingHourEnd;
 
     private BigDecimal latitude;
 

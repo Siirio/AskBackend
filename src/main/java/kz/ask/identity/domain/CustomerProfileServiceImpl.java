@@ -40,11 +40,11 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
 
     @Override
     @Transactional
-    public CustomerProfileResponse updateIcon(UUID userId, String iconUrl) {
+    public CustomerProfileResponse updateIcon(UUID userId, String iconFileId) {
         CustomerProfile profile = customerProfileRepository.findByUserId(userId)
                 .orElseGet(() -> createDefaultProfile(userId));
 
-        profile.setIconUrl(iconUrl);
+        profile.setIconFileId(iconFileId);
 
         return toResponse(profile);
     }
@@ -63,7 +63,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         }
         return CustomerProfileResponse.builder()
                 .displayName(profile.getDisplayName())
-                .iconUrl(profile.getIconUrl())
+                .iconFileId(profile.getIconFileId())
                 .build();
     }
 }

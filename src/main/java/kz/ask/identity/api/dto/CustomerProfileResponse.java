@@ -15,5 +15,5 @@ public class CustomerProfileResponse {
 
     private String displayName;
 
-    private String iconUrl;
+    private String iconFileId;
 }

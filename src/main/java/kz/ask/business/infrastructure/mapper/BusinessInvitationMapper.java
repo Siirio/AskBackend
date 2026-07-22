@@ -19,10 +19,6 @@ public class BusinessInvitationMapper {
                 .invitedByDisplayName(entity.getInvitedBy().getDisplayName())
                 .status(entity.getStatus().name())
                 .expiresAt(entity.getExpiresAt())
-                .acceptedByUserId(entity.getAcceptedBy() == null ? null : entity.getAcceptedBy().getId())
-                .acceptedAt(entity.getAcceptedAt())
-                .declinedAt(entity.getDeclinedAt())
-                .revokedAt(entity.getRevokedAt())
                 .branchIds(new LinkedHashSet<>(entity.getBranchIds()))
                 .build();
     }

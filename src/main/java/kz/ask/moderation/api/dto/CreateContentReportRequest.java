@@ -3,7 +3,7 @@ package kz.ask.moderation.api.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
-import kz.ask.moderation.domain.enums.ReportTargetType;
+import kz.ask.platform.domain.enums.ModerationTargetType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,7 +12,7 @@ import lombok.Setter;
 public class CreateContentReportRequest {
 
     @NotNull
-    private ReportTargetType targetType;
+    private ModerationTargetType targetType;
 
     @NotNull
     private UUID targetId;

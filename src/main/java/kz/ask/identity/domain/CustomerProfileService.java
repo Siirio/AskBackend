@@ -10,5 +10,5 @@ public interface CustomerProfileService {
 
     CustomerProfileResponse updateProfile(UUID userId, UpdateCustomerProfileRequest req);
 
-    CustomerProfileResponse updateIcon(UUID userId, String iconUrl);
+    CustomerProfileResponse updateIcon(UUID userId, String iconFileId);
 }

@@ -34,6 +34,12 @@ Read `AI_Knowledge/ProductVision.md`, `CodeRules.md`, `Locks.md`. Scan `features
 ### 4. Self-maintenance
 Run system-maintainer protocol: compress bloated docs, migrate misplaced content, archive dead features, flag stale docs, deduplicate locks.
 
+## Deletion-first cleanup
+- Unused means not justified by an active product vision, feature README, API contract, UX flow, or lock. A Java/frontend reference proves only dependency, not that the behavior belongs in the product.
+- Before deletion, trace callers and data contracts. Delete a self-contained flow when no active documented use case owns it; if documentation is absent or conflicts, ask the user before choosing its behavior.
+- A domain service has a one-to-one name with its entity: `Item` uses `ItemService`, `Business` uses `BusinessService`. A differently named `*Service` is not a domain service and must be deleted unless an active document explicitly defines it as another allowed component.
+- DTOs are only transport `*Request`, transport `*Response`, or one-to-one `{Entity}Dto` domain copies. Composite/workflow DTOs are deletion or refactor candidates, never a fourth category.
+
 ## Machine Bootstrap (runs ONCE per machine — NOT committed)
 
 `.claude/machine-bootstrap.lock` must be in `.gitignore`. It tracks whether THIS machine has plugins, MCPs, and related repos installed. Every new developer re-runs this.
