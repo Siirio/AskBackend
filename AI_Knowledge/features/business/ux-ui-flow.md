@@ -1,7 +1,7 @@
 # Business — Frontend UX Expectations
 
 ## Business cabinet sections (MVP)
-- Activity (requests, responses, supplier checks)
+- Activity (shared customer conversations)
 - Products (manage catalog)
 - Services (manage service offerings)
 - Company/branch profile

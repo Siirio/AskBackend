@@ -194,14 +194,14 @@ PRODUCT_CATEGORIES = ["Автозапчасти", "Бытовая техника
 SERVICE_CATEGORIES = ["Услуги красоты", "Медицинские услуги", "Образование", "Спорт и фитнес", "IT услуги", "Ремонт и сервис", "Строительство", "Продукты питания"]
 
 def product_for_category(cat: str, idx: int):
-    """Pick a product from the pool matching the category, cycling through."""
+    """Pick a item from the pool matching the category, cycling through."""
     matching = [p for p in PRODUCT_POOL if _cat_of_product(p) == cat]
     if not matching:
         matching = PRODUCT_POOL
     return matching[idx % len(matching)]
 
 def _cat_of_product(p):
-    """Infer category from product characteristics."""
+    """Infer category from item characteristics."""
     text = f"{p[0]} {p[3]}"
     if any(w in text.lower() for w in ["фильтр", "колодк", "свеч", "амортизат", "ремень", "грм", "шины", "диски", "масло", "аккумулят"]):
         return "Автозапчасти"
@@ -325,7 +325,7 @@ def gen_company(prefix, name, legal, cat_name, city_name, idx, has_products=True
             use_entity = (idx + pi) % 3 != 0
             cat_ref = f"'{cat_id}'" if use_entity else "null"
             actual_cat_label = category_label
-            w(f"INSERT INTO product (id, created_at, updated_at, business_id, category_id, category_label, name, description, sku, characteristics_json, status) VALUES")
+            w(f"INSERT INTO item (id, created_at, updated_at, business_id, category_id, category_label, name, description, sku, characteristics_json, status) VALUES")
             w(f"  ('{pid}', {ts()}, {ts()}, '{bid}', {cat_ref}, '{actual_cat_label}', '{pname}', '{pdesc}', '{psku}', '{pchar}', 'ACTIVE');")
 
             for brid in branch_ids:

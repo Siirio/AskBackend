@@ -46,7 +46,7 @@ INSERT INTO business_branch (
     ('12000000-0000-0000-0000-000000000004', now(), now(), '10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-0000000000c2', 'Fix Hub Almaty', 'Tole Bi Street 89', 43.2550000, 76.9286000, false, 'ACTIVE'),
     ('12000000-0000-0000-0000-000000000005', now(), now(), '10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-0000000000c3', 'Fix Hub Astana', 'Mangilik El Avenue 37', 51.0907000, 71.4181000, false, 'ACTIVE');
 
-INSERT INTO product (
+INSERT INTO item (
     id, created_at, updated_at, business_id, category_id, category_label, name, description, sku, characteristics_json, status
 ) VALUES
     ('13000000-0000-0000-0000-000000000001', now(), now(), '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000af', 'Running shoes', 'Trail Runner Pro', 'Water-resistant trail running shoes with aggressive grip.', 'TL-RUN-PRO', '{"terrain":"trail","waterResistant":true}', 'ACTIVE'),
@@ -108,21 +108,21 @@ INSERT INTO search_document (
 )
 SELECT
     ('17000000-0000-0000-0000-' || lpad(row_number() OVER (ORDER BY product_offer.id)::text, 12, '0'))::uuid,
-    now(), now(), 'PRODUCT', product_offer.id, product.name, product.description, product.category_label, product.sku,
-    product.characteristics_json, business.id, branch.id, product_offer.price, 'ACTIVE', 'CATALOG', product_offer.id, 1,
-    lower(product.name), business.name, product.category_label, business.name, branch.name,
-    coalesce(product.characteristics_json, '{}')::jsonb,
-    coalesce((SELECT string_agg(tag, ' ') FROM product_tag WHERE product_id = product.id), ''),
+    now(), now(), 'PRODUCT', product_offer.id, item.name, item.description, item.category_label, item.sku,
+    item.characteristics_json, business.id, branch.id, product_offer.price, 'ACTIVE', 'CATALOG', product_offer.id, 1,
+    lower(item.name), business.name, item.category_label, business.name, branch.name,
+    coalesce(item.characteristics_json, '{}')::jsonb,
+    coalesce((SELECT string_agg(tag, ' ') FROM product_tag WHERE product_id = item.id), ''),
     'KZT', branch.latitude, branch.longitude,
-    CASE WHEN product.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN 'AVAILABLE' ELSE 'UNKNOWN' END,
-    CASE WHEN product.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN 'BUSINESS' ELSE 'UNKNOWN' END,
-    CASE WHEN product.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN now() ELSE null END,
+    CASE WHEN item.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN 'AVAILABLE' ELSE 'UNKNOWN' END,
+    CASE WHEN item.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN 'BUSINESS' ELSE 'UNKNOWN' END,
+    CASE WHEN item.sku IN ('TL-RUN-PRO', 'NT-SONY-XM5', 'NT-AIRBEAT', 'TL-VEST-8L') THEN now() ELSE null END,
     now()
 FROM product_offer
-JOIN product ON product.id = product_offer.product_id
-JOIN business ON business.id = product.business_id
+JOIN item ON item.id = product_offer.product_id
+JOIN business ON business.id = item.business_id
 JOIN business_branch branch ON branch.id = product_offer.branch_id
-WHERE product.id::text LIKE '13000000-0000-0000-0000-%';
+WHERE item.id::text LIKE '13000000-0000-0000-0000-%';
 
 INSERT INTO search_document (
     id, created_at, updated_at, document_type, service_branch_offer_id, title, summary, category_label,

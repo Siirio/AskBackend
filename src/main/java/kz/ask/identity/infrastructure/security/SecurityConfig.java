@@ -89,7 +89,7 @@ public class SecurityConfig {
                     "/api/v1/cities",
                     "/api/v1/categories",
                     "/api/v1/categories/*/subcategories",
-                    "/api/v1/businesses/*/brand-profile",
+                    "/api/v1/businesses/*/business-profile",
                     "/api/v1/businesses/*/storefront",
                     "/api/v1/businesses/*/drops",
                     "/api/v1/legal/documents"
@@ -101,7 +101,8 @@ public class SecurityConfig {
                     "/api/v1/auth/customer/register",
                     "/api/v1/auth/business/login/start",
                     "/api/v1/auth/business/register",
-                    "/api/v1/auth/verify"
+                    "/api/v1/auth/verify",
+                    "/api/v1/auth/cancel-verification"
                 ).permitAll()
                 .requestMatchers(
                     "/oauth2/**",

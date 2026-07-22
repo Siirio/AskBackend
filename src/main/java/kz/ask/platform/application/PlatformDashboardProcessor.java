@@ -4,8 +4,8 @@ import java.util.List;
 import kz.ask.business.domain.enums.UniqueOfferStatus;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.business.infrastructure.repository.UniqueOfferRepository;
-import kz.ask.catalog.domain.enums.ProductModerationStatus;
-import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.item.domain.enums.ProductModerationStatus;
+import kz.ask.item.infrastructure.repository.ProductRepository;
 import kz.ask.chat.domain.enums.ConversationStatus;
 import kz.ask.chat.domain.enums.ConversationType;
 import kz.ask.chat.domain.repository.ChatConversationRepository;
@@ -16,7 +16,7 @@ import kz.ask.moderation.infrastructure.repository.ContentReportRepository;
 import kz.ask.platform.api.dto.PlatformDashboardResponse;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.service.infrastructure.repository.ServiceOfferingRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import lombok.RequiredArgsConstructor;
@@ -43,9 +43,9 @@ public class PlatformDashboardProcessor {
         }
         List<UniqueOfferStatus> activeOfferStatuses = List.of(UniqueOfferStatus.ACTIVE, UniqueOfferStatus.UPCOMING);
         return PlatformDashboardResponse.builder()
-                .totalBusinesses(businessRepository.countByStatus(RecordStatus.ACTIVE))
-                .totalActiveProducts(productRepository.countByStatus(RecordStatus.ACTIVE))
-                .totalActiveServices(serviceOfferingRepository.countByStatus(RecordStatus.ACTIVE))
+                .totalBusinesses(businessRepository.count())
+                .totalActiveProducts(productRepository.count())
+                .totalActiveServices(serviceOfferingRepository.count())
                 .totalActiveDrops(uniqueOfferRepository.countByStatusIn(activeOfferStatuses))
                 .openSupportConversations(
                         chatConversationRepository.countByConversationStatusAndConversationType(

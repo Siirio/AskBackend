@@ -11,7 +11,6 @@ import kz.ask.business.infrastructure.repository.BusinessMemberRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
@@ -47,8 +46,8 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     @Override
     public BusinessMemberDto findByOwner(UUID userId) {
-        List<BusinessMember> members = businessMemberRepository.findByUserIdAndRoleAndStatus(
-                userId, BusinessMemberRole.OWNER, RecordStatus.ACTIVE);
+        List<BusinessMember> members = businessMemberRepository.findByUserIdAndRole(
+                userId, BusinessMemberRole.OWNER);
         return members.isEmpty() ? null : businessMapper.toBusinessMemberDto(members.get(0));
     }
 
@@ -60,7 +59,7 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     @Override
     public List<BusinessMemberDto> findActiveByUser(UUID userId) {
-        return businessMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE).stream()
+        return businessMemberRepository.findByUserId(userId).stream()
                 .map(businessMapper::toBusinessMemberDto)
                 .toList();
     }
@@ -75,7 +74,6 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
     public Boolean isOwnerOfBusiness(UUID businessId, UUID userId) {
         BusinessMemberDto member = findByBusinessAndUser(businessId, userId);
         return member != null
-                && member.getStatus().equals(RecordStatus.ACTIVE.name())
                 && member.getRole().equals(BusinessMemberRole.OWNER.name());
     }
 
@@ -85,9 +83,8 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
         if (member == null) {
             return false;
         }
-        return member.getStatus().equals(RecordStatus.ACTIVE.name())
-                && (member.getRole().equals(BusinessMemberRole.OWNER.name())
-                || member.getRole().equals(BusinessMemberRole.MANAGER.name()));
+        return member.getRole().equals(BusinessMemberRole.OWNER.name())
+                || member.getRole().equals(BusinessMemberRole.MANAGER.name());
     }
 
     @Override
@@ -105,8 +102,7 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
 
     @Override
     public List<BusinessMemberDto> findByBusiness(UUID businessId) {
-        List<BusinessMember> members = businessMemberRepository.findByBusinessIdAndStatus(
-                businessId, RecordStatus.ACTIVE);
+        List<BusinessMember> members = businessMemberRepository.findByBusinessId(businessId);
         return members.stream().map(businessMapper::toBusinessMemberDto).toList();
     }
 
@@ -137,7 +133,7 @@ public class BusinessMemberServiceImpl implements BusinessMemberService {
         if (member.getRole() == BusinessMemberRole.OWNER) {
             throw new ValidationException(ErrorCode.BUSINESS_MEMBER_ROLE_NOT_ALLOWED);
         }
-        member.setStatus(RecordStatus.INACTIVE);
-        return businessMapper.toBusinessMemberDto(businessMemberRepository.save(member));
+        businessMemberRepository.delete(member);
+        return businessMapper.toBusinessMemberDto(member);
     }
 }

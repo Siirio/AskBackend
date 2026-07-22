@@ -35,7 +35,7 @@ public class SearchOutboxEvent extends BaseUuidV7Entity {
     private Long aggregateVersion;
 
     @Column(nullable = false)
-    private Integer payloadVersion = 1;
+    private Integer payloadVersion;
 
     @Column(nullable = false)
     private Instant availableAt;
@@ -47,12 +47,12 @@ public class SearchOutboxEvent extends BaseUuidV7Entity {
     private String workerId;
 
     @Column(nullable = false)
-    private Integer attemptCount = 0;
+    private Integer attemptCount;
 
     @Column(length = 2000)
     private String lastError;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SearchOutboxStatus status = SearchOutboxStatus.PENDING;
+    private SearchOutboxStatus status;
 }

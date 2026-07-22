@@ -19,7 +19,6 @@ public class MeilisearchDocumentMapper {
         return new MeilisearchIndexDocument(
                 document.getId().toString(),
                 document.getAggregateId().toString(),
-                document.getDocumentVersion(),
                 document.getTitle(),
                 document.getNormalizedTitle(),
                 document.getSummary(),
@@ -28,8 +27,6 @@ public class MeilisearchDocumentMapper {
                 document.getBrand(),
                 document.getCategoryPath(),
                 document.getCategoryLabel(),
-                document.getSku(),
-                document.getCharacteristicsJson(),
                 document.getBusinessName(),
                 document.getBranchName(),
                 document.getTokens() == null ? List.of() : new ArrayList<>(document.getTokens()),

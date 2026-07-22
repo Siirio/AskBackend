@@ -5,6 +5,7 @@ import java.util.UUID;
 import kz.ask.business.api.dto.CategoryAutocompleteResponse;
 import kz.ask.business.api.dto.CategoryResponse;
 import kz.ask.business.domain.CategoryService;
+import kz.ask.business.domain.enums.CategoryScope;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,8 @@ public class CategoryController {
     @GetMapping("/autocomplete")
     public ResponseEntity<CategoryAutocompleteResponse> autocomplete(
             @RequestParam(required = false, defaultValue = "") String q,
-            @RequestParam(required = false) UUID businessId) {
-        return ResponseEntity.ok(categoryService.autocomplete(q, businessId));
+            @RequestParam(required = false) UUID businessId,
+            @RequestParam(required = false) CategoryScope scope) {
+        return ResponseEntity.ok(categoryService.autocomplete(q, businessId, scope));
     }
 }

@@ -1,14 +1,15 @@
 # Messaging — Frontend UX Expectations
 
 ## Chat access
-- Always available from: product card, service card, request detail, booking, business page
-- Chat opens scoped to the concrete context entity
+- Available from: item card, service card, and business page
+- A card opens the existing customer-to-business conversation or creates it after explicit customer action
+- The conversation is shared across all branches of the same business
 - If entity is visible and user authenticated → chat can be opened
 - WhatsApp, Telegram, phone, email, map action, and Ask chat are separate contact actions
 
 ## Chat UI behavior
-- Customer sees chat when: they initiated conversation from context OR business messaged them
-- "Chats" tab appears in customer UI only after real chat interaction (not auto supplier checks)
+- Customer sees chat when: they initiated a business conversation OR business messaged them
+- "Chats" tab appears in customer UI only after real chat interaction
 - Business sees conversations in Activity tab
 - Unread badges per conversation
 - System messages (confirmations, time changes) rendered with distinct style from user messages

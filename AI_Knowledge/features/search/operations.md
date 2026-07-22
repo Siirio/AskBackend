@@ -30,7 +30,7 @@ Dead events are retained in `search_outbox_event`; never delete them as a retry 
 
 ## AI enrichment failures
 
-AI metadata is derived and can be rebuilt. Inspect attempt count, error, worker claim, and dead state on the search document plus evidence rows in `search_ai_metadata`. Missing API keys require no repair. After provider or schema recovery, reset only selected dead enrichment claims; canonical product/service data is unaffected.
+AI metadata is derived and can be rebuilt. Inspect attempt count, error, worker claim, and dead state on the search document plus evidence rows in `search_ai_metadata`. Missing API keys require no repair. After provider or schema recovery, reset only selected dead enrichment claims; canonical item/service data is unaffected.
 
 ## Verification
 

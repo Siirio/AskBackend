@@ -1,24 +1,17 @@
 package kz.ask.business.domain;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.dto.SellerOnboardingResult;
 import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.entity.BusinessDeliveryProfile;
+import kz.ask.business.domain.entity.BusinessVerification;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.CatalogSetupMode;
 import kz.ask.business.domain.enums.CatalogScope;
-import kz.ask.business.domain.enums.CatalogStatus;
-import kz.ask.business.domain.enums.CatalogSourceType;
-import kz.ask.business.domain.enums.DeliveryScope;
-import kz.ask.business.domain.enums.PreferredContactChannel;
+import kz.ask.business.domain.enums.VerificationStatus;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
-import kz.ask.business.infrastructure.repository.BusinessDeliveryProfileRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
+import kz.ask.business.infrastructure.repository.BusinessVerificationRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerOnboardingServiceImpl implements SellerOnboardingService {
 
     private final BusinessRepository businessRepository;
-    private final BusinessDeliveryProfileRepository deliveryProfileRepository;
+    private final BusinessVerificationRepository verificationRepository;
     private final BusinessMemberService businessMemberService;
     private final CityService cityService;
     private final BusinessMapper businessMapper;
-
-    @Value("${business.catalog.deadline:P7D}")
-    private Duration catalogDeadline;
 
     @Override
     @Transactional
@@ -44,52 +34,50 @@ public class SellerOnboardingServiceImpl implements SellerOnboardingService {
             BusinessLegalForm legalForm,
             String legalIdentifier,
             String legalName,
-            PreferredContactChannel preferredContactChannel,
-            String preferredContactValue,
-            Boolean pickupAvailable,
-            DeliveryScope deliveryScope,
-            Set<UUID> selectedCityIds,
-            String deliveryTermsRu,
-            String deliveryTermsKk,
-            String deliveryTermsEn,
             CatalogSetupMode catalogSetupMode,
             CatalogScope catalogScope,
-            Set<CatalogSourceType> catalogSources,
-            String catalogSourceLinks,
-            String catalogSourceNotes) {
-        selectedCityIds.forEach(cityService::findById);
-        Instant createdAt = Instant.now();
+            String binIin,
+            String twoGisUrl,
+            String kaspiUrl,
+            String ozonUrl,
+            String wildberriesUrl,
+            String websiteUrl,
+            String instagramUrl,
+            String telegramUrl,
+            String phone,
+            String corporateEmail) {
         Business business = businessMapper.toBusinessEntity(businessName);
         business.setCountryCode(countryCode);
         business.setLegalForm(legalForm);
         business.setLegalIdentifier(legalIdentifier);
         business.setLegalName(legalName);
-        business.setPreferredContactChannel(preferredContactChannel);
-        business.setPreferredContactValue(preferredContactValue);
         business.setCatalogSetupMode(catalogSetupMode);
         business.setCatalogScope(catalogScope);
-        business.setCatalogSources(catalogSources);
-        business.setCatalogSourceLinks(catalogSourceLinks);
-        business.setCatalogSourceNotes(catalogSourceNotes);
-        business.setCatalogDeadlineAt(createdAt.plus(catalogDeadline));
-        business.setCatalogStatus(CatalogStatus.IN_PROGRESS);
         business = businessRepository.save(business);
 
-        BusinessDeliveryProfile delivery = new BusinessDeliveryProfile();
-        delivery.setBusiness(business);
-        delivery.setPickupAvailable(Boolean.TRUE.equals(pickupAvailable));
-        delivery.setDeliveryScope(deliveryScope);
-        delivery.setSelectedCityIds(selectedCityIds);
-        delivery.setTermsRu(deliveryTermsRu);
-        delivery.setTermsKk(deliveryTermsKk);
-        delivery.setTermsEn(deliveryTermsEn);
-        deliveryProfileRepository.save(delivery);
+        BusinessVerification verification = new BusinessVerification();
+        verification.setBusiness(business);
+        verification.setStatus(VerificationStatus.PENDING);
+        verification.setBinIin(blankToNull(binIin));
+        verification.setTwoGisUrl(blankToNull(twoGisUrl));
+        verification.setKaspiUrl(blankToNull(kaspiUrl));
+        verification.setOzonUrl(blankToNull(ozonUrl));
+        verification.setWildberriesUrl(blankToNull(wildberriesUrl));
+        verification.setWebsiteUrl(blankToNull(websiteUrl));
+        verification.setInstagramUrl(blankToNull(instagramUrl));
+        verification.setTelegramUrl(blankToNull(telegramUrl));
+        verification.setPhone(blankToNull(phone));
+        verification.setCorporateEmail(blankToNull(corporateEmail));
+        verificationRepository.save(verification);
         businessMemberService.createOwner(business.getId(), ownerId);
 
         return SellerOnboardingResult.builder()
                 .businessId(business.getId())
                 .catalogSetupMode(catalogSetupMode)
-                .catalogDeadlineAt(business.getCatalogDeadlineAt())
                 .build();
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 }

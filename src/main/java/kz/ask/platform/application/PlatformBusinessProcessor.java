@@ -9,12 +9,11 @@ import kz.ask.business.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.infrastructure.repository.BusinessMemberRepository;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
 import kz.ask.business.infrastructure.repository.UniqueOfferRepository;
-import kz.ask.catalog.api.dto.BusinessProductCreateRequest;
-import kz.ask.catalog.application.BusinessProductProcessor;
-import kz.ask.catalog.application.ProductOfferDto;
-import kz.ask.catalog.domain.ProductService;
-import kz.ask.catalog.domain.entity.Product;
-import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.item.api.dto.BusinessProductCreateRequest;
+import kz.ask.item.application.ProductOfferDto;
+import kz.ask.item.domain.ProductService;
+import kz.ask.item.domain.entity.Item;
+import kz.ask.item.infrastructure.repository.ProductRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.platform.api.dto.PlatformBusinessDetailResponse;
 import kz.ask.platform.api.dto.PlatformBusinessListResponse;
@@ -22,9 +21,9 @@ import kz.ask.platform.api.dto.PlatformBusinessRowResponse;
 import kz.ask.platform.api.dto.PlatformProductCreateRequest;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
-import kz.ask.service.domain.entity.ServiceOffering;
+import kz.ask.service.domain.entity.Service;
 import kz.ask.service.infrastructure.repository.ServiceOfferingRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -78,7 +77,7 @@ public class PlatformBusinessProcessor {
     }
 
     @Transactional(readOnly = true)
-    public Page<Product> listProducts(AskPrincipal principal, UUID businessId, int page, int size) {
+    public Page<Item> listProducts(AskPrincipal principal, UUID businessId, int page, int size) {
         requirePlatformMembership(principal);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
@@ -86,7 +85,7 @@ public class PlatformBusinessProcessor {
     }
 
     @Transactional(readOnly = true)
-    public Page<ServiceOffering> listServices(AskPrincipal principal, UUID businessId, int page, int size) {
+    public Page<Service> listServices(AskPrincipal principal, UUID businessId, int page, int size) {
         requirePlatformMembership(principal);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
@@ -101,7 +100,6 @@ public class PlatformBusinessProcessor {
                 .name(request.getName())
                 .categoryLabel(request.getCategoryLabel())
                 .description(request.getDescription())
-                .sku(request.getSku())
                 .tags(request.getTags())
                 .build();
         return productService.createProduct(businessId, defaultBranch.getId(), createRequest);
@@ -110,15 +108,14 @@ public class PlatformBusinessProcessor {
     @Transactional
     public void deleteProduct(AskPrincipal principal, UUID productId) {
         requirePlatformMembership(principal);
-        Product product = productRepository.findById(productId)
+        Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
-        product.setStatus(RecordStatus.ARCHIVED);
-        productRepository.save(product);
+        productRepository.delete(item);
     }
 
     private BusinessBranch findDefaultBranch(UUID businessId) {
-        List<BusinessBranch> branches = businessBranchRepository.findByBusinessIdAndStatus(
-                businessId, RecordStatus.ACTIVE);
+        List<BusinessBranch> branches = businessBranchRepository.findByBusinessId(
+                businessId);
         if (branches.isEmpty()) {
             throw new NotFoundException(ErrorCode.BRANCH_NOT_FOUND);
         }
@@ -131,21 +128,19 @@ public class PlatformBusinessProcessor {
                 .businessId(businessId)
                 .name(business.getName())
                 .legalName(business.getLegalName())
-                .contactEmail(business.getPreferredContactValue())
-                .branchCount(businessBranchRepository.findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE).size())
-                .memberCount(businessMemberRepository.findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE).size())
-                .productCount(productRepository.countByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE))
-                .serviceCount(serviceOfferingRepository.countByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE))
+                .branchCount(businessBranchRepository.findByBusinessId(businessId).size())
+                .memberCount(businessMemberRepository.findByBusinessId(businessId).size())
+                .productCount(productRepository.countByBusinessId(businessId))
+                .serviceCount(serviceOfferingRepository.countByBusinessId(businessId))
                 .dropCount(uniqueOfferRepository.countByBusinessIdAndStatusIn(businessId, ACTIVE_OFFER_STATUSES))
                 .moderationStatus(business.getModerationStatus().name())
-                .catalogStatus(business.getCatalogStatus() != null ? business.getCatalogStatus().name() : null)
                 .build();
     }
 
     private PlatformBusinessDetailResponse toDetailResponse(Business business) {
         UUID businessId = business.getId();
-        List<BusinessBranch> branches = businessBranchRepository.findByBusinessIdAndStatus(
-                businessId, RecordStatus.ACTIVE);
+        List<BusinessBranch> branches = businessBranchRepository.findByBusinessId(
+                businessId);
         List<PlatformBusinessDetailResponse.BusinessBranchDto> branchDtos = branches.stream()
                 .map(branch -> PlatformBusinessDetailResponse.BusinessBranchDto.builder()
                         .branchId(branch.getId())
@@ -160,16 +155,12 @@ public class PlatformBusinessProcessor {
                 .legalName(business.getLegalName())
                 .bin(business.getBin())
                 .countryCode(business.getCountryCode())
-                .preferredContactChannel(business.getPreferredContactChannel() != null
-                        ? business.getPreferredContactChannel().name() : null)
-                .preferredContactValue(business.getPreferredContactValue())
                 .moderationStatus(business.getModerationStatus().name())
-                .catalogStatus(business.getCatalogStatus() != null ? business.getCatalogStatus().name() : null)
                 .catalogScope(business.getCatalogScope() != null ? business.getCatalogScope().name() : null)
                 .branchCount(branches.size())
-                .memberCount(businessMemberRepository.findByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE).size())
-                .productCount(productRepository.countByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE))
-                .serviceCount(serviceOfferingRepository.countByBusinessIdAndStatus(businessId, RecordStatus.ACTIVE))
+                .memberCount(businessMemberRepository.findByBusinessId(businessId).size())
+                .productCount(productRepository.countByBusinessId(businessId))
+                .serviceCount(serviceOfferingRepository.countByBusinessId(businessId))
                 .dropCount(uniqueOfferRepository.countByBusinessIdAndStatusIn(businessId, ACTIVE_OFFER_STATUSES))
                 .branches(branchDtos)
                 .build();

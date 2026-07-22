@@ -12,11 +12,11 @@ import kz.ask.identity.api.dto.ChangeTemporaryPasswordRequest;
 import kz.ask.identity.api.dto.LoginRequest;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.enums.AppRole;
-import kz.ask.identity.domain.enums.AuthChallengeChannel;
-import kz.ask.identity.domain.enums.AuthChallengePurpose;
+import kz.ask.identity.domain.enums.VerificationChannel;
+import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.identity.infrastructure.mail.EmailCodeSender;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
@@ -80,14 +80,14 @@ public class LoginProcessor {
                 || user.getRole() == AppRole.PLATFORM_MODERATOR;
 
         if (!isPlatformRole && Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
-            AuthChallengeDto challenge = identityService.createChallenge(
+            VerificationDto challenge = identityService.createVerification(
                     user.getId(), user.getEmail(),
-                    AuthChallengeChannel.EMAIL, AuthChallengePurpose.LOGIN,
+                    VerificationChannel.EMAIL, VerificationPurpose.LOGIN,
                     false, null);
             emailSender.sendCode(user.getEmail(), challenge.getCodePlain());
             return AuthSessionResponse.builder()
                     .requiresTwoFactor(true)
-                    .authChallengeId(challenge.getId())
+                    .verificationId(challenge.getId())
                     .user(buildUserResponse(user))
                     .allRoles(allRoles)
                     .build();

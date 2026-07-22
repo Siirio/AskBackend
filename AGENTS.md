@@ -1,6 +1,6 @@
 # Project: ASK Backend
 
-REST API backend for the ASK platform — local product/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
+REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
 ## Tech Stack
 - Java 17+, Spring Boot 3.x, Spring Data JPA

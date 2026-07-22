@@ -1,8 +1,6 @@
 package kz.ask.identity.application;
 
 import java.util.UUID;
-import java.util.Set;
-import kz.ask.legal.domain.enums.LegalDocumentCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,5 +16,4 @@ public class BusinessRegistrationPayload {
     private String email;
     private String countryCode;
     private String locale;
-    private Set<LegalDocumentCode> acceptedDocumentCodes;
 }

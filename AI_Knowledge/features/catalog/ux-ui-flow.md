@@ -2,7 +2,7 @@
 
 ## Product management (business cabinet)
 - Products tab: list view with name, category, price, status (enabled/disabled)
-- Actions per product: edit, enable, disable, delete
+- Actions per item: edit, enable, disable, delete
 - No separate business status (active/needs update/completed) — just enabled/disabled/deleted
 - Create/edit form: name, description, category (real UUID from backend), tags, SKU, characteristics, price
 

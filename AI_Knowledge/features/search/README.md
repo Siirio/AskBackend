@@ -1,18 +1,18 @@
 # Unified Search
 
-Ask search is a versioned product/service projection pipeline with PostgreSQL as canonical storage, Meilisearch as the primary candidate engine, and PostgreSQL full-text/trigram retrieval as the fallback.
+Ask search is a versioned item/service projection pipeline with PostgreSQL as canonical storage, Meilisearch as the primary candidate engine, and PostgreSQL full-text/trigram retrieval as the fallback.
 
 ## Write path
 
-Canonical product, service, import, and autodump transactions increment the aggregate search version and append a `search_outbox_event` in the same transaction. They never call Meilisearch or AI.
+Canonical item, service, import, and autodump transactions increment the aggregate search version and append a `search_outbox_event` in the same transaction. They never call Meilisearch or AI.
 
 A bounded `SKIP LOCKED` worker builds the PostgreSQL lexical projection first, rejects stale versions, then updates Meilisearch and waits for task completion. Retryable failures remain visible with backoff; terminal failures are retained as dead events.
 
 ## Read path
 
-The complete raw query is deterministically interpreted. DeepSeek can add validated interpretation when configured, but it is never required. Meilisearch returns bounded candidate IDs, PostgreSQL performs bounded hydration and version revalidation, and centralized ranking produces exact and explicitly relaxed alternative sections.
+The frontend selects PRODUCT or SERVICE and sends the complete raw query unchanged. DeepSeek can add validated interpretation inside that selected scope when configured, but it is never required. Meilisearch returns bounded candidate IDs, PostgreSQL performs bounded hydration and version revalidation, and centralized ranking produces exact and explicitly relaxed alternative sections.
 
-If Meilisearch is unavailable, indexed PostgreSQL retrieval is used and the response records the fallback reason. Search has no dependency on request, chat, broadcast, recipient, or notification services.
+If Meilisearch is unavailable, indexed PostgreSQL retrieval is used and the response records the fallback reason. Search has no dependency on request, chat, broadcast, recipient, or notification services and creates none of them.
 
 ## Rebuild and repair
 

@@ -4,18 +4,17 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.enums.BusinessMemberRole;
-import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface BusinessMemberRepository extends JpaRepository<BusinessMember, UUID> {
 
-    List<BusinessMember> findByUserIdAndRoleAndStatus(UUID userId, BusinessMemberRole role, RecordStatus status);
+    List<BusinessMember> findByUserIdAndRole(UUID userId, BusinessMemberRole role);
 
-    List<BusinessMember> findByUserIdAndStatus(UUID userId, RecordStatus status);
+    List<BusinessMember> findByUserId(UUID userId);
 
     List<BusinessMember> findByBusinessIdAndUserId(UUID businessId, UUID userId);
 
-    List<BusinessMember> findByBusinessIdAndStatus(UUID businessId, RecordStatus status);
+    List<BusinessMember> findByBusinessId(UUID businessId);
 }

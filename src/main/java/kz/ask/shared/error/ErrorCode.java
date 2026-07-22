@@ -76,7 +76,8 @@ public enum ErrorCode {
     CATALOG_SETUP_ALREADY_COMPLETED("Catalog setup is not awaiting moderation"),
     MODERATION_REJECT_REASON_REQUIRED("Причина отклонения обязательна"),
     CANNOT_DELETE_SELF("Невозможно удалить собственный аккаунт администратора"),
-    CANNOT_DELETE_LAST_SUPER_ADMIN("Невозможно удалить последнего активного суперадминистратора");
+    CANNOT_DELETE_LAST_SUPER_ADMIN("Невозможно удалить последнего активного суперадминистратора"),
+    BUSINESS_VERIFICATION_NOT_FOUND("Верификация бизнеса не найдена");
 
     private final String template;
 

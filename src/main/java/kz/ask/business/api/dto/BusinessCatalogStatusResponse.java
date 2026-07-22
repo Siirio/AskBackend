@@ -10,6 +10,11 @@ import lombok.Getter;
 public class BusinessCatalogStatusResponse {
 
     private UUID businessId;
-    private String status;
+    private String catalogStatus;
     private Instant deadlineAt;
+    private String verificationStatus;
+    private Instant catalogSetupStartedAt;
+    private Instant catalogSetupDeadlineAt;
+    private Instant catalogSetupCompletedAt;
+    private Boolean catalogReady;
 }

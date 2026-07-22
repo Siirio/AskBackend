@@ -3,15 +3,15 @@ package kz.ask.service.domain;
 import java.util.UUID;
 import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.api.dto.BusinessServiceUpdateRequest;
-import kz.ask.service.application.ServiceBranchOfferDto;
+import kz.ask.service.application.ServiceOfferingDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface ServiceService {
 
-    Page<ServiceBranchOfferDto> listOffers(UUID branchId, UUID categoryId, Boolean active, String query, Pageable pageable);
+    Page<ServiceOfferingDto> listOffers(UUID branchId, String categoryLabel, Boolean active, String query, Pageable pageable);
 
-    ServiceBranchOfferDto createService(UUID businessId, UUID branchId, BusinessServiceCreateRequest req);
+    ServiceOfferingDto createService(UUID businessId, UUID branchId, BusinessServiceCreateRequest req);
 
-    ServiceBranchOfferDto updateService(UUID serviceOfferingId, UUID branchId, BusinessServiceUpdateRequest req);
+    ServiceOfferingDto updateService(UUID serviceOfferingId, BusinessServiceUpdateRequest req);
 }

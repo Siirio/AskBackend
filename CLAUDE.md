@@ -1,6 +1,6 @@
 # Project: ASK Backend
 
-REST API backend for the ASK platform — local product/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
+REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
 ## Tech Stack
 - Java 17+, Spring Boot 3.x, Spring Data JPA
@@ -174,6 +174,4 @@ The **Frontend slice** column is the cross-repo lookup key: our `AI_Knowledge/fe
 | Fallback Requests | request/ | Yes | `requests/` — plural |
 | Chat/Messaging | messaging/ | Yes | `chats/` — our folder is `messaging/`, theirs is `chats/` |
 | Unique Offers | offers/ | Yes | `business-cabinet/` (Unique Offers tab) |
-| Shipping | shipping/ | Yes | — no V1 surface yet |
-| Excel Import | import/ | Yes | `catalog/` (Products → Import) |
 | Autodump | (no folder) | Yes | — no V1 surface yet |

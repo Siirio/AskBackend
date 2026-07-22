@@ -1,6 +1,6 @@
 # Messaging — Feature Locks
 
-LOCKED | Chat is contextual, not a standalone tab | Always opened from product/service/request/booking/business context | ChatController, frontend navigation
-LOCKED | Auto supplier check must NOT create customer-visible chat or unread notification | Customer "Chats" tab appears only after real interaction | SupplierResponse, ChatServiceImpl
+LOCKED | Conversation identity is business plus customer | Branches and catalog cards are entry points, never conversation identity; authorized business members share history | ChatConversation, ChatServiceImpl, business inbox
+LOCKED | Search never creates chat | Only an explicit customer contact action opens or resumes a business conversation | search/chat integration
 LOCKED | Contact privacy: contactActionId pattern, never raw phone/username | HMAC for dedup, encrypted vault for storage | BusinessContact, ContactResolveResponse
-LOCKED | Text-only messages in MVP | No attachments/files. Removed attachmentUrl in V8 restructuring | ChatMessage entity
+LOCKED | Managed-import attachments remain scoped to their conversation | Attachment records must belong to the same conversation as the message that references them | ChatMessage, ChatAttachment

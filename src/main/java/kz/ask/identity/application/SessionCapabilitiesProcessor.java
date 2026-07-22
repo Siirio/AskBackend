@@ -1,7 +1,7 @@
 package kz.ask.identity.application;
 
 import java.util.List;
-import kz.ask.business.domain.BusinessMemberBranchService;
+
 import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessInvitationService;
 import kz.ask.identity.api.dto.AuthBusinessMembershipResponse;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 public class SessionCapabilitiesProcessor {
 
     private final BusinessMemberService businessMemberService;
-    private final BusinessMemberBranchService businessMemberBranchService;
+
     private final PlatformMembershipService platformMembershipService;
     private final BusinessInvitationService businessInvitationService;
 
@@ -31,7 +31,7 @@ public class SessionCapabilitiesProcessor {
                                 .businessId(member.getBusinessId())
                                 .businessName(member.getBusinessName())
                                 .role(member.getRole())
-                                .branchIds(businessMemberBranchService.findBranchIds(member.getId()))
+                                .branchIds(List.of())
                                 .build())
                         .toList();
 

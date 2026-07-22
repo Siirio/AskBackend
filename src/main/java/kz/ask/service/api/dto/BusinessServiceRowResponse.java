@@ -3,6 +3,7 @@ package kz.ask.service.api.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import kz.ask.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,15 +18,13 @@ import lombok.Setter;
 public class BusinessServiceRowResponse {
 
     private UUID serviceOfferingId;
-    private UUID serviceBranchOfferId;
     private UUID branchId;
-    private UUID categoryId;
     private String categoryLabel;
     private String name;
     private String description;
+    private ServiceMode serviceMode;
     private BigDecimal basePrice;
     private String scheduleText;
     private Boolean active;
     private Instant updatedAt;
-    private String imageUrl;
 }

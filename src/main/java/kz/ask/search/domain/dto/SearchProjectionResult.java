@@ -14,5 +14,4 @@ public class SearchProjectionResult {
     private SearchDocumentType documentType;
     private UUID aggregateId;
     private UUID documentId;
-    private Long documentVersion;
 }

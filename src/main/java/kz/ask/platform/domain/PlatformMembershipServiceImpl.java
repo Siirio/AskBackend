@@ -12,7 +12,7 @@ import kz.ask.platform.domain.enums.PlatformPermission;
 import kz.ask.platform.domain.enums.PlatformRole;
 import kz.ask.platform.infrastructure.mapper.PlatformMembershipMapper;
 import kz.ask.platform.infrastructure.repository.PlatformMembershipRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
@@ -31,7 +31,7 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
     @Override
     @Transactional(readOnly = true)
     public PlatformMembershipDto findActiveByUser(UUID userId) {
-        return platformMembershipRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE)
+        return platformMembershipRepository.findByUserId(userId)
                 .map(platformMembershipMapper::toDto)
                 .orElse(null);
     }
@@ -46,7 +46,7 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
     @Override
     @Transactional
     public PlatformMembershipDto create(UUID userId, PlatformRole role, Set<PlatformPermission> permissions) {
-        if (platformMembershipRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE).isPresent()) {
+        if (platformMembershipRepository.findByUserId(userId).isPresent()) {
             throw new ValidationException(ErrorCode.PLATFORM_MEMBERSHIP_EXISTS);
         }
         AppUser user = appUserRepository.findById(userId)
@@ -54,7 +54,6 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
         PlatformMembership membership = new PlatformMembership();
         membership.setUser(user);
         membership.setRole(role);
-        membership.setStatus(RecordStatus.ACTIVE);
         membership.setPermissions(new LinkedHashSet<>(permissions));
         return platformMembershipMapper.toDto(platformMembershipRepository.save(membership));
     }
@@ -79,8 +78,8 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
     public PlatformMembershipDto deactivate(UUID membershipId) {
         PlatformMembership membership = platformMembershipRepository.findById(membershipId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PLATFORM_MEMBERSHIP_NOT_FOUND));
-        membership.setStatus(RecordStatus.INACTIVE);
-        return platformMembershipMapper.toDto(platformMembershipRepository.save(membership));
+        platformMembershipRepository.delete(membership);
+        return platformMembershipMapper.toDto(membership);
     }
 
     @Override
@@ -94,6 +93,6 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
     @Override
     @Transactional(readOnly = true)
     public long countByRole(PlatformRole role) {
-        return platformMembershipRepository.countByRoleAndStatus(role, RecordStatus.ACTIVE);
+        return platformMembershipRepository.countByRole(role);
     }
 }

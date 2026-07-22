@@ -18,10 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import kz.ask.business.domain.BrandProfileService;
-import kz.ask.business.domain.dto.BrandProfileDto;
-import kz.ask.contact.api.dto.ContactActionSummaryResponse;
-import kz.ask.contact.domain.ContactActionService;
+import kz.ask.business.domain.BusinessProfileService;
+import kz.ask.business.domain.dto.BusinessProfileDto;
 import kz.ask.search.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.api.dto.SearchConstraintResponse;
 import kz.ask.search.api.dto.SearchDiagnosticsResponse;
@@ -40,7 +38,7 @@ import kz.ask.search.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.domain.enums.SearchDocumentType;
 import kz.ask.search.infrastructure.repository.SearchDocumentRepository;
 import kz.ask.search.infrastructure.repository.SearchQueryAliasRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.util.DistanceCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -95,8 +93,7 @@ public class StructuredSearchProcessor {
     private final SearchQueryAliasRepository searchQueryAliasRepository;
     private final IntentCategoryMapper intentCategoryMapper;
     private final SearchTermEnricher searchTermEnricher;
-    private final BrandProfileService brandProfileService;
-    private final ContactActionService contactActionService;
+    private final BusinessProfileService businessProfileService;
     private final MeilisearchService meilisearchService;
 
     @Transactional(readOnly = true)
@@ -164,16 +161,14 @@ public class StructuredSearchProcessor {
                 .filter(Objects::nonNull)
                 .map(business -> business.getId())
                 .collect(Collectors.toSet());
-        Map<UUID, BrandProfileDto> brandProfiles = brandProfileService.findByBusinessIds(businessIds);
-        Map<UUID, List<ContactActionSummaryResponse>> contactActions =
-                contactActionService.summarize(businessIds);
+        Map<UUID, BusinessProfileDto> businessProfiles = businessProfileService.findByBusinessIds(businessIds);
 
         return SearchV2Response.builder()
                 .rawQuery(request.getRawQuery())
                 .scope(resolveScope(searchPlan))
                 .understoodQuery(request.getRawQuery())
                 .interpretedConstraints(toConstraints(searchPlan))
-                .sections(toSections(pageResults, brandProfiles, contactActions, request.getLanguage()))
+                .sections(toSections(pageResults, businessProfiles, request.getLanguage()))
                 .page(page)
                 .pageSize(pageSize)
                 .total(ordered.size())
@@ -325,8 +320,7 @@ public class StructuredSearchProcessor {
 
     private List<SearchV2SectionResponse> toSections(
             List<ScoredSearchDocument> results,
-            Map<UUID, BrandProfileDto> brandProfiles,
-            Map<UUID, List<ContactActionSummaryResponse>> contactActions,
+            Map<UUID, BusinessProfileDto> businessProfiles,
             String language) {
         List<ScoredSearchDocument> exact = results.stream()
                 .filter(scored -> scored.getWarnings().isEmpty())
@@ -341,7 +335,7 @@ public class StructuredSearchProcessor {
                     .kind("EXACT")
                     .title(localized(language, "Совпадения", "Сәйкестіктер", "Matches"))
                     .relaxedConstraints(List.of())
-                    .cards(exact.stream().map(scored -> toV2Card(scored, brandProfiles, contactActions, language)).toList())
+                    .cards(exact.stream().map(scored -> toV2Card(scored, businessProfiles, language)).toList())
                     .build());
         }
         if (!alternatives.isEmpty()) {
@@ -356,7 +350,7 @@ public class StructuredSearchProcessor {
                     .title(localized(language, "Альтернативы", "Балама нұсқалар", "Alternatives"))
                     .relaxedConstraints(relaxed)
                     .reason(alternativeReason(relaxed, language))
-                    .cards(alternatives.stream().map(scored -> toV2Card(scored, brandProfiles, contactActions, language)).toList())
+                    .cards(alternatives.stream().map(scored -> toV2Card(scored, businessProfiles, language)).toList())
                     .build());
         }
         return sections;
@@ -722,8 +716,6 @@ public class StructuredSearchProcessor {
                 normalize(document.getTitle()),
                 normalize(document.getSummary()),
                 normalize(document.getCategoryLabel()),
-                normalize(document.getSku()),
-                normalize(document.getCharacteristicsJson()),
                 document.getBusiness() != null ? normalize(document.getBusiness().getName()) : "",
                 document.getBranch() != null ? normalize(document.getBranch().getName()) : "");
     }
@@ -983,7 +975,7 @@ public class StructuredSearchProcessor {
         for (String sourceTerm : sourceTerms) {
             String normalized = normalize(sourceTerm);
             if (!normalized.isBlank()) {
-                searchQueryAliasRepository.findByAliasValueAndStatus(normalized, RecordStatus.ACTIVE)
+                searchQueryAliasRepository.findByAliasValue(normalized)
                         .stream()
                         .map(alias -> normalize(alias.getTargetQuery()))
                         .forEach(target -> addTerm(terms, target));
@@ -1037,12 +1029,11 @@ public class StructuredSearchProcessor {
 
     private SearchV2CardResponse toV2Card(
             ScoredSearchDocument scored,
-            Map<UUID, BrandProfileDto> brandProfiles,
-            Map<UUID, List<ContactActionSummaryResponse>> contactActions,
+            Map<UUID, BusinessProfileDto> businessProfiles,
             String language) {
         SearchDocument document = scored.getDocument();
         UUID businessId = document.getBusiness() == null ? null : document.getBusiness().getId();
-        BrandProfileDto brandProfile = businessId == null ? null : brandProfiles.get(businessId);
+        BusinessProfileDto brandProfile = businessId == null ? null : businessProfiles.get(businessId);
         return SearchV2CardResponse.builder()
                 .component(component(document.getDocumentType().name()))
                 .resultId(document.getId())
@@ -1063,7 +1054,6 @@ public class StructuredSearchProcessor {
                 .badges(resolveBadges(brandProfile, document))
                 .distanceMeters(scored.getDistanceMeters())
                 .branchName(document.getBranch() != null ? document.getBranch().getName() : null)
-                .contactActions(businessId == null ? List.of() : contactActions.getOrDefault(businessId, List.of()))
                 .build();
     }
 
@@ -1109,14 +1099,14 @@ public class StructuredSearchProcessor {
         };
     }
 
-    private String resolveBrandColor(BrandProfileDto profile) {
+    private String resolveBrandColor(BusinessProfileDto profile) {
         if (profile == null || profile.getBrandColor() == null || profile.getBrandColor().isBlank()) {
             return DEFAULT_BRAND_COLOR;
         }
         return profile.getBrandColor();
     }
 
-    private List<String> resolveBadges(BrandProfileDto profile, SearchDocument document) {
+    private List<String> resolveBadges(BusinessProfileDto profile, SearchDocument document) {
         List<String> badges = new ArrayList<>();
         if (profile != null && hasOfficialLink(profile)) {
             badges.add("official channel");
@@ -1130,7 +1120,7 @@ public class StructuredSearchProcessor {
         return badges;
     }
 
-    private Boolean hasOfficialLink(BrandProfileDto profile) {
+    private Boolean hasOfficialLink(BusinessProfileDto profile) {
         return (profile.getWebsiteUrl() != null && !profile.getWebsiteUrl().isBlank())
                 || (profile.getTelegramUrl() != null && !profile.getTelegramUrl().isBlank())
                 || (profile.getInstagramUrl() != null && !profile.getInstagramUrl().isBlank());

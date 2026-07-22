@@ -1,8 +1,6 @@
 package kz.ask.business.application;
 
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.api.dto.CompleteSellerOnboardingRequest;
@@ -11,13 +9,7 @@ import kz.ask.business.domain.SellerOnboardingService;
 import kz.ask.business.domain.dto.SellerOnboardingResult;
 import kz.ask.business.domain.enums.BusinessLegalForm;
 import kz.ask.business.domain.enums.CatalogSetupMode;
-import kz.ask.business.domain.enums.CatalogSourceType;
-import kz.ask.business.domain.enums.DeliveryScope;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.legal.domain.LegalService;
-import kz.ask.legal.domain.enums.LegalDocumentCode;
-import kz.ask.managedimport.domain.ManagedImportService;
-import kz.ask.managedimport.domain.dto.ManagedImportDto;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerOnboardingProcessor {
 
     private final SellerOnboardingService sellerOnboardingService;
-    private final LegalService legalService;
-    private final ManagedImportService managedImportService;
     private final SignificantEventService significantEventService;
 
     @Transactional
@@ -38,9 +28,6 @@ public class SellerOnboardingProcessor {
             AskPrincipal principal,
             CompleteSellerOnboardingRequest request) {
         validate(principal, request);
-        Set<CatalogSourceType> sources = request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
-                ? new LinkedHashSet<>(request.getCatalogSources())
-                : Set.of();
         SellerOnboardingResult result = sellerOnboardingService.complete(
                 principal.getUserId(),
                 request.getBusinessName(),
@@ -48,39 +35,24 @@ public class SellerOnboardingProcessor {
                 request.getLegalForm(),
                 request.getLegalIdentifier(),
                 request.getLegalName(),
-                request.getPreferredContactChannel(),
-                request.getPreferredContactValue(),
-                request.getPickupAvailable(),
-                request.getDeliveryScope(),
-                normalizedCities(request),
-                request.getDeliveryTermsRu(),
-                request.getDeliveryTermsKk(),
-                request.getDeliveryTermsEn(),
                 request.getCatalogSetupMode(),
                 request.getCatalogScope(),
-                sources,
-                request.getSourceLinks(),
-                request.getSourceNotes());
+                request.getBinIin(),
+                request.getTwoGisUrl(),
+                request.getKaspiUrl(),
+                request.getOzonUrl(),
+                request.getWildberriesUrl(),
+                request.getWebsiteUrl(),
+                request.getInstagramUrl(),
+                request.getTelegramUrl(),
+                request.getPhone(),
+                request.getCorporateEmail());
         significantEventService.record(principal.getUserId(),
                 SignificantEventType.BUSINESS_CREATED,
                 result.getBusinessId(), result.getBusinessId(), Map.of());
-        ManagedImportDto managedImport = null;
-        if (request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT) {
-            managedImport = managedImportService.create(
-                    result.getBusinessId(),
-                    principal.getUserId(),
-                    request.getCatalogScope(),
-                    sources,
-                    request.getPreferredContactChannel(),
-                    request.getPreferredContactValue(),
-                    request.getSourceLinks(),
-                    request.getSourceNotes());
-        }
         return SellerOnboardingResponse.builder()
                 .businessId(result.getBusinessId())
                 .catalogSetupMode(result.getCatalogSetupMode())
-                .catalogDeadlineAt(result.getCatalogDeadlineAt())
-                .conversationId(managedImport == null ? null : managedImport.getConversationId())
                 .startRoute(result.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
                         ? "MANAGED_IMPORT"
                         : "BUSINESS_CABINET")
@@ -88,41 +60,14 @@ public class SellerOnboardingProcessor {
     }
 
     private void validate(AskPrincipal principal, CompleteSellerOnboardingRequest request) {
-        if (!legalService.hasAcceptedActiveDocuments(
-                principal.getUserId(),
-                Set.of(LegalDocumentCode.SELLER_TERMS, LegalDocumentCode.PERSONAL_DATA_CONSENT),
-                normalizeCountry(request.getCountryCode()),
-                normalizeLocale(request.getLocale()))) {
-            throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
-        }
         if (request.getLegalForm() != BusinessLegalForm.NONE
                 && (isBlank(request.getLegalIdentifier()) || isBlank(request.getLegalName()))) {
             throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
         }
-        if (request.getDeliveryScope() == DeliveryScope.SELECTED_CITIES
-                && (request.getSelectedCityIds() == null || request.getSelectedCityIds().isEmpty())) {
-            throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
-        }
-        if (request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
-                && (request.getCatalogSources() == null || request.getCatalogSources().isEmpty())) {
-            throw new ValidationException(ErrorCode.SELLER_ONBOARDING_INVALID);
-        }
-    }
-
-    private Set<java.util.UUID> normalizedCities(CompleteSellerOnboardingRequest request) {
-        if (request.getDeliveryScope() != DeliveryScope.SELECTED_CITIES
-                || request.getSelectedCityIds() == null) {
-            return Set.of();
-        }
-        return new LinkedHashSet<>(request.getSelectedCityIds());
     }
 
     private String normalizeCountry(String countryCode) {
         return isBlank(countryCode) ? "KZ" : countryCode;
-    }
-
-    private String normalizeLocale(String locale) {
-        return isBlank(locale) ? "ru" : locale;
     }
 
     private boolean isBlank(String value) {

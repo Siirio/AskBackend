@@ -6,7 +6,6 @@ import kz.ask.business.domain.dto.CityDto;
 import kz.ask.business.domain.entity.City;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.infrastructure.repository.CityRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,7 @@ public class CityServiceImpl implements CityService {
 
     @Override
     public List<CityDto> listAll() {
-        return cityRepository.findByStatusOrderByNameAsc(RecordStatus.ACTIVE)
+        return cityRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(businessMapper::toCityDto)
                 .toList();

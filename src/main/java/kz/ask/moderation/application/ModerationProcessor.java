@@ -8,13 +8,15 @@ import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.enums.BusinessModerationStatus;
-import kz.ask.business.domain.enums.CatalogStatus;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
-import kz.ask.catalog.domain.dto.ProductDto;
-import kz.ask.catalog.domain.entity.Product;
-import kz.ask.catalog.domain.enums.ProductModerationStatus;
-import kz.ask.catalog.domain.service.ProductService;
-import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.item.domain.entity.Item;
+import kz.ask.managedimport.domain.entity.ManagedImportRequest;
+import kz.ask.managedimport.domain.enums.ManagedImportStatus;
+import kz.ask.managedimport.infrastructure.repository.ManagedImportRequestRepository;
+
+import kz.ask.item.domain.enums.ProductModerationStatus;
+
+import kz.ask.item.infrastructure.repository.ProductRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
@@ -29,7 +31,7 @@ import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.platform.domain.enums.PlatformPermission;
 import kz.ask.search.domain.SearchVisibilityService;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.ConflictException;
@@ -47,9 +49,9 @@ public class ModerationProcessor {
 
     private final ContentReportRepository contentReportRepository;
     private final BusinessRepository businessRepository;
+    private final ManagedImportRequestRepository managedImportRequestRepository;
     private final AppUserRepository appUserRepository;
     private final PlatformMembershipService platformMembershipService;
-    private final ProductService productService;
     private final ProductRepository productRepository;
     private final SearchVisibilityService searchVisibilityService;
     private final SignificantEventService significantEventService;
@@ -80,12 +82,13 @@ public class ModerationProcessor {
     @Transactional(readOnly = true)
     public List<CatalogReviewBusinessResponse> listCatalogReviews(AskPrincipal principal) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        return businessRepository.findByCatalogStatusOrderByCreatedAtAsc(CatalogStatus.REVIEW_REQUIRED)
+        return managedImportRequestRepository.findByStatusInOrderByCreatedAtAsc(
+                        List.of(ManagedImportStatus.PENDING))
                 .stream()
-                .map(business -> CatalogReviewBusinessResponse.builder()
-                        .businessId(business.getId())
-                        .businessName(business.getName())
-                        .catalogStatus(business.getCatalogStatus().name())
+                .map(request -> CatalogReviewBusinessResponse.builder()
+                        .businessId(request.getBusiness().getId())
+                        .businessName(request.getBusiness().getName())
+                        .catalogStatus(request.getStatus().name())
                         .build())
                 .toList();
     }
@@ -93,14 +96,21 @@ public class ModerationProcessor {
     @Transactional
     public void reviewCatalog(AskPrincipal principal, UUID businessId, Boolean approved) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        Business business = businessRepository.findById(businessId)
+        businessRepository.findById(businessId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND, businessId));
-        if (business.getCatalogStatus() != CatalogStatus.REVIEW_REQUIRED) {
+        ManagedImportRequest importRequest = managedImportRequestRepository
+                .findByBusinessIdOrderByCreatedAtDesc(businessId)
+                .stream().findFirst()
+                .orElseThrow(() -> new ConflictException(ErrorCode.CATALOG_SETUP_ALREADY_COMPLETED));
+        if (importRequest.getStatus() != ManagedImportStatus.PENDING) {
             throw new ConflictException(ErrorCode.CATALOG_SETUP_ALREADY_COMPLETED);
         }
-        business.setCatalogStatus(Boolean.TRUE.equals(approved)
-                ? CatalogStatus.COMPLETED
-                : CatalogStatus.RESTRICTED);
+        importRequest.setStatus(Boolean.TRUE.equals(approved)
+                ? ManagedImportStatus.COMPLETED
+                : ManagedImportStatus.ACTIVE);
+        if (Boolean.TRUE.equals(approved)) {
+            importRequest.setCompletedAt(Instant.now());
+        }
         searchVisibilityService.republishBusinessOffers(businessId);
     }
 
@@ -122,7 +132,7 @@ public class ModerationProcessor {
             throw new ConflictException(ErrorCode.CONTENT_REPORT_ALREADY_RESOLVED);
         }
         report.setStatus(status);
-        report.setResolution(resolution);
+
         report.setResolvedBy(appUserRepository.getReferenceById(principal.getUserId()));
         report.setResolvedAt(Instant.now());
         return toResponse(report);
@@ -137,9 +147,6 @@ public class ModerationProcessor {
         Business business = businessRepository.findById(businessId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND, businessId));
         business.setModerationStatus(status);
-        business.setStatus(status == BusinessModerationStatus.VISIBLE
-                ? RecordStatus.ACTIVE
-                : RecordStatus.INACTIVE);
         searchVisibilityService.republishBusinessOffers(businessId);
         if (status == BusinessModerationStatus.SUSPENDED) {
             significantEventService.record(principal.getUserId(),
@@ -157,12 +164,16 @@ public class ModerationProcessor {
             UUID productId,
             Boolean hidden) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        ProductDto product = productService.setHiddenByModerator(productId, hidden);
+        Item item = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
+        item.setModerationStatus(Boolean.TRUE.equals(hidden)
+                ? ProductModerationStatus.REJECTED
+                : ProductModerationStatus.APPROVED);
         searchVisibilityService.republishProductOffers(productId);
         if (Boolean.TRUE.equals(hidden)) {
             significantEventService.record(principal.getUserId(),
                     SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
-                    product.getBusinessId(), productId, Map.of());
+                    item.getBusiness().getId(), productId, Map.of());
         }
     }
 
@@ -199,10 +210,9 @@ public class ModerationProcessor {
     @Transactional
     public void approveProduct(AskPrincipal principal, UUID productId) {
         requirePermission(principal, PlatformPermission.MODERATE_CONTENT);
-        Product product = productRepository.findById(productId)
+        Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
-        product.setModerationStatus(ProductModerationStatus.APPROVED);
-        product.setHiddenByModerator(false);
+        item.setModerationStatus(ProductModerationStatus.APPROVED);
         searchVisibilityService.republishProductOffers(productId);
     }
 
@@ -212,27 +222,24 @@ public class ModerationProcessor {
         if (request.getReason() == null || request.getReason().isBlank()) {
             throw new ValidationException(ErrorCode.MODERATION_REJECT_REASON_REQUIRED);
         }
-        Product product = productRepository.findById(productId)
+        Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
-        product.setModerationStatus(ProductModerationStatus.REJECTED);
-        product.setHiddenByModerator(true);
-        product.setModerationNote(request.getReason());
+        item.setModerationStatus(ProductModerationStatus.REJECTED);
+        item.setModerationNote(request.getReason());
         searchVisibilityService.republishProductOffers(productId);
         significantEventService.record(principal.getUserId(),
                 SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
-                product.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
+                item.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
     }
 
-    private ProductModerationItemResponse toModerationItemResponse(Product product) {
+    private ProductModerationItemResponse toModerationItemResponse(Item item) {
         return ProductModerationItemResponse.builder()
-                .productId(product.getId())
-                .productName(product.getName())
-                .businessId(product.getBusiness().getId())
-                .businessName(product.getBusiness().getName())
-                .imageUrl(product.getImageUrl())
-                .createdAt(product.getCreatedAt())
-                .moderationNote(product.getModerationNote())
-                .moderationStatus(product.getModerationStatus().name())
+                .productId(item.getId())
+                .productName(item.getName())
+                .businessId(item.getBusiness().getId())
+                .createdAt(item.getCreatedAt())
+                .moderationNote(item.getModerationNote())
+                .moderationStatus(item.getModerationStatus().name())
                 .build();
     }
 
@@ -244,7 +251,6 @@ public class ModerationProcessor {
                 .reasonCode(report.getReasonCode())
                 .details(report.getDetails())
                 .status(report.getStatus().name())
-                .resolution(report.getResolution())
                 .reporterUserId(report.getReporter().getId())
                 .reporterName(report.getReporter().getDisplayName())
                 .createdAt(report.getCreatedAt())

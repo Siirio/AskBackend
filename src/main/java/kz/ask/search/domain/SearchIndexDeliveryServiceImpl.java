@@ -32,7 +32,7 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
         if (document == null) {
             return "Projection no longer exists";
         }
-        if (!document.getDocumentVersion().equals(event.getAggregateVersion())) {
+        if (document.getUpdatedAt().toEpochMilli() > event.getAggregateVersion()) {
             return "Projection advanced before index delivery";
         }
         if (projection.getAction() == SearchProjectionAction.DELETE) {

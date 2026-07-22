@@ -1,5 +1,6 @@
 package kz.ask.managedimport.domain;
 
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -8,20 +9,20 @@ import java.util.Set;
 import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
+
 import kz.ask.business.domain.enums.CatalogSourceType;
 import kz.ask.business.domain.enums.CatalogScope;
 import kz.ask.business.domain.enums.PreferredContactChannel;
+
 import kz.ask.business.infrastructure.repository.BusinessRepository;
-import kz.ask.catalog.infrastructure.repository.ProductOfferRepository;
+
+
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.managedimport.domain.dto.ManagedImportDto;
-import kz.ask.managedimport.domain.entity.ManagedImportGrant;
 import kz.ask.managedimport.domain.entity.ManagedImportRequest;
-import kz.ask.managedimport.domain.enums.ManagedImportGrantStatus;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
-import kz.ask.managedimport.infrastructure.repository.ManagedImportGrantRepository;
 import kz.ask.managedimport.infrastructure.repository.ManagedImportRequestRepository;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ConflictException;
@@ -36,10 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ManagedImportServiceImpl implements ManagedImportService {
 
     private final ManagedImportRequestRepository requestRepository;
-    private final ManagedImportGrantRepository grantRepository;
     private final BusinessRepository businessRepository;
+
     private final AppUserRepository appUserRepository;
-    private final ProductOfferRepository productOfferRepository;
+
     private final ChatService chatService;
     private final SignificantEventService significantEventService;
 
@@ -48,6 +49,7 @@ public class ManagedImportServiceImpl implements ManagedImportService {
 
     @Value("${business.managed-import.initial-message:Your managed catalog import request was sent. An Ask team member will join this chat and help prepare the catalog.}")
     private String initialMessage;
+
 
     @Value("${business.managed-import.access-duration:P7D}")
     private Duration accessDuration;
@@ -82,6 +84,8 @@ public class ManagedImportServiceImpl implements ManagedImportService {
                 SignificantEventType.MANAGED_IMPORT_REQUESTED,
                 businessId, request.getId(),
                 Map.of("sourceTypes", sourceTypeNames(sourceTypes)));
+
+
         return toDto(request);
     }
 
@@ -125,17 +129,6 @@ public class ManagedImportServiceImpl implements ManagedImportService {
             request.setResponsiblePlatformUser(
                     appUserRepository.getReferenceById(platformUserId));
 
-            ManagedImportGrant grant = new ManagedImportGrant();
-            grant.setBusiness(request.getBusiness());
-            grant.setManagedImportRequest(request);
-            grant.setGrantedBy(request.getResponsiblePlatformUser());
-            grant.setStatus(ManagedImportGrantStatus.ACTIVE);
-            grant.setGrantedAt(activatedAt);
-            grantRepository.save(grant);
-            significantEventService.record(platformUserId,
-                    SignificantEventType.MANAGED_IMPORT_GRANT_CREATED,
-                    request.getBusiness().getId(), grant.getId(), Map.of());
-
             ChatConversationDto conversation = chatService.startManagedImportConversation(
                     request.getRequestedBy().getId(),
                     request.getBusiness().getId(),
@@ -151,6 +144,18 @@ public class ManagedImportServiceImpl implements ManagedImportService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Boolean hasActiveGrant(UUID businessId, UUID platformUserId) {
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CatalogScope activeScope(UUID businessId, UUID platformUserId) {
+        return null;
+    }
+
+    @Override
     @Transactional
     public void expireDue(Instant now) {
         requestRepository.findByStatusAndExpiresAtLessThanEqual(ManagedImportStatus.ACTIVE, now)
@@ -159,20 +164,10 @@ public class ManagedImportServiceImpl implements ManagedImportService {
 
     private void completeExpired(ManagedImportRequest request, Instant completedAt) {
         UUID platformUserId = request.getResponsiblePlatformUser().getId();
-        int productsPublishedCount = Math.toIntExact(
-                productOfferRepository.countActiveProductsByBusinessId(request.getBusiness().getId()));
+        int productsPublishedCount = 0;
         request.setStatus(ManagedImportStatus.COMPLETED);
         request.setCompletedAt(completedAt);
         request.setProductsPublishedCount(productsPublishedCount);
-        grantRepository.findByManagedImportRequestIdAndStatus(
-                        request.getId(), ManagedImportGrantStatus.ACTIVE)
-                .ifPresent(grant -> {
-                    grant.setStatus(ManagedImportGrantStatus.REVOKED);
-                    grant.setRevokedAt(completedAt);
-                    significantEventService.record(platformUserId,
-                            SignificantEventType.MANAGED_IMPORT_GRANT_REVOKED,
-                            request.getBusiness().getId(), grant.getId(), Map.of());
-                });
         if (request.getConversationId() != null) {
             chatService.deleteConversation(request.getConversationId());
             request.setConversationId(null);
@@ -188,25 +183,13 @@ public class ManagedImportServiceImpl implements ManagedImportService {
                         "responsiblePlatformUserId", platformUserId.toString()));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Boolean hasActiveGrant(UUID businessId, UUID platformUserId) {
-        return grantRepository.findActiveAccess(businessId, platformUserId, Instant.now()).isPresent();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CatalogScope activeScope(UUID businessId, UUID platformUserId) {
-        return grantRepository.findActiveAccess(businessId, platformUserId, Instant.now())
-                .map(grant -> grant.getManagedImportRequest().getCatalogScope())
-                .orElse(null);
-    }
-
     private ManagedImportRequest find(UUID requestId) {
         return requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException(
                         ErrorCode.MANAGED_IMPORT_NOT_FOUND, requestId));
     }
+
+
 
     private List<String> sourceTypeNames(Set<CatalogSourceType> sourceTypes) {
         return sourceTypes == null

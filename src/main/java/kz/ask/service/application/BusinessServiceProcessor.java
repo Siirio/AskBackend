@@ -4,9 +4,8 @@ import java.util.UUID;
 import kz.ask.business.domain.BranchMemberService;
 import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.CategoryService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
-import kz.ask.catalog.domain.CatalogCapabilityService;
+import kz.ask.item.domain.CatalogCapabilityService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.service.api.dto.BusinessServiceListResponse;
@@ -34,21 +33,20 @@ public class BusinessServiceProcessor {
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
     private final BranchMemberService branchMemberService;
-    private final CategoryService categoryService;
     private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
     private final CatalogCapabilityService catalogCapabilityService;
 
     @Transactional(readOnly = true)
-    public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, UUID categoryId,
+    public BusinessServiceListResponse listServices(AskPrincipal principal, UUID branchId, String categoryLabel,
                                                      Boolean active, String query, Integer page, Integer size) {
         BusinessBranchDto branch = requireBranch(branchId);
         requireAnyAccess(principal.getUserId(), branch);
 
         int safeSize = Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page == null ? 0 : page, 0);
-        Page<ServiceBranchOfferDto> offers = serviceService.listOffers(
-                branchId, categoryId, active, query, PageRequest.of(safePage, safeSize));
+        Page<ServiceOfferingDto> offers = serviceService.listOffers(
+                branchId, categoryLabel, active, query, PageRequest.of(safePage, safeSize));
 
         return BusinessServiceListResponse.builder()
                 .items(offers.getContent().stream().map(this::toRowResponse).toList())
@@ -64,8 +62,7 @@ public class BusinessServiceProcessor {
         BusinessBranchDto branch = requireBranch(branchId);
         requireAnyAccess(principal.getUserId(), branch);
 
-        categoryService.requireActiveCategory(req.getCategoryId());
-        ServiceBranchOfferDto dto = serviceService.createService(branch.getBusinessId(), branchId, req);
+        ServiceOfferingDto dto = serviceService.createService(branch.getBusinessId(), branchId, req);
         publishSearchEvent(dto);
         return toRowResponse(dto);
     }
@@ -76,36 +73,31 @@ public class BusinessServiceProcessor {
         BusinessBranchDto branch = requireBranch(branchId);
         requireAnyAccess(principal.getUserId(), branch);
 
-        if (req.getCategoryId() != null) {
-            categoryService.requireActiveCategory(req.getCategoryId());
-        }
-        ServiceBranchOfferDto dto = serviceService.updateService(serviceOfferingId, branchId, req);
+        ServiceOfferingDto dto = serviceService.updateService(serviceOfferingId, req);
         publishSearchEvent(dto);
         return toRowResponse(dto);
     }
 
-    private void publishSearchEvent(ServiceBranchOfferDto dto) {
-        boolean live = Boolean.TRUE.equals(dto.getActive()) && "ACTIVE".equals(dto.getStatus());
+    private void publishSearchEvent(ServiceOfferingDto dto) {
+        boolean live = Boolean.TRUE.equals(dto.getActive());
         searchOutboxService.publish(
                 SearchAggregateType.SERVICE_BRANCH_OFFER,
-                dto.getServiceBranchOfferId(),
+                dto.getId(),
                 live ? SearchEventType.UPSERT : SearchEventType.DELETE,
-                dto.getSearchVersion());
+                1L);
     }
 
-    private BusinessServiceRowResponse toRowResponse(ServiceBranchOfferDto dto) {
+    private BusinessServiceRowResponse toRowResponse(ServiceOfferingDto dto) {
         return BusinessServiceRowResponse.builder()
-                .serviceOfferingId(dto.getServiceOfferingId())
-                .serviceBranchOfferId(dto.getServiceBranchOfferId())
+                .serviceOfferingId(dto.getId())
                 .branchId(dto.getBranchId())
-                .categoryId(dto.getCategoryId())
                 .categoryLabel(dto.getCategoryLabel())
                 .name(dto.getName())
                 .description(dto.getDescription())
+                .serviceMode(dto.getServiceMode())
                 .basePrice(dto.getBasePrice())
                 .scheduleText(dto.getScheduleText())
                 .active(dto.getActive())
-                .imageUrl(dto.getImageUrl())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
     }

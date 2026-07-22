@@ -11,4 +11,4 @@ Brand signals and ranking boosters — NOT standalone search results. Boost link
 - Offer statuses: UPCOMING, ACTIVE, ENDED, CANCELLED.
 - DISCOUNT: discount_percent (INTEGER) or discount_amount (NUMERIC) → computes effectivePrice.
 - Non-DISCOUNT: shows offer name as label on search result card.
-- Active offers linked to product/service's business → +25 score boost.
+- Active offers linked to item/service's business → +25 score boost.

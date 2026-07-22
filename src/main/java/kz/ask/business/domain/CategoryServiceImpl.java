@@ -9,10 +9,10 @@ import kz.ask.business.api.dto.CategoryAutocompleteResponse;
 import kz.ask.business.api.dto.CategoryAutocompleteResponse.CategorySuggestion;
 import kz.ask.business.api.dto.CategoryResponse;
 import kz.ask.business.domain.entity.Category;
+import kz.ask.business.domain.enums.CategoryScope;
 import kz.ask.business.infrastructure.repository.CategoryRepository;
-import kz.ask.catalog.infrastructure.repository.ProductRepository;
+import kz.ask.item.infrastructure.repository.ProductRepository;
 import kz.ask.service.infrastructure.repository.ServiceOfferingRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -30,17 +30,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public Category requireActiveCategory(UUID categoryId) {
-        Category category = categoryRepository.findById(categoryId)
+        return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND));
-        if (category.getStatus() != RecordStatus.ACTIVE) {
-            throw new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-        return category;
     }
 
     @Override
     public List<CategoryResponse> listRootCategories() {
-        return categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE)
+        return categoryRepository.findByParentIsNull()
                 .stream()
                 .map(this::toCategoryResponse)
                 .toList();
@@ -48,7 +44,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponse> listSubcategories(UUID parentId) {
-        return categoryRepository.findByParentIdAndStatus(parentId, RecordStatus.ACTIVE)
+        return categoryRepository.findByParentId(parentId)
                 .stream()
                 .map(this::toCategoryResponse)
                 .toList();
@@ -58,32 +54,40 @@ public class CategoryServiceImpl implements CategoryService {
     public UUID resolveServiceImportCategoryId(String preferredName) {
         if (preferredName != null && !preferredName.isBlank()) {
             var preferred = categoryRepository.findByNameIgnoreCase(preferredName.trim());
-            if (preferred.isPresent() && preferred.get().getStatus() == RecordStatus.ACTIVE) {
+            if (preferred.isPresent()) {
                 return preferred.get().getId();
             }
         }
-        return categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE)
+        return categoryRepository.findByParentIsNull()
                 .stream()
                 .filter(category -> GENERAL_CATEGORY_SLUG.equals(category.getSlug()))
                 .findFirst()
-                .or(() -> categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE).stream().findFirst())
+                .or(() -> categoryRepository.findByParentIsNull().stream().findFirst())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND))
                 .getId();
     }
 
     @Override
-    public CategoryAutocompleteResponse autocomplete(String query, UUID businessId) {
+    public CategoryAutocompleteResponse autocomplete(String query, UUID businessId, CategoryScope scope) {
         String q = (query == null || query.isBlank()) ? "" : query.trim();
-        List<Category> standardCategories = q.isEmpty()
-                ? categoryRepository.findByParentIsNullAndStatus(RecordStatus.ACTIVE)
-                : categoryRepository.findByNameStartingWithIgnoreCaseAndStatus(q, RecordStatus.ACTIVE);
+        List<Category> matchingCategories;
 
-        List<CategorySuggestion> standard = standardCategories.stream()
+        if (q.isEmpty()) {
+            matchingCategories = categoryRepository.findRootsByScope(scope != null ? scope : CategoryScope.BOTH);
+        } else {
+            matchingCategories = categoryRepository.findByNameStartingWithScope(q, scope != null ? scope : CategoryScope.BOTH);
+
+            List<Category> aliasMatches = categoryRepository.findByAliasStartingWithAndScope(q, scope != null ? scope : CategoryScope.BOTH);
+            for (Category aliasMatch : aliasMatches) {
+                if (matchingCategories.stream().noneMatch(c -> c.getId().equals(aliasMatch.getId()))) {
+                    matchingCategories.add(aliasMatch);
+                }
+            }
+        }
+
+        List<CategorySuggestion> standard = matchingCategories.stream()
                 .limit(8)
-                .map(c -> CategorySuggestion.builder()
-                        .label(c.getName())
-                        .categoryId(c.getId())
-                        .build())
+                .map(this::toSuggestion)
                 .toList();
 
         List<CategorySuggestion> custom = new ArrayList<>();
@@ -92,13 +96,13 @@ public class CategoryServiceImpl implements CategoryService {
             List<String> productLabels = productRepository.findDistinctCategoryLabelsByBusiness(businessId, q);
             for (String label : productLabels) {
                 if (seen.add(label.toLowerCase())) {
-                    custom.add(CategorySuggestion.builder().label(label).categoryId(null).build());
+                    custom.add(CategorySuggestion.builder().label(label).categoryId(null).custom(true).build());
                 }
             }
             List<String> serviceLabels = serviceOfferingRepository.findDistinctCategoryLabelsByBusiness(businessId, q);
             for (String label : serviceLabels) {
                 if (seen.add(label.toLowerCase())) {
-                    custom.add(CategorySuggestion.builder().label(label).categoryId(null).build());
+                    custom.add(CategorySuggestion.builder().label(label).categoryId(null).custom(true).build());
                 }
             }
             if (custom.size() > 8) {
@@ -112,6 +116,20 @@ public class CategoryServiceImpl implements CategoryService {
                 .build();
     }
 
+    private CategorySuggestion toSuggestion(Category category) {
+        Category parent = category.getParent();
+        String parentLabel = parent != null ? parent.getName() : null;
+        String path = parent != null ? parent.getName() + " -> " + category.getName() : category.getName();
+        return CategorySuggestion.builder()
+                .label(category.getName())
+                .categoryId(category.getId())
+                .parentId(parent != null ? parent.getId() : null)
+                .parentLabel(parentLabel)
+                .path(path)
+                .custom(false)
+                .build();
+    }
+
     private CategoryResponse toCategoryResponse(Category category) {
         Category parent = category.getParent();
         return CategoryResponse.builder()
@@ -119,6 +137,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .name(category.getName())
                 .slug(category.getSlug())
                 .parentId(parent != null ? parent.getId() : null)
+                .scope(category.getScope().name())
                 .children(List.of())
                 .build();
     }

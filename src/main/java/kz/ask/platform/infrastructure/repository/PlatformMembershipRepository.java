@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import kz.ask.platform.domain.entity.PlatformMembership;
 import kz.ask.platform.domain.enums.PlatformRole;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -14,10 +14,10 @@ import org.springframework.stereotype.Repository;
 public interface PlatformMembershipRepository extends JpaRepository<PlatformMembership, UUID> {
 
     @EntityGraph(attributePaths = {"permissions", "user"})
-    Optional<PlatformMembership> findByUserIdAndStatus(UUID userId, RecordStatus status);
+    Optional<PlatformMembership> findByUserId(UUID userId);
 
     @EntityGraph(attributePaths = {"permissions", "user"})
     List<PlatformMembership> findAllByOrderByCreatedAtDesc();
 
-    long countByRoleAndStatus(PlatformRole role, RecordStatus status);
+    long countByRole(PlatformRole role);
 }

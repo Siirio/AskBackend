@@ -6,7 +6,7 @@ Date: 2026-07-16
 
 ## Scope
 
-This iteration makes the product and service creation-to-search pipeline correct, rebuildable, bounded, resilient, measurable, and relevant. It covers canonical product, service, and offer writes; a transactional outbox; versioned PostgreSQL search projections; reliable Meilisearch indexing; optional AI enrichment; deterministic and AI-assisted query interpretation; bounded retrieval, hydration, and PostgreSQL fallback; reindexing; reconciliation; executable search evaluation; load testing; and the frontend contract changes required to exercise search.
+This iteration makes the item and service creation-to-search pipeline correct, rebuildable, bounded, resilient, measurable, and relevant. It covers canonical item, service, and offer writes; a transactional outbox; versioned PostgreSQL search projections; reliable Meilisearch indexing; optional AI enrichment; deterministic and AI-assisted query interpretation; bounded retrieval, hydration, and PostgreSQL fallback; reindexing; reconciliation; executable search evaluation; load testing; and the frontend contract changes required to exercise search.
 
 Onboarding, broad frontend redesign, supplier fallback, business broadcasts, automatic business notifications from search, general analytics, and unrelated chat or business-workspace changes are excluded.
 
@@ -34,7 +34,7 @@ V1, V2, and V3 migrations are immutable. V4 may be rewritten because it has not 
 ## Canonical Write and Projection Flow
 
 ```text
-create/update/import product or service
+create/update/import item or service
 -> validate ownership and input
 -> save canonical entity and branch offer
 -> increment monotonic aggregate version
@@ -55,7 +55,7 @@ The indexed document carries a monotonic `documentVersion`. Index and delete ope
 
 ## Projection Model
 
-`SearchDocument` stores one searchable branch-level product or service result. It includes the canonical target identifiers, business and branch identifiers, document type, publication status, title, normalized title, business and branch names, category path, brand, SKU, raw summary, tokens, verified attributes, AI attributes, aliases, AI search summary, price bounds, currency, location, availability semantics, freshness, and document version.
+`SearchDocument` stores one searchable branch-level item or service result. It includes the canonical target identifiers, business and branch identifiers, document type, publication status, title, normalized title, business and branch names, category path, brand, SKU, raw summary, tokens, verified attributes, AI attributes, aliases, AI search summary, price bounds, currency, location, availability semantics, freshness, and document version.
 
 Canonical fields are copied into the projection; they are not moved out of their owning entities. Projection rows can be deleted and rebuilt from canonical PostgreSQL data in keyset-paginated batches.
 

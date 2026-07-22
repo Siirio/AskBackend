@@ -11,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.entity.Business;
@@ -52,30 +51,13 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
             joinColumns = @JoinColumn(name = "managed_import_request_id"))
     @Column(name = "source_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    private Set<CatalogSourceType> selectedSourceTypes = new LinkedHashSet<>();
+    private Set<CatalogSourceType> selectedSourceTypes;
 
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private PreferredContactChannel preferredContactChannel;
-
-    @Column(nullable = false)
-    private String preferredContactValue;
-
-    private String sourceLinks;
+    private String sourceLinks; 
 
     private String sourceNotes;
-
-    private UUID conversationId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "responsible_platform_user_id")
-    private AppUser responsiblePlatformUser;
-
-    private Instant activatedAt;
 
     private Instant expiresAt;
 
     private Instant completedAt;
-
-    private Integer productsPublishedCount;
 }

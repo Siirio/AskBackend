@@ -8,8 +8,9 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import kz.ask.business.domain.enums.UniqueOfferStatus;
 import kz.ask.business.domain.enums.UniqueOfferType;
@@ -53,15 +54,15 @@ public class UniqueOffer extends BaseUuidV7Entity {
     private Integer discountPercent;
 
     @Column(name = "discount_amount")
-    private java.math.BigDecimal discountAmount;
+    private BigDecimal discountAmount;
 
     @Column(nullable = false)
-    private Boolean enabled = true;
+    private Boolean isEnabled;
 
-    @Column(length = 3, columnDefinition = "VARCHAR(3) DEFAULT 'KZT'")
+    @Column(length = 3)
     private String currency;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
-    private List<String> tags = new ArrayList<>();
+    private List<String> tags;
 }

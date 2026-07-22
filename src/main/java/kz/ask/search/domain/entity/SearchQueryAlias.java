@@ -6,7 +6,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.RecordStatus;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,7 +21,4 @@ public class SearchQueryAlias extends BaseUuidV7Entity {
     @Column(name = "target_query", nullable = false)
     private String targetQuery;
 
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private RecordStatus status;
 }

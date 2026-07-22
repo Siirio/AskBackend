@@ -44,8 +44,6 @@
 |--------|------|------|---------|
 | POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership. Request includes `catalogScope` = PRODUCTS, SERVICES, or BOTH and response includes managed-import conversationId when applicable |
 
-`catalogSources` accepts `WILDBERRIES` alongside the existing social, marketplace, website, and file sources.
-
 ## Public Reference
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|

@@ -31,12 +31,12 @@ public class BusinessServiceController {
     @GetMapping
     public ResponseEntity<BusinessServiceListResponse> listServices(@AuthenticationPrincipal AskPrincipal principal,
                                                                      @PathVariable UUID branchId,
-                                                                     @RequestParam(required = false) UUID categoryId,
+                                                                     @RequestParam(required = false) String categoryLabel,
                                                                      @RequestParam(required = false) Boolean active,
                                                                      @RequestParam(required = false) String query,
                                                                      @RequestParam(defaultValue = "0") Integer page,
                                                                      @RequestParam(defaultValue = "20") Integer size) {
-        return ResponseEntity.ok(processor.listServices(principal, branchId, categoryId, active, query, page, size));
+        return ResponseEntity.ok(processor.listServices(principal, branchId, categoryLabel, active, query, page, size));
     }
 
     @PostMapping

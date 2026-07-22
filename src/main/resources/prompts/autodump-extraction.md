@@ -41,7 +41,7 @@ Return a JSON object with this exact shape:
 - **price**: Numeric price in the listing's currency (null if no price)
 - **price_text**: Price as displayed in original text (e.g., "650 000 ₸", "договорная")
 - **currency**: KZT, USD, EUR, RUB, or null (default KZT for Kazakhstan)
-- **brand**: Brand name (null if not a branded product)
+- **brand**: Brand name (null if not a branded item)
 - **tags**: Array of relevant search keywords (3-8 items)
 - **custom_attributes**: Key-value pairs for structured attributes (Состояние, Размер, Материал, etc.)
 - **source_reference**: Quote the exact original text that describes this item

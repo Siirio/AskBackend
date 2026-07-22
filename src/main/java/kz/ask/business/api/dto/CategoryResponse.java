@@ -12,5 +12,6 @@ public class CategoryResponse {
     private String name;
     private String slug;
     private UUID parentId;
+    private String scope;
     private List<CategoryResponse> children;
 }

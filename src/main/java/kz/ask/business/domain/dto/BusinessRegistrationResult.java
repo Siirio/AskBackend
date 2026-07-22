@@ -15,5 +15,4 @@ public class BusinessRegistrationResult {
     private BusinessDto business;
     private BusinessBranchDto branch;
     private BusinessMemberDto member;
-    private BusinessContactDto contact;
 }

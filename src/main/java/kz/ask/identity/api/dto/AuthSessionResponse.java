@@ -26,7 +26,7 @@ public class AuthSessionResponse {
     private List<RoleOption> availableRoles;
     private List<String> allRoles;
     private Boolean requiresTwoFactor;
-    private UUID authChallengeId;
+    private UUID verificationId;
     private Boolean suggestRoleExpansion;
     private AuthCustomerProfileResponse customerProfile;
     private List<AuthBusinessMembershipResponse> businessMemberships;

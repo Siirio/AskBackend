@@ -3,7 +3,7 @@
 ## Customer Chat
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/chat/start | CUSTOMER | Start conversation from context |
+| POST | /api/v1/chat/start | CUSTOMER | Start or resume the customer-to-business conversation |
 | POST | /api/v1/chat/{conversationId}/messages | CUSTOMER | Send message |
 | GET | /api/v1/chat/{conversationId}/messages | CUSTOMER | Get messages |
 | POST | /api/v1/chat/{conversationId}/read | CUSTOMER | Mark as read |
@@ -45,6 +45,8 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 - status: PENDING → IN_CHAT (first PLATFORM message) → CLOSED
 - customerUnreadCount, businessUnreadCount (int, default 0)
 - lastMessageAt, createdAt
+
+One conversation is unique per `businessId` and `customerId`. A item or service card resolves its business and opens or resumes that conversation. Branches are access and entry points, not conversation identity. Any authorized business member reads the same business-side inbox state.
 
 ## ChatMessage Model
 - messageId, conversationId, senderType (CUSTOMER/BUSINESS/PLATFORM)

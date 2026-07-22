@@ -23,7 +23,7 @@ public class SearchReindexBatchServiceImpl implements SearchReindexBatchService 
     @Override
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public SearchReindexBatch read(UUID cursor, Integer batchSize) {
-        List<SearchDocument> documents = repository.findActiveReindexBatch(
+        List<SearchDocument> documents = repository.findReindexBatch(
                 cursor, PageRequest.of(0, batchSize + 1));
         boolean hasMore = documents.size() > batchSize;
         List<SearchDocument> page = hasMore ? documents.subList(0, batchSize) : documents;

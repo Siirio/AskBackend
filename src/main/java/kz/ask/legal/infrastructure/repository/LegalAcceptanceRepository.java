@@ -10,10 +10,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LegalAcceptanceRepository extends JpaRepository<LegalAcceptance, UUID> {
 
-    boolean existsByUserIdAndDocumentCodeAndDocumentVersionAndCountryCodeAndLocale(
+    boolean existsByUserIdAndDocumentCodeAndCountryCodeAndLocale(
             UUID userId,
             LegalDocumentCode documentCode,
-            String documentVersion,
             String countryCode,
             String locale);
 

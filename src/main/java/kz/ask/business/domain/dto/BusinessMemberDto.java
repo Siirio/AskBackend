@@ -17,5 +17,4 @@ public class BusinessMemberDto {
     private String email;
     private String displayName;
     private String role;
-    private String status;
 }

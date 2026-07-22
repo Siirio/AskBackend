@@ -10,7 +10,6 @@ import kz.ask.business.api.dto.BusinessInvitationResponse;
 import kz.ask.business.api.dto.CreateBusinessInvitationRequest;
 import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessInvitationService;
-import kz.ask.business.domain.BusinessMemberBranchService;
 import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.dto.BusinessInvitationDto;
 import kz.ask.business.domain.dto.BusinessMemberDto;
@@ -35,7 +34,6 @@ public class BusinessInvitationProcessor {
 
     private final BusinessInvitationService businessInvitationService;
     private final BusinessMemberService businessMemberService;
-    private final BusinessMemberBranchService businessMemberBranchService;
     private final BusinessBranchService businessBranchService;
     private final IdentityService identityService;
     private final BusinessInvitationEmailSender businessInvitationEmailSender;
@@ -106,12 +104,10 @@ public class BusinessInvitationProcessor {
             throw new ConflictException(ErrorCode.INVITATION_MEMBER_EXISTS);
         }
 
-        BusinessMemberDto membership = businessMemberService.createMember(
+        businessMemberService.createMember(
                 invitation.getBusinessId(),
                 user.getId(),
                 BusinessMemberRole.valueOf(invitation.getInvitedRole()));
-        invitation.getBranchIds().forEach(
-                branchId -> businessMemberBranchService.assign(membership.getId(), branchId));
         significantEventService.record(user.getId(),
                 SignificantEventType.BUSINESS_INVITATION_ACCEPTED,
                 invitation.getBusinessId(), invitationId, Map.of());

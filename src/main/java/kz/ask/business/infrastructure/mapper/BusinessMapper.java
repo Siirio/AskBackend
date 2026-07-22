@@ -1,36 +1,29 @@
 package kz.ask.business.infrastructure.mapper;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import kz.ask.business.domain.dto.BranchMemberDto;
 import kz.ask.business.domain.dto.BusinessBranchDto;
-import kz.ask.business.domain.dto.BusinessContactDto;
 import kz.ask.business.domain.dto.BusinessDto;
 import kz.ask.business.domain.dto.BusinessMemberDto;
+import kz.ask.business.domain.dto.BusinessProfileDto;
 import kz.ask.business.domain.dto.CityDto;
-import kz.ask.business.domain.dto.DataSourceDto;
-import kz.ask.business.domain.entity.UniqueOffer;
-import kz.ask.business.domain.entity.BrandProfile;
+import kz.ask.business.domain.dto.UniqueOfferDto;
 import kz.ask.business.domain.entity.BranchMember;
 import kz.ask.business.domain.entity.Business;
 import kz.ask.business.domain.entity.BusinessBranch;
-import kz.ask.business.domain.entity.BusinessContact;
 import kz.ask.business.domain.entity.BusinessMember;
+import kz.ask.business.domain.entity.BusinessProfile;
 import kz.ask.business.domain.entity.City;
-import kz.ask.business.domain.entity.DataSource;
+import kz.ask.business.domain.entity.UniqueOffer;
 import kz.ask.business.domain.enums.BranchMemberRole;
-import kz.ask.business.domain.enums.UniqueOfferStatus;
-import kz.ask.business.domain.enums.UniqueOfferType;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.business.domain.enums.CatalogScope;
-import kz.ask.business.domain.enums.ContactVisibility;
-import kz.ask.business.domain.enums.ContactType;
-import kz.ask.business.domain.dto.UniqueOfferDto;
-import kz.ask.business.domain.dto.BrandProfileDto;
+import kz.ask.business.domain.enums.UniqueOfferStatus;
+import kz.ask.business.domain.enums.UniqueOfferType;
 import kz.ask.identity.domain.entity.AppUser;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,7 +33,6 @@ public class BusinessMapper {
         Business business = new Business();
         business.setName(name);
         business.setCurrency("KZT");
-        business.setStatus(RecordStatus.ACTIVE);
         business.setCatalogScope(CatalogScope.BOTH);
         return business;
     }
@@ -57,7 +49,6 @@ public class BusinessMapper {
         branch.setOnlineOnly(onlineOnly);
         branch.setLatitude(latitude);
         branch.setLongitude(longitude);
-        branch.setStatus(RecordStatus.ACTIVE);
         return branch;
     }
 
@@ -66,38 +57,24 @@ public class BusinessMapper {
         member.setBusiness(business);
         member.setUser(user);
         member.setRole(role);
-        member.setStatus(RecordStatus.ACTIVE);
         return member;
     }
 
-    public BusinessContact toContactEntity(Business business, BusinessBranch branch,
-                                            ContactType type, String value) {
-        BusinessContact contact = new BusinessContact();
-        contact.setBusiness(business);
-        contact.setBranch(branch);
-        contact.setContactType(type);
-        contact.setContactValue(value);
-        contact.setDisplayValue(value);
-        contact.setVisibility(ContactVisibility.AFTER_CONTACT);
-        contact.setPrimaryContact(true);
-        contact.setStatus(RecordStatus.ACTIVE);
-        return contact;
-    }
-
-    public BrandProfile toBrandProfileEntity(Business business) {
-        BrandProfile profile = new BrandProfile();
+    public BusinessProfile toBusinessProfileEntity(Business business) {
+        BusinessProfile profile = new BusinessProfile();
         profile.setBusiness(business);
         return profile;
     }
 
-    public void updateBrandProfile(BrandProfile profile, String brandColor, String logoUrl, String coverUrl,
-                                    String toneOfVoice, String description, String instagramUrl,
-                                    String telegramUrl, String websiteUrl) {
+    public void updateBusinessProfile(BusinessProfile profile, String brandColor, String logoUrl,
+                                       String coverUrl, String description, String number, String email,
+                                       String instagramUrl, String telegramUrl, String websiteUrl) {
         profile.setBrandColor(brandColor);
         profile.setLogoUrl(logoUrl);
         profile.setCoverUrl(coverUrl);
-        profile.setToneOfVoice(toneOfVoice);
         profile.setDescription(description);
+        profile.setNumber(number);
+        profile.setEmail(email);
         profile.setInstagramUrl(instagramUrl);
         profile.setTelegramUrl(telegramUrl);
         profile.setWebsiteUrl(websiteUrl);
@@ -127,7 +104,6 @@ public class BusinessMapper {
         member.setBranch(branch);
         member.setUser(user);
         member.setRole(role);
-        member.setStatus(RecordStatus.ACTIVE);
         return member;
     }
 
@@ -138,17 +114,18 @@ public class BusinessMapper {
                 .build();
     }
 
-    public BrandProfileDto toBrandProfileDto(BrandProfile entity) {
+    public BusinessProfileDto toBusinessProfileDto(BusinessProfile entity) {
         Business business = entity.getBusiness();
-        return BrandProfileDto.builder()
+        return BusinessProfileDto.builder()
                 .id(entity.getId())
                 .businessId(business.getId())
                 .businessName(business.getName())
                 .brandColor(entity.getBrandColor())
                 .logoUrl(entity.getLogoUrl())
                 .coverUrl(entity.getCoverUrl())
-                .toneOfVoice(entity.getToneOfVoice())
                 .description(entity.getDescription())
+                .number(entity.getNumber())
+                .email(entity.getEmail())
                 .instagramUrl(entity.getInstagramUrl())
                 .telegramUrl(entity.getTelegramUrl())
                 .websiteUrl(entity.getWebsiteUrl())
@@ -166,7 +143,6 @@ public class BusinessMapper {
                 .address(entity.getAddress())
                 .addressDetails(entity.getAddressDetails())
                 .onlineOnly(entity.getOnlineOnly())
-                .status(entity.getStatus().name())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .build();
@@ -200,17 +176,6 @@ public class BusinessMapper {
                 .email(entity.getUser().getEmail())
                 .displayName(entity.getUser().getDisplayName())
                 .role(entity.getRole().name())
-                .status(entity.getStatus().name())
-                .build();
-    }
-
-    public BusinessContactDto toBusinessContactDto(BusinessContact entity) {
-        return BusinessContactDto.builder()
-                .id(entity.getId())
-                .businessId(entity.getBusiness().getId())
-                .contactType(entity.getContactType().name())
-                .displayValue(entity.getDisplayValue())
-                .visibility(entity.getVisibility().name())
                 .build();
     }
 
@@ -230,15 +195,6 @@ public class BusinessMapper {
 
     public List<BranchMemberDto> toBranchMemberDtoList(List<BranchMember> entities) {
         return entities.stream().map(this::toBranchMemberDto).collect(Collectors.toList());
-    }
-
-    public DataSourceDto toDataSourceDto(DataSource entity) {
-        return DataSourceDto.builder()
-                .id(entity.getId())
-                .businessId(entity.getBusiness().getId())
-                .sourceType(entity.getSourceType().name())
-                .name(entity.getName())
-                .build();
     }
 
     public CityDto toCityDto(City entity) {

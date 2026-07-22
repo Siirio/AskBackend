@@ -40,7 +40,7 @@ public class SearchAiEnrichmentServiceImpl implements SearchAiEnrichmentService 
         SearchDocument document = documentRepository.findById(item.getDocumentId()).orElse(null);
         if (document == null
                 || !item.getWorkerId().equals(document.getAiEnrichmentWorkerId())
-                || !item.getDocumentVersion().equals(document.getDocumentVersion())) {
+                || !item.getUpdatedAtMillis().equals(document.getUpdatedAt().toEpochMilli())) {
             return;
         }
 
@@ -65,7 +65,7 @@ public class SearchAiEnrichmentServiceImpl implements SearchAiEnrichmentService 
             document.setAiSearchSummary(null);
         }
         document.setAiAttributes(aiAttributes);
-        document.setAiEnrichmentVersion(item.getDocumentVersion());
+        document.setAiEnrichmentVersion(item.getUpdatedAtMillis());
         document.setAiEnrichmentStartedAt(null);
         document.setAiEnrichmentWorkerId(null);
         document.setAiEnrichmentAttemptCount(0);
@@ -74,7 +74,7 @@ public class SearchAiEnrichmentServiceImpl implements SearchAiEnrichmentService 
         document.setAiEnrichmentRequested(Boolean.FALSE);
         outboxService.republish(
                 item.getAggregateType(), item.getAggregateId(),
-                SearchEventType.UPSERT, item.getDocumentVersion());
+                SearchEventType.UPSERT, item.getUpdatedAtMillis());
     }
 
     private SearchAiMetadata toMetadata(SearchAiEnrichmentItem item,

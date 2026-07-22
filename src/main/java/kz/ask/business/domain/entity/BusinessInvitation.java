@@ -11,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.enums.BusinessInvitationStatus;
@@ -54,7 +53,7 @@ public class BusinessInvitation extends BaseUuidV7Entity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "accepted_by_user_id")
-    private AppUser acceptedBy;
+    private AppUser acceptedBy; //status of acceptance cannot be part of the invitation, we need a separate table for tracking the acceptance/declining. Actually Make one ENUM that says the status - accepted, declined, revoked or suspended by platform user(ModerationStatus) and it must have app user, creation and last updated time(base entity extension)
 
     private Instant acceptedAt;
 
@@ -67,5 +66,5 @@ public class BusinessInvitation extends BaseUuidV7Entity {
             name = "business_invitation_branch",
             joinColumns = @JoinColumn(name = "business_invitation_id"))
     @Column(name = "branch_id", nullable = false)
-    private Set<UUID> branchIds = new LinkedHashSet<>();
+    private Set<UUID> branchIds;
 }

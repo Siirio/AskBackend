@@ -14,8 +14,6 @@ public class PlatformBusinessDetailResponse {
     private String legalName;
     private String bin;
     private String countryCode;
-    private String preferredContactChannel;
-    private String preferredContactValue;
     private String moderationStatus;
     private String catalogStatus;
     private String catalogScope;

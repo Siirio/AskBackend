@@ -5,10 +5,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
-import kz.ask.identity.api.dto.AuthChallengeResponse;
+import kz.ask.identity.api.dto.VerificationResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.BusinessLoginStartRequest;
 import kz.ask.identity.api.dto.BusinessRegisterRequest;
+import kz.ask.identity.api.dto.CancelVerificationRequest;
 import kz.ask.identity.api.dto.ChangePasswordRequest;
 import kz.ask.identity.api.dto.ChangeTemporaryPasswordRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
@@ -56,25 +57,25 @@ public class AuthController {
 
     @Operation(summary = "Start customer login", description = "Issues a verification challenge for an existing customer account")
     @PostMapping("/customer/login/start")
-    public ResponseEntity<AuthChallengeResponse> startCustomerLogin(@Valid @RequestBody CustomerLoginStartRequest req) {
+    public ResponseEntity<VerificationResponse> startCustomerLogin(@Valid @RequestBody CustomerLoginStartRequest req) {
         return ResponseEntity.ok(authProcessor.startCustomerLogin(req));
     }
 
     @Operation(summary = "Register customer", description = "Creates a new customer account and issues a verification challenge")
     @PostMapping("/customer/register")
-    public ResponseEntity<AuthChallengeResponse> registerCustomer(@Valid @RequestBody CustomerRegisterRequest req) {
+    public ResponseEntity<VerificationResponse> registerCustomer(@Valid @RequestBody CustomerRegisterRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authProcessor.registerCustomer(req));
     }
 
     @Operation(summary = "Start business login", description = "Issues a verification challenge for an existing business account")
     @PostMapping("/business/login/start")
-    public ResponseEntity<AuthChallengeResponse> startBusinessLogin(@Valid @RequestBody BusinessLoginStartRequest req) {
+    public ResponseEntity<VerificationResponse> startBusinessLogin(@Valid @RequestBody BusinessLoginStartRequest req) {
         return ResponseEntity.ok(authProcessor.startBusinessLogin(req));
     }
 
     @Operation(summary = "Register business", description = "Creates a new business account and issues a verification challenge")
     @PostMapping("/business/register")
-    public ResponseEntity<AuthChallengeResponse> registerBusiness(@Valid @RequestBody BusinessRegisterRequest req) {
+    public ResponseEntity<VerificationResponse> registerBusiness(@Valid @RequestBody BusinessRegisterRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authProcessor.registerBusiness(req));
     }
 
@@ -82,6 +83,13 @@ public class AuthController {
     @PostMapping("/verify")
     public ResponseEntity<AuthSessionResponse> verifyCode(@Valid @RequestBody VerifyCodeRequest req) {
         return ResponseEntity.ok(authProcessor.verifyCode(req));
+    }
+
+    @Operation(summary = "Cancel verification", description = "Cancels a pending verification challenge so the user can restart with corrected credentials")
+    @PostMapping("/cancel-verification")
+    public ResponseEntity<Void> cancelVerification(@Valid @RequestBody CancelVerificationRequest req) {
+        authProcessor.cancelVerification(req);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Get current session", description = "Returns the authenticated session for the current principal")
@@ -111,7 +119,7 @@ public class AuthController {
     }
 
     @PostMapping("/email-change/request")
-    public ResponseEntity<AuthChallengeResponse> requestEmailChange(
+    public ResponseEntity<VerificationResponse> requestEmailChange(
             @AuthenticationPrincipal AskPrincipal principal,
             @Valid @RequestBody RequestEmailChangeRequest req) {
         return ResponseEntity.ok(authProcessor.requestEmailChange(principal, req));

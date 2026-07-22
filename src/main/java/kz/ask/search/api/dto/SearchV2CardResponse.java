@@ -3,7 +3,6 @@ package kz.ask.search.api.dto;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import kz.ask.contact.api.dto.ContactActionSummaryResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,5 +23,4 @@ public class SearchV2CardResponse {
     private List<String> badges;
     private Integer distanceMeters;
     private String branchName;
-    private List<ContactActionSummaryResponse> contactActions;
 }

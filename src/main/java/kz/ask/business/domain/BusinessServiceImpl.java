@@ -2,15 +2,13 @@ package kz.ask.business.domain;
 
 import java.util.UUID;
 import kz.ask.business.domain.dto.BusinessBranchDto;
-import kz.ask.business.domain.dto.BusinessContactDto;
 import kz.ask.business.domain.dto.BusinessDto;
 import kz.ask.business.domain.dto.BusinessMemberDto;
 import kz.ask.business.domain.dto.BusinessRegistrationResult;
 import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.enums.ContactType;
 import kz.ask.business.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.infrastructure.repository.BusinessRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +20,6 @@ public class BusinessServiceImpl implements BusinessService {
     private final BusinessRepository businessRepository;
     private final BusinessBranchService businessBranchService;
     private final BusinessMemberService businessMemberService;
-    private final BusinessContactService businessContactService;
     private final BusinessMapper businessMapper;
 
     @Override
@@ -43,16 +40,10 @@ public class BusinessServiceImpl implements BusinessService {
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);
 
-        BusinessContactDto contactDto = null;
-        if (contactEmail != null) {
-            contactDto = businessContactService.create(businessId, branchDto.getId(), ContactType.EMAIL, contactEmail);
-        }
-
         return BusinessRegistrationResult.builder()
                 .business(businessDto)
                 .branch(branchDto)
                 .member(memberDto)
-                .contact(contactDto)
                 .build();
     }
 
@@ -72,8 +63,7 @@ public class BusinessServiceImpl implements BusinessService {
                 .business(businessDto)
                 .branch(branchDto)
                 .member(memberDto)
-                .contact(null)
-                .build();
+                                .build();
     }
 
     @Override
@@ -106,7 +96,6 @@ public class BusinessServiceImpl implements BusinessService {
         return BusinessRegistrationResult.builder()
                 .business(businessDto)
                 .member(memberDto)
-                .contact(null)
-                .build();
+                                .build();
     }
 }

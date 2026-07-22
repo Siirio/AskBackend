@@ -11,7 +11,6 @@ import kz.ask.business.infrastructure.repository.BranchMemberRepository;
 import kz.ask.business.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,25 +44,25 @@ public class BranchMemberServiceImpl implements BranchMemberService {
 
     @Override
     public List<BranchMemberDto> findByBranch(UUID branchId) {
-        List<BranchMember> entities = branchMemberRepository.findByBranchIdAndStatus(branchId, RecordStatus.ACTIVE);
+        List<BranchMember> entities = branchMemberRepository.findByBranchId(branchId);
         return businessMapper.toBranchMemberDtoList(entities);
     }
 
     @Override
     public Boolean isStaffOfBranch(UUID branchId, UUID userId) {
-        List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        List<BranchMember> members = branchMemberRepository.findByUserId(userId);
         return members.stream().anyMatch(m -> m.getBranch().getId().equals(branchId));
     }
 
     @Override
     public Boolean isBranchStaff(UUID userId) {
-        List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        List<BranchMember> members = branchMemberRepository.findByUserId(userId);
         return !members.isEmpty();
     }
 
     @Override
     public BranchMemberDto findByUser(UUID userId) {
-        List<BranchMember> members = branchMemberRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        List<BranchMember> members = branchMemberRepository.findByUserId(userId);
         return members.isEmpty() ? null : businessMapper.toBranchMemberDto(members.get(0));
     }
 }

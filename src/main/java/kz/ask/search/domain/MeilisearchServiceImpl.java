@@ -34,7 +34,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private static final String FIELD_DOCUMENT_TYPE = "documentType";
     private static final String FIELD_PRICE = "price";
     private static final String FIELD_CITY = "city";
-    private static final String FIELD_STATUS = "status";
     private static final String FIELD_VERIFIED_ATTRIBUTES = "verifiedAttributes";
     private static final String FIELD_AI_ATTRIBUTES = "aiAttributes";
     private static final String FIELD_SYNCED_AT = "syncedAt";
@@ -193,7 +192,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
 
     private String buildFilterString(SearchPlan plan) {
         List<String> filters = new ArrayList<>();
-        filters.add(FIELD_STATUS + " = ACTIVE");
 
         if (plan.getItemType() != null) {
             filters.add(FIELD_DOCUMENT_TYPE + " = " + plan.getItemType().name());
@@ -255,16 +253,16 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         }
         waitForTask(index, index.updateSearchableAttributesSettings(new String[]{
                 "title", "normalizedTitle", "brand", "categoryPath", "categoryLabel",
-                "sku", "aliases", "tokens", "aiSearchSummary", "summary",
-                "characteristicsJson", "businessName", "branchName"
+                "aliases", "tokens", "aiSearchSummary", "summary",
+                "businessName", "branchName"
         }));
         waitForTask(index, index.updateFilterableAttributesSettings(new String[]{
                 FIELD_DOCUMENT_TYPE, FIELD_PRICE, FIELD_CITY,
-                FIELD_STATUS, FIELD_VERIFIED_ATTRIBUTES, FIELD_AI_ATTRIBUTES,
+                FIELD_VERIFIED_ATTRIBUTES, FIELD_AI_ATTRIBUTES,
                 "aggregateId", "currency", "availabilityStatus"
         }));
         waitForTask(index, index.updateSortableAttributesSettings(new String[]{
-                FIELD_PRICE, FIELD_SYNCED_AT, "documentVersion"
+                FIELD_PRICE, FIELD_SYNCED_AT
         }));
         configuredIndexes.add(index.getUid());
         log.info("Meilisearch index '{}' settings configured", index.getUid());
@@ -274,7 +272,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         Map<String, Object> map = new HashMap<>();
         map.put("id", doc.getId());
         map.put("aggregateId", doc.getAggregateId());
-        map.put("documentVersion", doc.getDocumentVersion());
         map.put("title", doc.getTitle());
         map.put("normalizedTitle", nullToEmpty(doc.getNormalizedTitle()));
         map.put("summary", nullToEmpty(doc.getSummary()));
@@ -283,8 +280,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put("brand", nullToEmpty(doc.getBrand()));
         map.put("categoryPath", nullToEmpty(doc.getCategoryPath()));
         map.put("categoryLabel", nullToEmpty(doc.getCategoryLabel()));
-        map.put("sku", nullToEmpty(doc.getSku()));
-        map.put("characteristicsJson", nullToEmpty(doc.getCharacteristicsJson()));
         map.put("businessName", nullToEmpty(doc.getBusinessName()));
         map.put("branchName", nullToEmpty(doc.getBranchName()));
         map.put("tokens", doc.getTokens() != null ? doc.getTokens() : List.of());
@@ -299,7 +294,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put(FIELD_AI_ATTRIBUTES, doc.getAiAttributes() != null
                 ? new HashMap<>(doc.getAiAttributes()) : new HashMap<>());
         map.put("availabilityStatus", "UNKNOWN");
-        map.put(FIELD_STATUS, "ACTIVE");
         map.put(FIELD_SYNCED_AT, doc.getSyncedAt() != null ? doc.getSyncedAt().toString() : Instant.now().toString());
         return map;
     }

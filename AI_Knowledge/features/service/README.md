@@ -1,6 +1,6 @@
 # Services
 
-Service offerings, branch-level availability, booking lifecycle, and fallback requests. MVP is request-to-book — not automatic calendar slot reservation.
+Service offerings, branch-level availability, and chat-first customer contact. Search does not create booking or request records.
 
 ## Key decisions
 - Services are NOT products. Scheduled service logic must stay explicit.
@@ -13,4 +13,4 @@ Service offerings, branch-level availability, booking lifecycle, and fallback re
 - Three-level time model: requestedStartAt → proposedStartAt → confirmedStartAt/EndAt.
 - ActivityDisplayStatus derived at runtime (DISCUSSING/CONFIRMED/CONFIRMATION_DECLINED), never stored.
 - Every confirmation/change/cancellation creates system event in conversation.
-- Chat-first, button-for-fixation: chat is primary communication; buttons record agreement already reached.
+- Chat-first: customer explicitly opens the business-wide conversation from a service offer; search does not create booking or request records.

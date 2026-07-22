@@ -31,9 +31,6 @@ public class LegalAcceptance extends BaseUuidV7Entity {
     private LegalDocumentCode documentCode;
 
     @Column(nullable = false)
-    private String documentVersion;
-
-    @Column(nullable = false)
     private String countryCode;
 
     @Column(nullable = false)

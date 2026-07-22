@@ -75,7 +75,7 @@ public class SearchAiEnrichmentClaimServiceImpl implements SearchAiEnrichmentCla
                         ? SearchAggregateType.PRODUCT_OFFER
                         : SearchAggregateType.SERVICE_BRANCH_OFFER)
                 .aggregateId(document.getAggregateId())
-                .documentVersion(document.getDocumentVersion())
+                .updatedAtMillis(document.getUpdatedAt().toEpochMilli())
                 .title(document.getTitle())
                 .description(document.getSummary())
                 .categoryLabel(document.getCategoryLabel())

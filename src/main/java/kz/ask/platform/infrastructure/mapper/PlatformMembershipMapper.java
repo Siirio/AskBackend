@@ -16,7 +16,6 @@ public class PlatformMembershipMapper {
                 .email(entity.getUser().getEmail())
                 .displayName(entity.getUser().getDisplayName())
                 .role(entity.getRole())
-                .status(entity.getStatus())
                 .permissions(new LinkedHashSet<>(entity.getPermissions()))
                 .build();
     }

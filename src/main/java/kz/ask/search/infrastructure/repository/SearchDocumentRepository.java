@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 import kz.ask.search.domain.entity.SearchDocument;
 import kz.ask.search.domain.enums.SearchDocumentType;
-import kz.ask.shared.domain.enums.RecordStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,10 +17,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SearchDocumentRepository extends JpaRepository<SearchDocument, UUID> {
-
-    Optional<SearchDocument> findByProductOfferId(UUID productOfferId);
-
-    Optional<SearchDocument> findByServiceBranchOfferId(UUID serviceBranchOfferId);
 
     @Query("""
         select distinct d from SearchDocument d
@@ -33,8 +28,6 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         """)
     Optional<SearchDocument> findProjectionByAggregate(@Param("documentType") SearchDocumentType documentType,
                                                         @Param("aggregateId") UUID aggregateId);
-
-    List<SearchDocument> findByStatus(RecordStatus status);
 
     @Query("""
             SELECT DISTINCT d FROM SearchDocument d
@@ -49,25 +42,20 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
     List<SearchDocument> findByDocumentTypeAndAggregateIdIn(SearchDocumentType documentType,
                                                              Collection<UUID> aggregateIds);
 
-    long countByStatus(RecordStatus status);
-
     @Query("""
         select distinct d from SearchDocument d
         left join fetch d.business
         left join fetch d.branch b
         left join fetch b.city
-        where d.status = kz.ask.shared.domain.enums.RecordStatus.ACTIVE
-          and (:afterId is null or d.id > :afterId)
+        where (:afterId is null or d.id > :afterId)
         order by d.id
         """)
-    List<SearchDocument> findActiveReindexBatch(@Param("afterId") UUID afterId, Pageable pageable);
+    List<SearchDocument> findReindexBatch(@Param("afterId") UUID afterId, Pageable pageable);
 
     @Query(value = """
         select * from search_document
-        where status = 'ACTIVE'
-          and ai_enrichment_requested = true
+        where ai_enrichment_requested = true
           and ai_enrichment_dead = false
-          and (ai_enrichment_version is null or ai_enrichment_version < document_version)
           and ai_enrichment_available_at <= :now
           and (ai_enrichment_started_at is null or ai_enrichment_started_at < :staleBefore)
         order by ai_enrichment_available_at, id
@@ -110,8 +98,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         from search_document d
         left join business_branch branch on branch.id = d.branch_id
         left join city on city.id = branch.city_id
-        where d.status = 'ACTIVE'
-          and d.document_type in (:documentTypes)
+        where d.document_type in (:documentTypes)
           and (:query = ''
                or d.search_vector @@ websearch_to_tsquery('simple', :query)
                or d.normalized_title % :query)
@@ -122,7 +109,6 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         order by
           ts_rank_cd(d.search_vector, websearch_to_tsquery('simple', :query)) desc,
           similarity(d.normalized_title, :query) desc,
-          d.document_version desc,
           d.id
         limit :candidateLimit
         """, nativeQuery = true)

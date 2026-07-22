@@ -1,6 +1,6 @@
 # Product and Service Search Pipeline Implementation Plan
 
-**Goal:** Build a fast, relevant, versioned, rebuildable product/service creation-to-search pipeline without adding automated tests.
+**Goal:** Build a fast, relevant, versioned, rebuildable item/service creation-to-search pipeline without adding automated tests.
 
 **Verification policy:** Do not create test files or add test dependencies. Verify with compilation/builds, immutable migration hashes, isolated local PostgreSQL and Meilisearch runtime checks, direct invariant queries, dry runs, evaluation runners, query plans, dependency scans, and load tests. Do not commit or push.
 
@@ -26,15 +26,15 @@
 ## Phase 2: Transactional Outbox and Canonical Writes
 
 - [ ] Implement idempotent enqueue, `SKIP LOCKED` bounded claim, completion, retry with bounded exponential backoff/jitter, and retained dead events.
-- [ ] Add monotonic `searchVersion` propagation to product offers and service branch offers.
-- [ ] Replace synchronous `SearchDocumentService` calls in product, service, catalog import, and autodump publication with outbox insertion in the canonical transaction.
+- [ ] Add monotonic `searchVersion` propagation to item offers and service branch offers.
+- [ ] Replace synchronous `SearchDocumentService` calls in item, service, catalog import, and autodump publication with outbox insertion in the canonical transaction.
 - [ ] Remove the obsolete `search_index_queue` implementation.
 - [ ] Verify with isolated local create/update/disable/import transactions and direct SQL showing canonical row/outbox atomicity.
 - [ ] Scan catalog/service/import packages to prove no canonical path references Meilisearch or DeepSeek.
 
 ## Phase 3: Versioned Lexical Projection Worker
 
-- [ ] Add bounded canonical source readers for one product offer or service branch offer.
+- [ ] Add bounded canonical source readers for one item offer or service branch offer.
 - [ ] Implement compare-and-set projection upsert/archive using canonical current version and publication state.
 - [ ] Implement short outbox claim transactions and external indexing outside database locks.
 - [ ] Verify duplicate delivery, delayed stale events, disable/unpublish, and lexical-before-AI behavior with controlled local event rows and direct SQL/Meilisearch inspection.
@@ -54,7 +54,7 @@
 - [ ] Replace arbitrary attribute maps with a strict extraction DTO and server-owned schema validation.
 - [ ] Configure connection/response timeouts, bounded batches/concurrency, retry/dead visibility, and prompt-injection-resistant input framing.
 - [ ] Store confidence, evidence, source, model/schema versions, extraction time, and verification state only in `search_ai_metadata`.
-- [ ] Emit a new projection event after valid metadata commits; never modify raw product/service fields.
+- [ ] Emit a new projection event after valid metadata commits; never modify raw item/service fields.
 - [ ] Verify valid, malformed, empty, timeout, and missing-key responses through a deterministic local stub server and direct database inspection.
 
 ## Phase 6: Self-Contained Query Interpretation

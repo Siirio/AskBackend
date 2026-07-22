@@ -50,4 +50,9 @@ public interface ManagedImportRequestRepository
     List<ManagedImportRequest> findByStatusAndExpiresAtLessThanEqual(
             ManagedImportStatus status,
             Instant expiresAt);
+
+    @EntityGraph(attributePaths = {"business"})
+    List<ManagedImportRequest> findByStatusAndExpiresAtBefore(
+            ManagedImportStatus status,
+            Instant deadline);
 }

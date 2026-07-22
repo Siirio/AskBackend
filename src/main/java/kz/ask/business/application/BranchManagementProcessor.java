@@ -8,8 +8,7 @@ import kz.ask.business.api.dto.UpdateBranchRequest;
 import kz.ask.business.domain.BusinessBranchService;
 import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.business.domain.BusinessService;
-import kz.ask.catalog.domain.CatalogCapabilityService;
-import kz.ask.shared.domain.enums.RecordStatus;
+import kz.ask.item.domain.CatalogCapabilityService;
 import kz.ask.business.domain.dto.BusinessBranchDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.ErrorCode;
@@ -61,7 +60,7 @@ public class BranchManagementProcessor {
 
     private void verifyReadAccess(UUID userId, UUID businessId) {
         var member = businessMemberService.findByBusinessAndUser(businessId, userId);
-        if ((member == null || !RecordStatus.ACTIVE.name().equals(member.getStatus()))
+        if (member == null
                 && !catalogCapabilityService.hasPlatformCatalogAccess(userId, businessId)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
@@ -78,7 +77,6 @@ public class BranchManagementProcessor {
                 .address(dto.getAddress())
                 .addressDetails(dto.getAddressDetails())
                 .onlineOnly(dto.getOnlineOnly())
-                .status(dto.getStatus())
                 .latitude(dto.getLatitude())
                 .longitude(dto.getLongitude())
                 .build();

@@ -1,7 +1,8 @@
 package kz.ask.service.api.dto;
 
 import java.math.BigDecimal;
-import java.util.UUID;
+import java.util.Map;
+import kz.ask.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,11 +16,13 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessServiceUpdateRequest {
 
-    private UUID categoryId;
+    private String categoryLabel;
 
     private String name;
 
     private String description;
+
+    private ServiceMode serviceMode;
 
     private BigDecimal basePrice;
 
@@ -27,5 +30,5 @@ public class BusinessServiceUpdateRequest {
 
     private Boolean active;
 
-    private String imageUrl;
+    private Map<String, Object> attributes;
 }

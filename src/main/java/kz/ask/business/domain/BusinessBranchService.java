@@ -11,13 +11,13 @@ public interface BusinessBranchService {
 
     BusinessBranchDto findByBusinessAndId(UUID businessId, UUID branchId);
 
-    BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails, Boolean onlineOnly,
+    BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails,
                              BigDecimal latitude, BigDecimal longitude);
 
     BusinessBranchDto findFirstByBusinessId(UUID businessId);
 
     List<BusinessBranchDto> listByBusiness(UUID businessId);
 
-    BusinessBranchDto update(UUID branchId, String name, String address, String addressDetails, UUID cityId, Boolean onlineOnly,
+    BusinessBranchDto update(UUID branchId, String name, String address, String addressDetails, UUID cityId,
                              BigDecimal latitude, BigDecimal longitude);
 }

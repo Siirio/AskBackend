@@ -12,7 +12,7 @@ public class SearchAiEnrichmentItem {
     private UUID documentId;
     private SearchAggregateType aggregateType;
     private UUID aggregateId;
-    private Long documentVersion;
+    private Long updatedAtMillis;
     private String title;
     private String description;
     private String categoryLabel;

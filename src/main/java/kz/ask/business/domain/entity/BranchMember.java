@@ -14,7 +14,6 @@ import jakarta.persistence.Table;
 import kz.ask.business.domain.enums.BranchMemberRole;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
 @Getter
@@ -33,8 +32,4 @@ public class BranchMember extends BaseUuidV7Entity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private BranchMemberRole role;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private RecordStatus status;
 }

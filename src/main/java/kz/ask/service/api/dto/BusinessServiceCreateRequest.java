@@ -3,7 +3,8 @@ package kz.ask.service.api.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
-import java.util.UUID;
+import java.util.Map;
+import kz.ask.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,8 +18,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessServiceCreateRequest {
 
-    private UUID categoryId;
-
     private String categoryLabel;
 
     @NotBlank
@@ -28,11 +27,13 @@ public class BusinessServiceCreateRequest {
     @Size(max = 2000)
     private String description;
 
+    private ServiceMode serviceMode;
+
     private BigDecimal basePrice;
 
     private String scheduleText;
 
     private Boolean active;
 
-    private String imageUrl;
+    private Map<String, Object> attributes;
 }

@@ -46,10 +46,17 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatConversationDto startConversation(UUID customerId, UUID businessId, String subject) {
+        var existingConversation = conversationRepository
+                .findFirstByCustomerIdAndBusinessIdAndConversationTypeOrderByCreatedAtDesc(
+                        customerId, businessId, ConversationType.GENERAL_SUPPORT);
+        if (existingConversation.isPresent()) {
+            return toConversationDto(existingConversation.get());
+        }
         ChatConversation conv = new ChatConversation();
         conv.setBusinessId(businessId);
         conv.setCustomerId(customerId);
         conv.setSubject(subject);
+        conv.setConversationType(ConversationType.GENERAL_SUPPORT);
         conv.setLastMessageAt(Instant.now());
         conv = conversationRepository.save(conv);
         return toConversationDto(conv);

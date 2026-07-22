@@ -9,17 +9,15 @@
 - Desired-time request action
 - Actions: request booking, write
 
-## Service booking flow
-1. Customer finds service → chooses desired time → sends request
-2. Request appears in business Activity tab
-3. Business responds in chat: confirm, decline, suggest other time, ask clarifying question
-4. When agreement reached in chat → business clicks "CAN_PROVIDE" + sets confirmedStartAt/EndAt
-5. System event in conversation visible to both sides
-6. Booking record created for confirmed appointments
+## Service contact flow
+1. Customer finds a service offer and explicitly opens the business conversation.
+2. Every authorized business member sees the shared customer history.
+3. The customer and business discuss service details in chat.
+4. Search never creates a booking, supplier response, or calendar reservation.
 
 ## Three-tier maturity model
-- Level 1 (MVP current): Request-to-book with desired time. Chat-driven confirmation.
-- Level 2 (current): Minimal confirmed appointment tracking with overlap check.
+- Level 1 (MVP current): Chat-first service discovery and contact.
+- Level 2 (deferred): Explicit appointment tracking after a separately approved service workflow.
 - Level 3 (deferred): Full calendar system with masters, resources, schedules.
 
 ## Service management (business cabinet)

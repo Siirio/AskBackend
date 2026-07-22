@@ -12,7 +12,6 @@ import lombok.Getter;
 public class MeilisearchIndexDocument {
     private String id;
     private String aggregateId;
-    private Long documentVersion;
     private String title;
     private String normalizedTitle;
     private String summary;
@@ -21,8 +20,6 @@ public class MeilisearchIndexDocument {
     private String brand;
     private String categoryPath;
     private String categoryLabel;
-    private String sku;
-    private String characteristicsJson;
     private String businessName;
     private String branchName;
     private List<String> tokens;

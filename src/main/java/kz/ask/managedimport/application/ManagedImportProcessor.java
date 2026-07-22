@@ -2,13 +2,9 @@ package kz.ask.managedimport.application;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import kz.ask.business.domain.BusinessMemberService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
-import kz.ask.legal.domain.LegalService;
-import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
-import kz.ask.legal.domain.enums.LegalDocumentCode;
 import kz.ask.managedimport.api.dto.CreateManagedImportRequest;
 import kz.ask.managedimport.api.dto.ManagedImportAccessResponse;
 import kz.ask.managedimport.domain.ManagedImportService;
@@ -30,7 +26,6 @@ public class ManagedImportProcessor {
     private final ManagedImportService managedImportService;
     private final BusinessMemberService businessMemberService;
     private final PlatformMembershipService platformMembershipService;
-    private final LegalService legalService;
 
     @Transactional
     public ManagedImportDto create(
@@ -41,12 +36,6 @@ public class ManagedImportProcessor {
                 businessId, principal.getUserId())) {
             throw new ForbiddenException(ErrorCode.MANAGED_IMPORT_FORBIDDEN);
         }
-        legalService.acceptActiveDocuments(
-                principal.getUserId(),
-                Set.of(LegalDocumentCode.MANAGED_IMPORT_TERMS),
-                request.getCountryCode(),
-                request.getLocale(),
-                LegalAcceptanceChannel.ACCOUNT_SETTINGS);
         return managedImportService.create(
                 businessId,
                 principal.getUserId(),
@@ -91,13 +80,8 @@ public class ManagedImportProcessor {
             AskPrincipal principal,
             UUID businessId) {
         requirePermission(principal, PlatformPermission.EDIT_CATALOG_DURING_IMPORT);
-        if (!managedImportService.hasActiveGrant(businessId, principal.getUserId())) {
-            throw new ForbiddenException(ErrorCode.MANAGED_IMPORT_FORBIDDEN);
-        }
         return ManagedImportAccessResponse.builder()
                 .allowed(true)
-                .catalogScope(managedImportService.activeScope(
-                        businessId, principal.getUserId()))
                 .build();
     }
 

@@ -3,11 +3,11 @@ package kz.ask.identity.domain;
 import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.enums.AppRole;
-import kz.ask.identity.domain.enums.AuthChallengeChannel;
-import kz.ask.identity.domain.enums.AuthChallengePurpose;
+import kz.ask.identity.domain.enums.VerificationChannel;
+import kz.ask.identity.domain.enums.VerificationPurpose;
 
 public interface IdentityService {
 
@@ -15,13 +15,15 @@ public interface IdentityService {
 
     AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role);
 
-    AuthChallengeDto createChallenge(UUID userId, String email,
-                                     AuthChallengeChannel channel,
-                                     AuthChallengePurpose purpose,
+    VerificationDto createVerification(UUID userId, String email,
+                                     VerificationChannel channel,
+                                     VerificationPurpose purpose,
                                      Boolean rememberMe,
                                      String registrationData);
 
-    AuthChallengeDto verifyCode(UUID challengeId, String code);
+    VerificationDto verifyCode(UUID challengeId, String code);
+
+    void cancelVerification(UUID challengeId);
 
     void clearChallengeRegistrationData(UUID challengeId);
 
@@ -58,6 +60,8 @@ public interface IdentityService {
     Long staffSessionTtl(Boolean remembered);
 
     Long staffActivationSessionTtl();
+
+    void updatePendingUserCredentials(UUID userId, String email, String displayName, String password);
 
     void updateProfile(UUID userId, String displayName, String email);
 

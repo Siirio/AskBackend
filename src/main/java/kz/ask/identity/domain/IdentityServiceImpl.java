@@ -13,24 +13,24 @@ import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.entity.AppUser;
-import kz.ask.identity.domain.entity.AuthChallenge;
+import kz.ask.identity.domain.entity.Verification;
 import kz.ask.identity.domain.entity.AuthSession;
 import kz.ask.identity.domain.entity.CustomerProfile;
 import kz.ask.identity.domain.enums.AppRole;
-import kz.ask.identity.domain.enums.AuthChallengeChannel;
-import kz.ask.identity.domain.enums.AuthChallengePurpose;
-import kz.ask.identity.domain.enums.AuthChallengeStatus;
+import kz.ask.identity.domain.enums.VerificationChannel;
+import kz.ask.identity.domain.enums.VerificationPurpose;
+import kz.ask.identity.domain.enums.VerificationStatus;
 import kz.ask.identity.domain.enums.UserStatus;
-import kz.ask.identity.infrastructure.mapper.AuthMapper;
+import kz.ask.identity.infrastructure.mapper.VerificationMapper;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.InternalServerException;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
-import kz.ask.identity.infrastructure.repository.AuthChallengeRepository;
+import kz.ask.identity.infrastructure.repository.VerificationRepository;
 import kz.ask.identity.infrastructure.repository.AuthSessionRepository;
 import kz.ask.identity.infrastructure.repository.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,11 +44,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class IdentityServiceImpl implements IdentityService {
 
     private final AppUserRepository appUserRepository;
-    private final AuthChallengeRepository authChallengeRepository;
+    private final VerificationRepository verificationRepository;
     private final AuthSessionRepository authSessionRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthMapper authMapper;
+    private final VerificationMapper verificationMapper;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${auth.challenge.ttl}")
@@ -89,18 +89,18 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     @Transactional
     public AppUserDto createUser(String email, String displayName, String password, AppRole role) {
-        AppUser user = authMapper.toAppUserEntity(
+        AppUser user = verificationMapper.toAppUserEntity(
                 blankToNull(email), displayName,
                 hashPassword(password), role, UserStatus.PENDING);
         AppUser saved = appUserRepository.save(user);
-        return authMapper.toAppUserDto(saved);
+        return verificationMapper.toAppUserDto(saved);
     }
 
     @Override
     @Transactional
-    public AuthChallengeDto createChallenge(UUID userId, String email,
-                                            AuthChallengeChannel channel,
-                                            AuthChallengePurpose purpose,
+    public VerificationDto createVerification(UUID userId, String email,
+                                            VerificationChannel channel,
+                                            VerificationPurpose purpose,
                                             Boolean rememberMe,
                                             String registrationData) {
         AppUser user = userId != null ? appUserRepository.getReferenceById(userId) : null;
@@ -108,45 +108,56 @@ public class IdentityServiceImpl implements IdentityService {
             expireUserPendingChallenges(user);
         }
         String code = generateCode();
-        AuthChallenge challenge = authMapper.toChallengeEntity(
+        Verification verification = verificationMapper.toVerificationEntity(
                 user, email, channel, purpose,
                 hashCode(code), challengeMaxAttempts, challengeTtlSeconds,
                 Boolean.TRUE.equals(rememberMe), registrationData);
-        AuthChallenge saved = authChallengeRepository.save(challenge);
+        Verification saved = verificationRepository.save(verification);
         saved.setCodePlain(code);
-        return authMapper.toAuthChallengeDto(saved);
+        return verificationMapper.toVerificationDto(saved);
     }
 
     @Override
     @Transactional
-    public AuthChallengeDto verifyCode(UUID challengeId, String code) {
-        AuthChallenge challenge = authChallengeRepository.findByIdAndStatus(challengeId, AuthChallengeStatus.PENDING)
+    public VerificationDto verifyCode(UUID challengeId, String code) {
+        Verification verification = verificationRepository.findByIdAndStatus(challengeId, VerificationStatus.PENDING)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
-        if (challenge.getExpiresAt().isBefore(Instant.now())) {
-            challenge.setStatus(AuthChallengeStatus.EXPIRED);
+        if (verification.getExpiresAt().isBefore(Instant.now())) {
+            verification.setStatus(VerificationStatus.EXPIRED);
             throw new ValidationException(ErrorCode.CHALLENGE_EXPIRED, challengeId);
         }
-        if (challenge.getAttempts() >= challenge.getMaxAttempts()) {
-            challenge.setStatus(AuthChallengeStatus.FAILED);
+        if (verification.getAttempts() >= verification.getMaxAttempts()) {
+            verification.setStatus(VerificationStatus.FAILED);
             throw new ValidationException(ErrorCode.CHALLENGE_MAX_ATTEMPTS, challengeId);
         }
-        challenge.setAttempts(challenge.getAttempts() + 1);
-        if (!Boolean.TRUE.equals(stagingBypass) && !verifyCodeHash(code, challenge.getCodeHash())) {
-            if (challenge.getAttempts() >= challenge.getMaxAttempts()) {
-                challenge.setStatus(AuthChallengeStatus.FAILED);
+        verification.setAttempts(verification.getAttempts() + 1);
+        if (!Boolean.TRUE.equals(stagingBypass) && !verifyCodeHash(code, verification.getCodeHash())) {
+            if (verification.getAttempts() >= verification.getMaxAttempts()) {
+                verification.setStatus(VerificationStatus.FAILED);
             }
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challengeId);
         }
-        challenge.setStatus(AuthChallengeStatus.VERIFIED);
-        return authMapper.toAuthChallengeDto(challenge);
+        verification.setStatus(VerificationStatus.VERIFIED);
+        return verificationMapper.toVerificationDto(verification);
+    }
+
+    @Override
+    @Transactional
+    public void cancelVerification(UUID challengeId) {
+        Verification verification = verificationRepository.findById(challengeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
+        if (verification.getStatus() != VerificationStatus.PENDING) {
+            return;
+        }
+        verification.setStatus(VerificationStatus.EXPIRED);
     }
 
     @Override
     @Transactional
     public void clearChallengeRegistrationData(UUID challengeId) {
-        AuthChallenge challenge = authChallengeRepository.findById(challengeId)
+        Verification verification = verificationRepository.findById(challengeId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
-        challenge.setRegistrationData(null);
+        verification.setRegistrationData(null);
     }
 
     @Override
@@ -179,7 +190,7 @@ public class IdentityServiceImpl implements IdentityService {
             session.setRevokedAt(Instant.now());
             return null;
         }
-        return authMapper.toAuthSessionDto(session);
+        return verificationMapper.toAuthSessionDto(session);
     }
 
     @Override
@@ -200,10 +211,10 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     @Transactional
     public AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role) {
-        AppUser user = authMapper.toStaffUserEntity(
+        AppUser user = verificationMapper.toStaffUserEntity(
                 email, displayName, hashPassword(tempPassword), encrypt(tempPassword), role);
         AppUser saved = appUserRepository.save(user);
-        return authMapper.toAppUserDto(saved);
+        return verificationMapper.toAppUserDto(saved);
     }
 
     @Override
@@ -212,12 +223,12 @@ public class IdentityServiceImpl implements IdentityService {
                                         Long ttlSeconds, Boolean activationRequired) {
         AppUser user = appUserRepository.getReferenceById(userId);
         String token = generateToken();
-        AuthSession session = authMapper.toSessionEntity(
+        AuthSession session = verificationMapper.toSessionEntity(
                 user, hashToken(token), authority, remembered,
                 Instant.now().plusSeconds(ttlSeconds), activationRequired);
         AuthSession saved = authSessionRepository.save(session);
         saved.setPlainToken(token);
-        return authMapper.toAuthSessionDto(saved);
+        return verificationMapper.toAuthSessionDto(saved);
     }
 
     @Override
@@ -257,7 +268,7 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     public AppUserDto findById(UUID id) {
         return appUserRepository.findById(id)
-                .map(authMapper::toAppUserDto)
+                .map(verificationMapper::toAppUserDto)
                 .orElse(null);
     }
 
@@ -265,14 +276,14 @@ public class IdentityServiceImpl implements IdentityService {
     public List<AppUserDto> findAllActiveByEmail(String email) {
         return appUserRepository.findAllByEmailIgnoreCase(email).stream()
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(authMapper::toAppUserDto)
+                .map(verificationMapper::toAppUserDto)
                 .toList();
     }
 
     @Override
     public List<AppUserDto> findAllByEmail(String email) {
         return appUserRepository.findAllByEmailIgnoreCase(email).stream()
-                .map(authMapper::toAppUserDto)
+                .map(verificationMapper::toAppUserDto)
                 .toList();
     }
 
@@ -297,6 +308,15 @@ public class IdentityServiceImpl implements IdentityService {
     @Override
     public Long staffActivationSessionTtl() {
         return staffActivationSessionTtlSeconds;
+    }
+
+    @Override
+    @Transactional
+    public void updatePendingUserCredentials(UUID userId, String email, String displayName, String password) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setEmail(blankToNull(email));
+        user.setDisplayName(displayName);
+        user.setPasswordHash(hashPassword(password));
     }
 
     @Override
@@ -342,7 +362,7 @@ public class IdentityServiceImpl implements IdentityService {
         AppUser user = appUserRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
         authSessionRepository.revokeAllForUser(userId, Instant.now());
-        authChallengeRepository.deleteByUserId(userId);
+        verificationRepository.deleteByUserId(userId);
         user.setEmail(null);
         user.setDisplayName(deletedDisplayName);
         user.setPasswordHash(hashPassword(generateToken()));
@@ -402,10 +422,10 @@ public class IdentityServiceImpl implements IdentityService {
 
     private void expireUserPendingChallenges(AppUser user) {
         if (user == null) return;
-        authChallengeRepository.expirePendingChallenges(
+        verificationRepository.expirePendingChallenges(
                 Instant.now(),
-                AuthChallengeStatus.EXPIRED,
-                AuthChallengeStatus.PENDING);
+                VerificationStatus.EXPIRED,
+                VerificationStatus.PENDING);
     }
 
     private String hashPassword(String password) {

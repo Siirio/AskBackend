@@ -1,5 +1,6 @@
 package kz.ask.business.domain.entity;
 
+import kz.ask.business.domain.enums.CategoryScope;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,7 +13,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
 @Getter
@@ -31,5 +31,5 @@ public class Category extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private RecordStatus status;
+    private CategoryScope scope;
 }

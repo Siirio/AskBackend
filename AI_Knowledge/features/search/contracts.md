@@ -9,7 +9,7 @@ The JSON contract uses snake_case. `raw_query` is required and is returned uncha
 ### Request
 
 - `raw_query`: complete visible customer query.
-- `scope`: `product`, `service`, or `all`.
+- `scope`: `item` or `service`, selected by the frontend and never changed by AI.
 - `selected_category`, `city`, `sort`, `language`, and `user_location`: optional search inputs.
 - `sort`: `intent_match`, `distance`, or `price_asc`.
 - `page`: zero-based page, from 0 through 20.
@@ -32,6 +32,6 @@ Cards include brand presentation, price when known, availability state, an hones
 
 Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonical data and is the indexed fallback through full-text and trigram candidate SQL. A Meilisearch failure is visible in diagnostics and logs but does not fail search when PostgreSQL is available.
 
-DeepSeek interpretation is optional. Deterministic interpretation always runs, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
+DeepSeek interpretation is optional. Deterministic interpretation always runs inside the frontend-selected scope, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
 
 AI enrichment runs only after `POST /api/v1/platform/ai-enrichment` with `documentType` and `aggregateIds`. It requires `USE_AI_CATALOG_TOOLS`; catalog documents are not enriched automatically.

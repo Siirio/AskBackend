@@ -16,5 +16,9 @@ public class CategoryAutocompleteResponse {
     public static class CategorySuggestion {
         private String label;
         private UUID categoryId;
+        private UUID parentId;
+        private String parentLabel;
+        private String path;
+        private Boolean custom;
     }
 }

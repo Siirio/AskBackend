@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.audit.domain.enums.SignificantEventType;
@@ -36,5 +35,5 @@ public class SignificantEvent extends BaseUuidV7Entity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "JSONB")
-    private Map<String, Object> metadata = new HashMap<>();
+    private Map<String, Object> metadata;
 }

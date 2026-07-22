@@ -5,6 +5,7 @@ import java.util.UUID;
 import kz.ask.business.api.dto.CategoryAutocompleteResponse;
 import kz.ask.business.api.dto.CategoryResponse;
 import kz.ask.business.domain.entity.Category;
+import kz.ask.business.domain.enums.CategoryScope;
 
 public interface CategoryService {
 
@@ -16,5 +17,5 @@ public interface CategoryService {
 
     UUID resolveServiceImportCategoryId(String preferredName);
 
-    CategoryAutocompleteResponse autocomplete(String query, UUID businessId);
+    CategoryAutocompleteResponse autocomplete(String query, UUID businessId, CategoryScope scope);
 }

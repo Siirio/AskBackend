@@ -14,7 +14,6 @@ import jakarta.persistence.Table;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
-import kz.ask.shared.domain.enums.RecordStatus;
 
 @Entity
 @Getter
@@ -33,8 +32,4 @@ public class BusinessMember extends BaseUuidV7Entity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private BusinessMemberRole role;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private RecordStatus status;
 }

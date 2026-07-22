@@ -6,18 +6,18 @@ import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.domain.BusinessService;
 import kz.ask.business.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
-import kz.ask.identity.api.dto.AuthChallengeResponse;
+import kz.ask.identity.api.dto.VerificationResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.AuthUserResponse;
 import kz.ask.identity.api.dto.BusinessLoginStartRequest;
 import kz.ask.identity.api.dto.BusinessRegisterRequest;
+import kz.ask.identity.api.dto.CancelVerificationRequest;
 import kz.ask.identity.api.dto.ChangePasswordRequest;
 import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
@@ -27,18 +27,15 @@ import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.dto.AuthChallengeDto;
+import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.enums.AppRole;
-import kz.ask.identity.domain.enums.AuthChallengeChannel;
-import kz.ask.identity.domain.enums.AuthChallengePurpose;
+import kz.ask.identity.domain.enums.VerificationChannel;
+import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.identity.infrastructure.mail.EmailCodeSender;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.identity.infrastructure.security.JwtTokenService;
-import kz.ask.legal.domain.LegalService;
-import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
-import kz.ask.legal.domain.enums.LegalDocumentCode;
 import kz.ask.shared.error.AuthException;
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
@@ -60,7 +57,6 @@ public class AuthProcessor {
     private final EmailCodeSender emailSender;
     private final ObjectMapper objectMapper;
     private final SessionCapabilitiesProcessor sessionCapabilitiesProcessor;
-    private final LegalService legalService;
     private final SignificantEventService significantEventService;
     private final JwtTokenService jwtTokenService;
 
@@ -71,7 +67,7 @@ public class AuthProcessor {
     private Integer challengeTtlSeconds;
 
     @Transactional
-    public AuthChallengeResponse startCustomerLogin(CustomerLoginStartRequest req) {
+    public VerificationResponse startCustomerLogin(CustomerLoginStartRequest req) {
         AppUserDto user = identityService.findAllActiveByEmail(req.getEmail()).stream()
                 .filter(u -> u.getRole() == AppRole.CUSTOMER)
                 .findFirst()
@@ -83,7 +79,7 @@ public class AuthProcessor {
     }
 
     @Transactional
-    public AuthChallengeResponse registerCustomer(CustomerRegisterRequest req) {
+    public VerificationResponse registerCustomer(CustomerRegisterRequest req) {
         List<AppUserDto> usersWithEmail = identityService.findAllByEmail(req.getEmail());
         AppUserDto existingUser = usersWithEmail.stream()
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
@@ -101,6 +97,8 @@ public class AuthProcessor {
                 .findFirst()
                 .orElse(null);
         if (pendingCustomer != null) {
+            identityService.updatePendingUserCredentials(
+                    pendingCustomer.getId(), req.getEmail(), req.getDisplayName(), req.getPassword());
             String registrationData = serializeRegistrationAcceptance(req);
             return createRegisterChallenge(
                     pendingCustomer.getId(), AppRole.CUSTOMER, req.getEmail(),
@@ -117,7 +115,7 @@ public class AuthProcessor {
     }
 
     @Transactional
-    public AuthChallengeResponse startBusinessLogin(BusinessLoginStartRequest req) {
+    public VerificationResponse startBusinessLogin(BusinessLoginStartRequest req) {
         AppUserDto user = identityService.findAllActiveByEmail(req.getEmail()).stream()
                 .filter(u -> resolveBusinessContext(u) != null)
                 .findFirst()
@@ -129,25 +127,30 @@ public class AuthProcessor {
     }
 
     @Transactional
-    public AuthChallengeResponse registerBusiness(BusinessRegisterRequest req) {
+    public VerificationResponse registerBusiness(BusinessRegisterRequest req) {
         List<AppUserDto> usersWithEmail = identityService.findAllByEmail(req.getEmail());
         AppUserDto user = usersWithEmail.stream()
                 .filter(candidate -> candidate.getStatus() == UserStatus.ACTIVE)
                 .findFirst()
                 .orElse(null);
+        AppUserDto pendingUser = null;
         if (user == null) {
-            user = usersWithEmail.stream()
+            pendingUser = usersWithEmail.stream()
                     .filter(candidate -> candidate.getStatus() == UserStatus.PENDING)
                     .filter(candidate -> candidate.getRole() == AppRole.CUSTOMER)
                     .findFirst()
                     .orElse(null);
         }
-        if (user == null && !usersWithEmail.isEmpty()) {
+        if (user == null && pendingUser == null && !usersWithEmail.isEmpty()) {
             return unknownRegistrationChallenge(req.getEmail());
         }
-        if (user == null) {
+        if (user == null && pendingUser == null) {
             user = identityService.createUser(
                     req.getEmail(), req.getBusinessName(), req.getPassword(), AppRole.CUSTOMER);
+        } else if (pendingUser != null) {
+            identityService.updatePendingUserCredentials(
+                    pendingUser.getId(), req.getEmail(), req.getBusinessName(), req.getPassword());
+            user = pendingUser;
         }
         String registrationData = serializeBusinessRegistration(req);
         return createRegisterChallenge(
@@ -156,13 +159,13 @@ public class AuthProcessor {
 
     @Transactional
     public AuthSessionResponse verifyCode(VerifyCodeRequest req) {
-        AuthChallengeDto challenge = identityService.verifyCode(req.getAuthChallengeId(), req.getCode());
-        if (challenge.getPurpose() == AuthChallengePurpose.EMAIL_CHANGE) {
+        VerificationDto challenge = identityService.verifyCode(req.getVerificationId(), req.getCode());
+        if (challenge.getPurpose() == VerificationPurpose.EMAIL_CHANGE) {
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
         }
 
         AppUserDto user = identityService.findById(challenge.getUserId());
-        boolean isNewRegistration = challenge.getPurpose() == AuthChallengePurpose.REGISTER;
+        boolean isNewRegistration = challenge.getPurpose() == VerificationPurpose.REGISTER;
         if (isNewRegistration) {
             if (user.getStatus() != UserStatus.ACTIVE) {
                 identityService.activateUser(user.getId());
@@ -183,14 +186,6 @@ public class AuthProcessor {
         BusinessRegistrationPayload registrationPayload = deserializeRegistrationPayload(
                 challenge.getRegistrationData());
         if (isNewRegistration && registrationPayload != null) {
-            if (!registrationPayload.getAcceptedDocumentCodes().isEmpty()) {
-                legalService.acceptActiveDocuments(
-                        user.getId(),
-                        registrationPayload.getAcceptedDocumentCodes(),
-                        registrationPayload.getCountryCode(),
-                        registrationPayload.getLocale(),
-                        LegalAcceptanceChannel.WEB_REGISTRATION);
-            }
             if (registrationPayload.getBusinessName() != null) {
                 bizResult = createBusiness(user, registrationPayload);
             }
@@ -239,14 +234,14 @@ public class AuthProcessor {
     }
 
     @Transactional
-    public AuthChallengeResponse requestEmailChange(AskPrincipal principal, RequestEmailChangeRequest req) {
+    public VerificationResponse requestEmailChange(AskPrincipal principal, RequestEmailChangeRequest req) {
         if (identityService.emailExists(req.getNewEmail())) {
             throw new ConflictException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         AppUserDto user = identityService.findById(principal.getUserId());
-        AuthChallengeDto challenge = identityService.createChallenge(
-                user.getId(), req.getNewEmail(), AuthChallengeChannel.EMAIL,
-                AuthChallengePurpose.EMAIL_CHANGE, false, null);
+        VerificationDto challenge = identityService.createVerification(
+                user.getId(), req.getNewEmail(), VerificationChannel.EMAIL,
+                VerificationPurpose.EMAIL_CHANGE, false, null);
         if (Boolean.TRUE.equals(testMode)) {
             return buildChallengeResponse(
                     challenge, req.getNewEmail(), user.getRole().name(), challenge.getCodePlain());
@@ -258,8 +253,8 @@ public class AuthProcessor {
 
     @Transactional
     public AuthSessionResponse confirmEmailChange(AskPrincipal principal, VerifyCodeRequest req) {
-        AuthChallengeDto challenge = identityService.verifyCode(req.getAuthChallengeId(), req.getCode());
-        if (challenge.getPurpose() != AuthChallengePurpose.EMAIL_CHANGE
+        VerificationDto challenge = identityService.verifyCode(req.getVerificationId(), req.getCode());
+        if (challenge.getPurpose() != VerificationPurpose.EMAIL_CHANGE
                 || !principal.getUserId().equals(challenge.getUserId())) {
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
         }
@@ -307,14 +302,19 @@ public class AuthProcessor {
     }
 
     @Transactional
+    public void cancelVerification(CancelVerificationRequest req) {
+        identityService.cancelVerification(req.getVerificationId());
+    }
+
+    @Transactional
     public AuthSessionResponse toggleTwoFactor(AskPrincipal principal) {
         identityService.toggleTwoFactor(principal.getUserId());
         return currentSession(principal);
     }
 
-    private AuthChallengeResponse createLoginChallenge(UUID userId, String email, Boolean rememberMe) {
-        AuthChallengeDto challenge = identityService.createChallenge(
-                userId, email, AuthChallengeChannel.EMAIL, AuthChallengePurpose.LOGIN, rememberMe, null);
+    private VerificationResponse createLoginChallenge(UUID userId, String email, Boolean rememberMe) {
+        VerificationDto challenge = identityService.createVerification(
+                userId, email, VerificationChannel.EMAIL, VerificationPurpose.LOGIN, rememberMe, null);
         if (Boolean.TRUE.equals(testMode)) {
             return buildChallengeResponse(challenge, email, "USER", challenge.getCodePlain());
         }
@@ -323,31 +323,31 @@ public class AuthProcessor {
         return buildChallengeResponse(challenge, masked, "USER", null);
     }
 
-    private AuthChallengeResponse unknownLoginChallenge(String email) {
-        return unknownChallenge(email, AuthChallengePurpose.LOGIN);
+    private VerificationResponse unknownLoginChallenge(String email) {
+        return unknownChallenge(email, VerificationPurpose.LOGIN);
     }
 
-    private AuthChallengeResponse unknownRegistrationChallenge(String email) {
-        return unknownChallenge(email, AuthChallengePurpose.REGISTER);
+    private VerificationResponse unknownRegistrationChallenge(String email) {
+        return unknownChallenge(email, VerificationPurpose.REGISTER);
     }
 
-    private AuthChallengeResponse unknownChallenge(
+    private VerificationResponse unknownChallenge(
             String email,
-            AuthChallengePurpose purpose) {
-        return AuthChallengeResponse.builder()
-                .authChallengeId(UUID.randomUUID())
+            VerificationPurpose purpose) {
+        return VerificationResponse.builder()
+                .verificationId(UUID.randomUUID())
                 .role("USER")
                 .purpose(purpose.name())
-                .channel(AuthChallengeChannel.EMAIL.name())
+                .channel(VerificationChannel.EMAIL.name())
                 .maskedDestination(identityService.maskEmail(email))
                 .expiresAt(Instant.now().plusSeconds(challengeTtlSeconds))
                 .build();
     }
 
-    private AuthChallengeResponse createRegisterChallenge(UUID userId, AppRole role, String email,
+    private VerificationResponse createRegisterChallenge(UUID userId, AppRole role, String email,
                                                            Boolean rememberMe, String registrationData) {
-        AuthChallengeDto challenge = identityService.createChallenge(
-                userId, email, AuthChallengeChannel.EMAIL, AuthChallengePurpose.REGISTER, rememberMe, registrationData);
+        VerificationDto challenge = identityService.createVerification(
+                userId, email, VerificationChannel.EMAIL, VerificationPurpose.REGISTER, rememberMe, registrationData);
         if (Boolean.TRUE.equals(testMode)) {
             return buildChallengeResponse(challenge, email, role.name(), challenge.getCodePlain());
         }
@@ -366,9 +366,6 @@ public class AuthProcessor {
         payload.setEmail(req.getEmail());
         payload.setCountryCode(req.getCountryCode());
         payload.setLocale(req.getLocale());
-        payload.setAcceptedDocumentCodes(Set.of(
-                LegalDocumentCode.SELLER_TERMS,
-                LegalDocumentCode.PERSONAL_DATA_CONSENT));
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
@@ -380,7 +377,6 @@ public class AuthProcessor {
         BusinessRegistrationPayload payload = new BusinessRegistrationPayload();
         payload.setCountryCode(req.getCountryCode());
         payload.setLocale(req.getLocale());
-        payload.setAcceptedDocumentCodes(Set.of());
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
@@ -414,9 +410,9 @@ public class AuthProcessor {
         return "ROLE_USER";
     }
 
-    private AuthChallengeResponse buildChallengeResponse(AuthChallengeDto challenge, String maskedDestination, String role, String code) {
-        return AuthChallengeResponse.builder()
-                .authChallengeId(challenge.getId())
+    private VerificationResponse buildChallengeResponse(VerificationDto challenge, String maskedDestination, String role, String code) {
+        return VerificationResponse.builder()
+                .verificationId(challenge.getId())
                 .role(role)
                 .purpose(challenge.getPurpose().name())
                 .channel(challenge.getChannel().name())
@@ -429,9 +425,7 @@ public class AuthProcessor {
     private AuthSessionResponse buildSessionResponse(AuthSessionDto session, AppUserDto user, BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
-                .requiresRoleSelection(!legalService.hasAcceptedAnyDocuments(
-                        user.getId(),
-                        Set.of(LegalDocumentCode.USER_TERMS, LegalDocumentCode.SELLER_TERMS)))
+                .requiresRoleSelection(false)
                 .user(buildUserResponse(user));
 
         if (session != null) {

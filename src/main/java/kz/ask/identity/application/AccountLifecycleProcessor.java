@@ -8,7 +8,7 @@ import kz.ask.business.domain.entity.BusinessMember;
 import kz.ask.business.domain.enums.BusinessInvitationStatus;
 import kz.ask.business.domain.enums.BusinessMemberRole;
 import kz.ask.business.infrastructure.repository.BusinessInvitationRepository;
-import kz.ask.business.infrastructure.repository.BusinessMemberBranchRepository;
+
 import kz.ask.business.infrastructure.repository.BusinessMemberRepository;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.identity.api.dto.LogoutResponse;
@@ -18,7 +18,7 @@ import kz.ask.identity.domain.entity.CustomerProfile;
 import kz.ask.identity.infrastructure.repository.CustomerProfileRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.platform.infrastructure.repository.PlatformMembershipRepository;
-import kz.ask.shared.domain.enums.RecordStatus;
+
 import kz.ask.shared.error.ConflictException;
 import kz.ask.shared.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class AccountLifecycleProcessor {
 
     private final IdentityService identityService;
     private final BusinessMemberRepository businessMemberRepository;
-    private final BusinessMemberBranchRepository businessMemberBranchRepository;
+
     private final BusinessInvitationRepository businessInvitationRepository;
     private final PlatformMembershipRepository platformMembershipRepository;
     private final CustomerProfileRepository customerProfileRepository;
@@ -44,7 +44,7 @@ public class AccountLifecycleProcessor {
         significantEventService.record(
                 user.getId(), SignificantEventType.ACCOUNT_DELETION_REQUESTED, null, user.getId(), Map.of());
         List<BusinessMember> memberships =
-                businessMemberRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE);
+                businessMemberRepository.findByUserId(user.getId());
         for (BusinessMember membership : memberships) {
             if (membership.getRole() == BusinessMemberRole.OWNER && isSoleOwner(membership)) {
                 throw new ConflictException(ErrorCode.ACCOUNT_OWNER_TRANSFER_REQUIRED);
@@ -53,12 +53,9 @@ public class AccountLifecycleProcessor {
         businessInvitationRepository.deleteAll(
                 businessInvitationRepository.findByInvitedEmailIgnoreCaseAndStatus(
                         user.getEmail(), BusinessInvitationStatus.PENDING));
-        for (BusinessMember membership : memberships) {
-            businessMemberBranchRepository.deleteByBusinessMembershipId(membership.getId());
-            membership.setStatus(RecordStatus.INACTIVE);
-        }
-        platformMembershipRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE)
-                .ifPresent(membership -> membership.setStatus(RecordStatus.INACTIVE));
+
+        platformMembershipRepository.findByUserId(user.getId())
+                .ifPresent(platformMembershipRepository::delete);
         customerProfileRepository.findByUserId(user.getId())
                 .ifPresent(this::anonymizeProfile);
         chatService.deleteCustomerConversations(user.getId());
@@ -70,7 +67,7 @@ public class AccountLifecycleProcessor {
 
     private boolean isSoleOwner(BusinessMember membership) {
         return businessMemberRepository
-                .findByBusinessIdAndStatus(membership.getBusiness().getId(), RecordStatus.ACTIVE)
+                .findByBusinessId(membership.getBusiness().getId())
                 .stream()
                 .filter(member -> member.getRole() == BusinessMemberRole.OWNER)
                 .count() == 1;
