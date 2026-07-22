@@ -21,7 +21,7 @@
 6. All later API requests use the Bearer JWT without cookies.
 
 ## Staff activation
-- Owner creates staff: fills name, role (STAFF), email → gets temp password visible once
+- Owner creates staff: fills name, role, email → gets a temporary password that remains visible to authorized managers until the staff user changes it
 - Owner sees: copy login / copy password / copy all / copy WhatsApp message
 - Staff card (pending): shows name, role, branch, status "Ожидает активации", login visible, temp password visible
 - Staff card (active): shows name, role, branch, status "Активен", activated timestamp, password hidden

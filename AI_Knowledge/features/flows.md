@@ -6,7 +6,7 @@ Each first-level feature folder is one product feature. Its `README.md` defines 
 | --- | --- |
 | Identity | [identity/flow.md](identity/flow.md) |
 | Business | [business/flow.md](business/flow.md) |
-| Catalog | [catalog/flow.md](catalog/flow.md) |
+| Items | [item/flow.md](item/flow.md) |
 | Service | [service/flow.md](service/flow.md) |
 | Unique offers | [offers/flow.md](offers/flow.md) |
 | Messaging | [messaging/flow.md](messaging/flow.md) |

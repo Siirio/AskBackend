@@ -4,7 +4,7 @@
 - Service image or business image
 - Service name + business name + branch
 - Approximate price or "price from"
-- Approximate duration when known
+- Schedule or service terms when known
 - District or distance
 - Desired-time request action
 - Actions: request booking, write
@@ -21,6 +21,6 @@
 - Level 3 (deferred): Full calendar system with masters, resources, schedules.
 
 ## Service management (business cabinet)
-- Services tab: list with name, category, price, duration, status (active/inactive)
+- Services tab: list with name, category, price, schedule, status (active/inactive)
 - Actions: edit, activate, deactivate, delete
 - Schedule text: free-form display text (e.g., "Пн-Пт 9:00-18:00"), not slot blocking

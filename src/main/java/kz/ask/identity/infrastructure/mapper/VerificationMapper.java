@@ -6,7 +6,7 @@ import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.domain.entity.Verification;
 import kz.ask.identity.domain.entity.AuthSession;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
@@ -16,29 +16,29 @@ import org.springframework.stereotype.Component;
 public class VerificationMapper {
 
     public AppUser toAppUserEntity(String email, String displayName,
-                                    String passwordHash, AppRole role, UserStatus status) {
+                                    String passwordHash, Role role, UserStatus status) {
         AppUser user = new AppUser();
         user.setEmail(email);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
         user.setRole(role);
         user.setStatus(status);
-        user.setMustChangePassword(false);
-        user.setTwoFactorEnabled(false);
+        user.setIsPasswordChangeRequired(false);
+        user.setIsTwoFactorEnabled(false);
         return user;
     }
 
     public AppUser toStaffUserEntity(String email, String displayName, String passwordHash,
-                                      String tempPasswordEncrypted, AppRole role) {
+                                      String tempPasswordEncrypted, Role role) {
         AppUser user = new AppUser();
         user.setEmail(email);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
         user.setRole(role);
         user.setStatus(UserStatus.PENDING_ACTIVATION);
-        user.setMustChangePassword(true);
+        user.setIsPasswordChangeRequired(true);
         user.setTempPasswordEncrypted(tempPasswordEncrypted);
-        user.setTwoFactorEnabled(false);
+        user.setIsTwoFactorEnabled(false);
         return user;
     }
 
@@ -57,7 +57,7 @@ public class VerificationMapper {
         verification.setMaxAttempts(maxAttempts);
         verification.setExpiresAt(java.time.Instant.now().plusSeconds(challengeTtlSeconds));
         verification.setStatus(kz.ask.identity.domain.enums.VerificationStatus.PENDING);
-        verification.setRememberMe(rememberMe);
+        verification.setIsRememberMe(rememberMe);
         verification.setRegistrationData(registrationData);
         return verification;
     }
@@ -69,9 +69,9 @@ public class VerificationMapper {
         session.setUser(user);
         session.setTokenHash(tokenHash);
         session.setAuthority(authority);
-        session.setRemembered(remembered);
+        session.setIsRemembered(remembered);
         session.setExpiresAt(expiresAt);
-        session.setActivationRequired(activationRequired);
+        session.setIsActivationRequired(activationRequired);
         return session;
     }
 
@@ -83,8 +83,8 @@ public class VerificationMapper {
                 .passwordHash(entity.getPasswordHash())
                 .role(entity.getRole())
                 .status(entity.getStatus())
-                .mustChangePassword(entity.getMustChangePassword())
-                .twoFactorEnabled(entity.getTwoFactorEnabled())
+                .isPasswordChangeRequired(entity.getIsPasswordChangeRequired())
+                .isTwoFactorEnabled(entity.getIsTwoFactorEnabled())
                 .tempPasswordEncrypted(entity.getTempPasswordEncrypted())
                 .activatedAt(entity.getActivatedAt())
                 .lastLoginAt(entity.getLastLoginAt())
@@ -103,7 +103,7 @@ public class VerificationMapper {
                 .maxAttempts(entity.getMaxAttempts())
                 .expiresAt(entity.getExpiresAt())
                 .status(entity.getStatus())
-                .rememberMe(entity.getRememberMe())
+                .isRememberMe(entity.getIsRememberMe())
                 .registrationData(entity.getRegistrationData())
                 .codePlain(entity.getCodePlain())
                 .build();
@@ -116,8 +116,8 @@ public class VerificationMapper {
                 .userDisplayName(entity.getUser() != null ? entity.getUser().getDisplayName() : null)
                 .tokenHash(entity.getTokenHash())
                 .authority(entity.getAuthority())
-                .remembered(entity.getRemembered())
-                .activationRequired(entity.getActivationRequired())
+                .isRemembered(entity.getIsRemembered())
+                .isActivationRequired(entity.getIsActivationRequired())
                 .expiresAt(entity.getExpiresAt())
                 .revokedAt(entity.getRevokedAt())
                 .plainToken(entity.getPlainToken())

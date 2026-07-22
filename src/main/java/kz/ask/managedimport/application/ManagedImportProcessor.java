@@ -3,7 +3,7 @@ package kz.ask.managedimport.application;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import kz.ask.business.domain.BusinessMemberService;
+import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.api.dto.CreateManagedImportRequest;
 import kz.ask.managedimport.api.dto.ManagedImportAccessResponse;
@@ -12,7 +12,7 @@ import kz.ask.managedimport.domain.dto.ManagedImportDto;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
-import kz.ask.platform.domain.enums.PlatformPermission;
+import kz.ask.identity.authorization.domain.enums.Permission;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +39,8 @@ public class ManagedImportProcessor {
         return managedImportService.create(
                 businessId,
                 principal.getUserId(),
-                request.getCatalogScope(),
-                request.getSourceTypes(),
+                request.getBusinessScope(),
+                request.getSelectedSourceTypes(),
                 request.getPreferredContactChannel(),
                 request.getPreferredContactValue(),
                 request.getSourceLinks(),
@@ -60,7 +60,7 @@ public class ManagedImportProcessor {
 
     @Transactional(readOnly = true)
     public List<ManagedImportDto> listPlatform(AskPrincipal principal) {
-        requirePermission(principal, PlatformPermission.MANAGE_MANAGED_IMPORTS);
+        requirePermission(principal, Permission.MANAGE_MANAGED_IMPORTS);
         return managedImportService.listOpen().stream()
                 .filter(item -> item.getStatus() == ManagedImportStatus.PENDING
                         || principal.getUserId().equals(item.getResponsiblePlatformUserId())
@@ -71,23 +71,25 @@ public class ManagedImportProcessor {
 
     @Transactional
     public ManagedImportDto activate(AskPrincipal principal, UUID requestId) {
-        requirePermission(principal, PlatformPermission.MANAGE_MANAGED_IMPORTS);
+        requirePermission(principal, Permission.MANAGE_MANAGED_IMPORTS);
         return managedImportService.activate(requestId, principal.getUserId());
     }
 
     @Transactional(readOnly = true)
-    public ManagedImportAccessResponse catalogAccess(
+    public ManagedImportAccessResponse itemsServicesAccess(
             AskPrincipal principal,
             UUID businessId) {
-        requirePermission(principal, PlatformPermission.EDIT_CATALOG_DURING_IMPORT);
+        requirePermission(principal, Permission.EDIT_ITEMS_SERVICES_DURING_IMPORT);
         return ManagedImportAccessResponse.builder()
                 .allowed(true)
+                .businessScope(managedImportService.activeScope(
+                        businessId, principal.getUserId()))
                 .build();
     }
 
     private void requirePermission(
             AskPrincipal principal,
-            PlatformPermission permission) {
+            Permission permission) {
         PlatformMembershipDto membership =
                 platformMembershipService.findActiveByUser(principal.getUserId());
         if (membership == null || !membership.getPermissions().contains(permission)) {

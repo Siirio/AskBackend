@@ -1,9 +1,11 @@
 package kz.ask.identity.api.dto;
 
 import java.util.UUID;
+import kz.ask.business.core.domain.enums.BusinessScope;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,14 +30,17 @@ public class BusinessRegisterRequest {
     private String passwordConfirmation;
     @NotBlank
     private String businessName;
-    @NotBlank
     private String branchName;
     private UUID branchCityId;
     private String branchAddress;
-    private Boolean onlineOnly;
+    private Boolean isOnlineOnly;
+    private UUID businessCategoryId;
+    private String businessCategoryName;
+    @NotNull
+    private BusinessScope businessScope;
     private Boolean acceptedBusinessRules;
-    private Boolean rememberMe;
-    private String countryCode = "KZ";
+    private Boolean isRememberMe;
+    private String countryCode;
     private String locale = "ru";
 
     @AssertTrue(message = "Password and confirmation must match")
@@ -46,6 +51,12 @@ public class BusinessRegisterRequest {
     @AssertTrue(message = "Business rules must be accepted")
     public boolean rulesAccepted() {
         return acceptedBusinessRules != null && acceptedBusinessRules;
+    }
+
+    @AssertTrue(message = "Business category is required")
+    public boolean categoryProvided() {
+        return businessCategoryId != null
+                || businessCategoryName != null && !businessCategoryName.isBlank();
     }
 
 }

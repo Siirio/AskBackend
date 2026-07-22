@@ -5,7 +5,7 @@ import java.util.HexFormat;
 import java.util.Map;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -44,7 +44,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             byte[] randomBytes = new byte[32];
             secureRandom.nextBytes(randomBytes);
             String randomPassword = HexFormat.of().formatHex(randomBytes);
-            user = identityService.createUser(email, name, randomPassword, AppRole.CUSTOMER);
+            user = identityService.createUser(email, name, randomPassword, Role.CUSTOMER);
             identityService.activateUser(user.getId());
             user = identityService.findById(user.getId());
         } else if (user.getStatus() == UserStatus.BLOCKED || user.getStatus() == UserStatus.DELETED) {

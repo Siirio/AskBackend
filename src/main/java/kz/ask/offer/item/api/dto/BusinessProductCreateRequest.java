@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +19,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessProductCreateRequest {
 
-    private String categoryLabel;
+    private UUID categoryId;
+    private String categoryName;
+    private UUID branchId;
 
     @NotBlank
     @Size(max = 255)
@@ -32,5 +35,5 @@ public class BusinessProductCreateRequest {
     @DecimalMin(value = "0", inclusive = true)
     private BigDecimal price;
 
-    private Boolean enabled;
+    private Boolean isEnabled;
 }

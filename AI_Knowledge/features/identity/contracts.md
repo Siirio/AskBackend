@@ -26,11 +26,11 @@
 | POST | /api/v1/legal/registration-acceptances | Bearer | Accept the active legal documents selected for the chosen registration role |
 
 ## Key DTOs
-- AuthChallengeResponse: authChallengeId, role, purpose, channel, maskedDestination, expiresAt
-- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, authChallengeId, suggestRoleExpansion
+- VerificationResponse: verificationId, role, purpose, channel, maskedDestination, expiresAt
+- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, verificationId, suggestRoleExpansion
 - AuthUserResponse: userId, displayName, email, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
-- startRoute values: CLIENT_SEARCH, OWNER_BRANCHES, BRANCH_WORKSPACE
+- `startRoute` is `CLIENT_SEARCH` after normal login, including for users with business memberships. `businessMemberships` exposes the separate cabinets they may open explicitly.
 
 ## Additional Endpoints
 | Method | Path | Auth | Purpose |
@@ -47,7 +47,7 @@ All API responses and requests use **snake_case** property naming. Jackson is co
 Examples:
 - `accessToken` on the wire → `access_token`
 - `expiresIn` → `expires_in`
-- `authChallengeId` → `auth_challenge_id`
+- `verificationId` → `verification_id`
 - `requiresRoleSelection` → `requires_role_selection`
 - `businessId` → `business_id`
 

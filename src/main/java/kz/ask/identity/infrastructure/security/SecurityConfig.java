@@ -88,7 +88,6 @@ public class SecurityConfig {
                     "/api/v1/cities/resolve",
                     "/api/v1/cities",
                     "/api/v1/categories",
-                    "/api/v1/categories/*/subcategories",
                     "/api/v1/businesses/*/business-profile",
                     "/api/v1/businesses/*/storefront",
                     "/api/v1/businesses/*/drops",

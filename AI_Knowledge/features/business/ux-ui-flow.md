@@ -2,16 +2,20 @@
 
 ## Business cabinet sections (MVP)
 - Activity (shared customer conversations)
-- Products (manage catalog)
-- Services (manage service offerings)
+- Items
+- Services
 - Company/branch profile
 - Future: AI Autodump Import preview
 
-## Seller catalog onboarding
-1. Ask whether the business sells products, provides services, or does both.
-2. Ask whether the seller will prepare that catalog independently or request managed import.
-3. Managed import explains the paid service, expected benefit, selected sources, source links, notes, and contact channel before legal acceptance.
-4. Existing business members go to their cabinet instead of seeing another create-business entry.
+## Registration and categories
+
+1. The owner registers a Business, chooses its scope (`ITEM`, `SERVICE`, or `BOTH`), and chooses or creates one `BUSINESS` category.
+2. A branch may be added during registration or later; it is not required for Item or Service creation.
+3. Item forms use only `ITEM` category suggestions; service forms use only `SERVICE` category suggestions.
+4. Typing shows matching system and user-created categories. The user may explicitly create a category when no suggestion fits.
+5. Existing business members go to their cabinet instead of seeing another create-business entry.
+6. Choosing no specified legal form requires at least one valid verification link before the owner can continue.
+7. The managed-import request dialog asks only how the Ask team should make contact and validates the contact against the selected channel. It does not ask for onboarding sources or service acceptance again.
 
 ## Staff management flow
 1. Owner opens branch → Staff tab → "Add Staff"
@@ -23,7 +27,7 @@
 
 ## Hierarchy rules
 - OWNER: full access to all branches, can create MANAGER + WORKER
-- MANAGER: can manage products/services for all branches, can create WORKER only
+- MANAGER: can manage Items/Services for the business and all branches, can create WORKER only
 - WORKER: branch-limited access, cannot manage other staff
 
 ## Branch profile

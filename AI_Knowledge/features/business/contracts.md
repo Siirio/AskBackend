@@ -7,6 +7,34 @@
 | POST | /api/v1/businesses/{businessId}/branches | OWNER | Create branch |
 | PATCH | /api/v1/businesses/{businessId}/branches/{branchId} | OWNER | Update branch |
 
+## Registration
+`POST /api/v1/auth/business/register` accepts a business name, `businessScope`, and either
+`businessCategoryId` or `businessCategoryName`. Branch fields are optional. Registration creates
+the Business, its profile, and OWNER membership in one transaction; a first branch is created only
+when branch input is present.
+
+## Authenticated seller onboarding
+`POST /api/v1/business/onboarding` is Bearer-authenticated and creates a business for the current
+customer. It requires `businessName`, a selected or free-text `categoryId` or `categoryName`,
+`countryCode`, `legalForm`, `catalogSetupMode`, and `businessScope` (`ITEM`, `SERVICE`, or `BOTH`).
+
+- For `KZ_IP`, `legalIdentifier` (IIN) and `legalName` are required; the IIN is persisted as `iin`.
+- For `KZ_TOO`, `legalIdentifier` (BIN) and `legalName` are required; the BIN is persisted as `bin`.
+- For `NONE`, at least one valid `http://` or `https://` verification link is required. The client
+  progressively asks for a source type before rendering its link field and blocks continuation
+  while every supplied link is invalid or no link is present.
+- If `catalogSetupMode` is `ASK_MANAGED_IMPORT`, the cabinet opens the managed-import request
+  dialog. The dialog renders only `preferredContactChannel` and `preferredContactValue`; supplied
+  verification links are forwarded without rendering source fields again.
+
+## Managed import request
+`POST /api/v1/businesses/{businessId}/managed-imports` uses the persisted
+`ManagedImportRequest` shape. It requires `businessScope` (`ITEM`, `SERVICE`, or `BOTH`),
+`preferredContactChannel`, and `preferredContactValue`. `selectedSourceTypes` and source links are optional;
+onboarding forwards already collected verification links without asking the owner to enter them
+again. Contact format must match the selected channel: valid email, Telegram username beginning
+with `@`, or an international WhatsApp phone number.
+
 ## Staff Management
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
@@ -14,6 +42,9 @@
 | GET | /api/v1/businesses/{bId}/branches/{brId}/staff | OWNER/MANAGER | List staff |
 | POST | /api/v1/businesses/{bId}/branches/{brId}/staff/{id}/update | OWNER/MANAGER | Update staff (role, disable) |
 | POST | /api/v1/businesses/{bId}/branches/{brId}/staff/{id}/reset-password | OWNER | Reset staff password |
+| POST | /api/v1/businesses/{businessId}/staff | OWNER/MANAGER | Create a business member; managers may create workers only |
+| GET | /api/v1/businesses/{businessId}/staff | OWNER/MANAGER | List business members, including the encrypted temporary password while password change is required |
+| DELETE | /api/v1/businesses/{businessId}/staff/{membershipId} | OWNER/MANAGER | Delete a still-unactivated member request; managers may delete workers only |
 
 ## Invites
 | Method | Path | Auth | Purpose |
@@ -39,28 +70,24 @@
 | POST | /api/v1/me/invitations/{invitationId}/accept | Bearer | Accept → creates ACTIVE membership |
 | POST | /api/v1/me/invitations/{invitationId}/decline | Bearer | Decline |
 
-## Seller Onboarding
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership. Request includes `catalogScope` = PRODUCTS, SERVICES, or BOTH and response includes managed-import conversationId when applicable |
-
 ## Public Reference
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/cities | No | List ACTIVE cities |
-| GET | /api/v1/cities/resolve | No | Resolve city from coordinates or name |
-| GET | /api/v1/categories | No | List root categories |
-| GET | /api/v1/categories/{parentId}/subcategories | No | List subcategories |
+| GET | /api/v1/categories | No | Suggest flat categories by query and `type` (`BUSINESS`, `ITEM`, or `SERVICE`) |
+| POST | /api/v1/categories | Bearer | Create a USER category with `name` and `type` |
 
 ## Key DTOs
 - CreateStaffRequest: name, role (default WORKER), login (email)
 - UpdateStaffRequest: role, status
 - StaffResponse: id, displayName, email, role, status, branchName, tempPassword (only while pending), activatedAt
 - BranchResponse: id, businessId, cityId, cityName, name, address, addressDetails, onlineOnly, status, latitude, longitude
+- Branch create/update receives latitude and longitude selected by the business. The frontend may use a configurable geocoder and map provider; the backend persists coordinates without a provider-specific identifier or URL.
 
-## Catalog Setup
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | /api/v1/businesses/{businessId}/catalog-setup | Business member or assigned platform importer | Read IN_PROGRESS, REVIEW_REQUIRED, COMPLETED, or RESTRICTED |
+## Categories
 
-There is no manual completion endpoint. `GET /api/v1/platform/catalog-reviews` lists partial catalogs and `PATCH /api/v1/platform/catalog-reviews/{businessId}` accepts `{ approved }`.
+Categories are flat. Each category has exactly one type: `BUSINESS`, `ITEM`, or `SERVICE`, and one source: `SYSTEM` or `USER`.
+
+- The client sends text while the user types; the API returns matching system and user-created suggestions for the requested type.
+- Selecting a suggestion stores its category identity.
+- If no suggestion fits, the explicit create action creates a `USER` category and stores that identity.
+- There are no parent IDs, subcategories, or fallback category trees.

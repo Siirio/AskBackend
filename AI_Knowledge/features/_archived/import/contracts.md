@@ -1,7 +1,7 @@
 # Import — REST API Contracts
 
 ## Excel Import
-Base: /api/v1/business-admin/branches/{branchId}/item-imports
+Base: /api/v1/businesses/{businessId}/item-imports. `branchId` is optional.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
@@ -17,9 +17,9 @@ Base: /api/v1/business-admin/branches/{branchId}/item-imports
 | POST | /api/v1/business-admin/branches/{branchId}/autodump-sessions/files | Assigned platform importer | Upload .txt/.md/.pdf for AI item or service processing |
 
 ## Managed Import
-- `POST /api/v1/businesses/{businessId}/managed-imports` creates a PENDING request without a grant or chat. Request requires `catalog_scope` = PRODUCTS, SERVICES, or BOTH, plus source types, source details, contact channel/value, and legal acceptance.
-- `POST /api/v1/platform/managed-imports/{requestId}/activate` assigns the request, creates the seven-day grant for the request's catalog scope, and starts the managed-import chat.
-- `GET /api/v1/platform/managed-imports/businesses/{businessId}/catalog-access` returns `allowed` and the active `catalogScope`; the assigned importer can edit products and/or services inside that scope.
+- `POST /api/v1/businesses/{businessId}/managed-imports` creates a PENDING request without a grant or chat. Request follows the entity fields: `businessScope` = `ITEM`, `SERVICE`, or `BOTH`, optional `selectedSourceTypes`, `sourceLinks`, and `sourceNotes`, plus required `preferredContactChannel` and `preferredContactValue`. Contact format must match EMAIL, TELEGRAM, or WHATSAPP. It has no country, locale, or legal-acceptance transport fields.
+- `POST /api/v1/platform/managed-imports/{requestId}/activate` assigns the request, creates the seven-day grant for the request's `businessScope`, and starts the managed-import chat.
+- `GET /api/v1/platform/managed-imports/businesses/{businessId}/items-services-access` returns `allowed` and the active `businessScope`; the assigned importer can edit items and/or services inside that scope.
 - There is no manual completion endpoint. Expiry records item count, revokes the grant, and deletes chat attachments.
 
 ## Import Statuses

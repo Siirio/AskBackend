@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Map;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
-import kz.ask.business.domain.entity.BusinessMember;
-import kz.ask.business.domain.enums.BusinessInvitationStatus;
-import kz.ask.business.domain.enums.BusinessMemberRole;
-import kz.ask.business.infrastructure.repository.BusinessInvitationRepository;
+import kz.ask.business.member.domain.entity.BusinessMember;
+import kz.ask.business.invitation.domain.enums.BusinessInvitationStatus;
+import kz.ask.identity.authorization.domain.enums.Role;
+import kz.ask.business.invitation.infrastructure.repository.BusinessInvitationRepository;
 
-import kz.ask.business.infrastructure.repository.BusinessMemberRepository;
+import kz.ask.business.member.infrastructure.repository.BusinessMemberRepository;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.identity.api.dto.LogoutResponse;
 import kz.ask.identity.domain.IdentityService;
@@ -46,7 +46,7 @@ public class AccountLifecycleProcessor {
         List<BusinessMember> memberships =
                 businessMemberRepository.findByUserId(user.getId());
         for (BusinessMember membership : memberships) {
-            if (membership.getRole() == BusinessMemberRole.OWNER && isSoleOwner(membership)) {
+            if (membership.getRole() == Role.OWNER && isSoleOwner(membership)) {
                 throw new ConflictException(ErrorCode.ACCOUNT_OWNER_TRANSFER_REQUIRED);
             }
         }
@@ -69,12 +69,11 @@ public class AccountLifecycleProcessor {
         return businessMemberRepository
                 .findByBusinessId(membership.getBusiness().getId())
                 .stream()
-                .filter(member -> member.getRole() == BusinessMemberRole.OWNER)
+                .filter(member -> member.getRole() == Role.OWNER)
                 .count() == 1;
     }
 
     private void anonymizeProfile(CustomerProfile profile) {
-        profile.setDisplayName(null);
         profile.setIconFileId(null);
     }
 

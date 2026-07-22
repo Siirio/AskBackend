@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/business-admin/branches/{branchId}/services")
+@RequestMapping("/api/v1/businesses/{businessId}/services")
 @RequiredArgsConstructor
 public class BusinessServiceController {
 
@@ -30,28 +30,29 @@ public class BusinessServiceController {
 
     @GetMapping
     public ResponseEntity<BusinessServiceListResponse> listServices(@AuthenticationPrincipal AskPrincipal principal,
-                                                                     @PathVariable UUID branchId,
-                                                                     @RequestParam(required = false) String categoryLabel,
+                                                                     @PathVariable UUID businessId,
+                                                                     @RequestParam(required = false) UUID branchId,
+                                                                     @RequestParam(required = false) String categoryName,
                                                                      @RequestParam(required = false) Boolean active,
                                                                      @RequestParam(required = false) String query,
                                                                      @RequestParam(defaultValue = "0") Integer page,
                                                                      @RequestParam(defaultValue = "20") Integer size) {
-        return ResponseEntity.ok(processor.listServices(principal, branchId, categoryLabel, active, query, page, size));
+        return ResponseEntity.ok(processor.listServices(principal, businessId, branchId, categoryName, active, query, page, size));
     }
 
     @PostMapping
     public ResponseEntity<BusinessServiceRowResponse> createService(@AuthenticationPrincipal AskPrincipal principal,
-                                                                     @PathVariable UUID branchId,
+                                                                     @PathVariable UUID businessId,
                                                                      @Valid @RequestBody BusinessServiceCreateRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(processor.createService(principal, branchId, req));
+                .body(processor.createService(principal, businessId, req));
     }
 
     @PatchMapping("/{serviceOfferingId}")
     public ResponseEntity<BusinessServiceRowResponse> updateService(@AuthenticationPrincipal AskPrincipal principal,
-                                                                     @PathVariable UUID branchId,
+                                                                     @PathVariable UUID businessId,
                                                                      @PathVariable UUID serviceOfferingId,
                                                                      @Valid @RequestBody BusinessServiceUpdateRequest req) {
-        return ResponseEntity.ok(processor.updateService(principal, branchId, serviceOfferingId, req));
+        return ResponseEntity.ok(processor.updateService(principal, businessId, serviceOfferingId, req));
     }
 }

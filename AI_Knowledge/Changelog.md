@@ -2,6 +2,24 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-22 | Fixed catalog/chat integrity failures and tightened managed AI: Item/Service outbox events now carry non-null timestamp versions, UniqueOffer starts enabled, new conversations initialize required state, all business members may use the shared business chat, the automatic SearchDocument AI scheduler/state was removed, manual AI enrichment requires the assigned unexpired managed-import grant, temporary staff passwords remain viewable until change, and pending staff activation records can be deleted | item, service, offers, search, messaging, identity, business, V4, AskFrontend business cabinet
+
+2026-07-22 | Aligned seller onboarding and managed-import transport with entity-backed business scope, required verification evidence for businesses without a legal form, removed non-entity managed-import request fields, and added channel-specific contact validation | business/onboarding, managedimport, AI_Knowledge/features/business, AI_Knowledge/features/_archived/import
+
+2026-07-22 | Restored authenticated seller onboarding at `/api/v1/business/onboarding`; legal IIN/BIN is sufficient for IP/TOO, while no-legal-form sellers must add at least one valid verification source. Ask managed import forwards supplied links into a contact-only request dialog and uses canonical entity terminology | business onboarding, verification, managed import, AskFrontend seller onboarding/business cabinet
+
+2026-07-22 | Aligned frontend category autocomplete with the canonical category API: seller setup filters `BUSINESS`, product forms filter `ITEM`, and service forms filter `SERVICE`; source selection for an unregistered seller is available immediately after choosing no legal form | category API, AskFrontend category autocomplete and seller onboarding
+
+2026-07-22 | Corrected frontend identity contract consumption: verification uses `verificationId` / `verification_id`, and session capability flags retain their `is*` names; this preserves the existing auth UI while restoring registration, 2FA, email-change, and staff-activation data flow | identity contracts, AskFrontend auth client/provider/profile
+
+2026-07-22 | Aligned explicit JPA mappings and a stale service JPQL predicate with the entity-defined `is_*` properties and V1 baseline; verified migration, schema validation, repository initialization, and startup on an empty PostgreSQL database | identity, item, service, offers, search, V1__init.sql
+
+2026-07-22 | Completed the in-progress business/search package move by updating dependent imports; removed the unused hardcoded IntentCategoryMapper vertical vocabulary; restored stale callers to the entity-defined contracts and removed the obsolete business-specific moderation path in favor of generic ModerationAction targets | business, identity, search, moderation, V1__init.sql
+
+2026-07-22 | Separated platform catalog enrichment from search AI: catalog mutation now lives in `kz.ask.catalog.enrichment`, while query understanding and index-only enrichment remain under search; DeepSeek transport and extraction DTOs are shared under `kz.ask.ai` | catalog enrichment, search AI package map
+
+2026-07-22 | Approved platform-only text AI enrichment for Items, Services, and Unique Offers: it fills only missing descriptions and adds directly text-supported tags/attributes without web search or image analysis; entitlement is limited to the assigned platform member's active managed-import grant and AI permission | platform, search AI, catalog, service, offers
+
 2026-07-22 | Defined advisory search-AI boundaries: item/service setter enrichment, projection enrichment, and RASE query consultation are separate responsibilities; AI cannot mutate canonical catalog data, alter scope, choose businesses, or invent operational facts. Added policy decision rule to prevent case-by-case moderation branches and prohibited hardcoded vertical vocabulary in generic search | AI_Knowledge/CodeRules.md, features/search/ai-architecture.md
 
 2026-07-21 | Domain foundation cleanup: deleted import pipeline entities (CatalogImport, RawCatalogRow, CatalogImportColumnMapping), DataSource, BusinessContact + contact privacy system, BusinessDeliveryProfile + BusinessBranchDeliveryOverride; renamed BrandProfile → BusinessProfile (dropped toneOfVoice, added number + email); removed delivery from seller onboarding; locked no-intermediate-import-entities and per-branch-delivery rules | 55+ files deleted/modified, V4 migration, Locks.md, business/ docs, archived import/ and shipping/ feature docs
@@ -13,6 +31,8 @@ Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 2026-07-19 | Removed generated Graphify output, obsolete package placeholders, unused SQL seed files, and local build/cache artifacts; ignored Graphify output to keep it from returning | graphify-out, .gitkeep files, db/testdata, Test1 seed, .gitignore
 
 2026-07-19 | Squashed the complete PostgreSQL schema history into a single fresh-deploy Flyway V1 baseline because production and local databases will be recreated from empty containers | db/migration/V1__init.sql, removed V2-V19
+
+2026-07-22 | Standardized business ownership flow: business registration persists Business, profile, owner membership, and an optional first branch; Items and Services are business-owned and branch association is optional; categories are flat and typed | business/core, business/category, business/branch, offer/item, offer/service, AI_Knowledge/features/business, catalog, service
 
 2026-07-19 | Completed Bearer-only OAuth bridge and catalog-scope onboarding: Google callback cookie is exchanged once for an HS256 JWT tied to a revocable server session; seller and managed-import requests distinguish products, services, or both | identity, business, managedimport, SecurityConfig, V1 baseline, frontend auth/onboarding/business cabinet
 
@@ -41,3 +61,4 @@ Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 2026-06-22 | Product Excel Import: fastexcel parser, auto-mapping engine, 5-endpoint import pipeline | 26 new files, catalog/import domain
 2026-06-21 | Identity Auth + Staff Management + Role Simplification (OWNER/STAFF only → later expanded to OWNER/MANAGER/WORKER) | identity/, business/, V1-V2 migrations
 2026-06-18 | Initial architecture: UUIDv7 entities, feature-first packages, Lombok JPA foundation | pom.xml, BaseUuidV7Entity, entity foundations
+2026-07-22 | Separated personal login from optional business workspaces, aligned Item/Service cabinet calls with optional branch ownership, removed hover-only quick actions, replaced the 2GIS map dependency with configurable OpenStreetMap/geocoding coordinates, and corrected search enrichment SQL to persisted `is_*` columns | identity, business, item, service, search, frontend

@@ -17,20 +17,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import kz.ask.business.domain.BusinessProfileService;
-import kz.ask.business.domain.dto.BusinessProfileDto;
-import kz.ask.search.ai_driven.search_query_enrichment.api.dto.SearchIntentStructureRequest;
-import kz.ask.search.ai_driven.search_query_enrichment.domain.IntentCategoryMapper;
-import kz.ask.search.ai_driven.search_query_enrichment.domain.SearchIntentStructurer;
-import kz.ask.search.ai_driven.search_query_enrichment.domain.SearchTermEnricher;
+import kz.ask.business.profile.domain.BusinessProfileService;
+import kz.ask.business.profile.domain.dto.BusinessProfileDto;
+import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
+import kz.ask.search.search_query_enrichment.domain.SearchIntentStructurer;
+import kz.ask.search.search_query_enrichment.domain.SearchTermEnricher;
 import kz.ask.search.basic.api.dto.SearchConstraintResponse;
 import kz.ask.search.basic.api.dto.SearchDiagnosticsResponse;
 import kz.ask.search.basic.api.dto.SearchLocationRequest;
 
-import kz.ask.search.basic.api.dto.SearchV2CardResponse;
-import kz.ask.search.basic.api.dto.SearchV2Request;
-import kz.ask.search.basic.api.dto.SearchV2Response;
-import kz.ask.search.basic.api.dto.SearchV2SectionResponse;
+import kz.ask.search.basic.api.dto.SearchCardResponse;
+import kz.ask.search.basic.api.dto.SearchRequest;
+import kz.ask.search.basic.api.dto.SearchResponse;
+import kz.ask.search.basic.api.dto.SearchSectionResponse;
 import kz.ask.search.basic.domain.AttributeKeys;
 import kz.ask.search.basic.domain.MeilisearchService;
 import kz.ask.search.basic.domain.entity.SearchDocument;
@@ -91,13 +90,12 @@ public class StructuredSearchProcessor {
     private final SearchIntentStructurer searchIntentStructurer;
     private final SearchDocumentRepository searchDocumentRepository;
     private final SearchQueryAliasRepository searchQueryAliasRepository;
-    private final IntentCategoryMapper intentCategoryMapper;
     private final SearchTermEnricher searchTermEnricher;
     private final BusinessProfileService businessProfileService;
     private final MeilisearchService meilisearchService;
 
     @Transactional(readOnly = true)
-    public SearchV2Response search(SearchV2Request request) {
+    public SearchResponse search(SearchRequest request) {
         long startedAt = System.nanoTime();
         int page = request.getPage() == null ? 0 : request.getPage();
         int pageSize = request.getPageSize() == null ? DEFAULT_PAGE_SIZE : request.getPageSize();
@@ -163,7 +161,7 @@ public class StructuredSearchProcessor {
                 .collect(Collectors.toSet());
         Map<UUID, BusinessProfileDto> businessProfiles = businessProfileService.findByBusinessIds(businessIds);
 
-        return SearchV2Response.builder()
+        return SearchResponse.builder()
                 .rawQuery(request.getRawQuery())
                 .scope(resolveScope(searchPlan))
                 .understoodQuery(request.getRawQuery())
@@ -318,7 +316,7 @@ public class StructuredSearchProcessor {
                 .build());
     }
 
-    private List<SearchV2SectionResponse> toSections(
+    private List<SearchSectionResponse> toSections(
             List<ScoredSearchDocument> results,
             Map<UUID, BusinessProfileDto> businessProfiles,
             String language) {
@@ -328,9 +326,9 @@ public class StructuredSearchProcessor {
         List<ScoredSearchDocument> alternatives = results.stream()
                 .filter(scored -> !scored.getWarnings().isEmpty())
                 .toList();
-        List<SearchV2SectionResponse> sections = new ArrayList<>();
+        List<SearchSectionResponse> sections = new ArrayList<>();
         if (!exact.isEmpty()) {
-            sections.add(SearchV2SectionResponse.builder()
+            sections.add(SearchSectionResponse.builder()
                     .type("exact")
                     .kind("EXACT")
                     .title(localized(language, "Совпадения", "Сәйкестіктер", "Matches"))
@@ -344,7 +342,7 @@ public class StructuredSearchProcessor {
                     .map(this::constraintForWarning)
                     .distinct()
                     .toList();
-            sections.add(SearchV2SectionResponse.builder()
+            sections.add(SearchSectionResponse.builder()
                     .type("alternatives")
                     .kind("ALTERNATIVE")
                     .title(localized(language, "Альтернативы", "Балама нұсқалар", "Alternatives"))
@@ -376,7 +374,7 @@ public class StructuredSearchProcessor {
                         + relaxed.stream().map(constraint -> localizedConstraint(constraint, language)).collect(Collectors.joining(", "));
     }
 
-    private SearchIntentStructureRequest toIntentRequest(SearchV2Request request) {
+    private SearchIntentStructureRequest toIntentRequest(SearchRequest request) {
         SearchIntentStructureRequest aiRequest = new SearchIntentStructureRequest();
         aiRequest.setRawQuery(request.getRawQuery());
         aiRequest.setSelectedMode(resolveMode(effectiveScope(request)));
@@ -390,7 +388,7 @@ public class StructuredSearchProcessor {
         return aiRequest;
     }
 
-    private String effectiveScope(SearchV2Request request) {
+    private String effectiveScope(SearchRequest request) {
         if (request.getOverrides() != null && request.getOverrides().getScope() != null) {
             return request.getOverrides().getScope();
         }
@@ -400,7 +398,7 @@ public class StructuredSearchProcessor {
         return request.getScope();
     }
 
-    private String effectiveCategory(SearchV2Request request) {
+    private String effectiveCategory(SearchRequest request) {
         if (request.getOverrides() != null && request.getOverrides().getCategory() != null) {
             return request.getOverrides().getCategory();
         }
@@ -410,7 +408,7 @@ public class StructuredSearchProcessor {
         return request.getSelectedCategory();
     }
 
-    private String effectiveCity(SearchV2Request request) {
+    private String effectiveCity(SearchRequest request) {
         if (request.getOverrides() != null && request.getOverrides().getCity() != null) {
             return request.getOverrides().getCity();
         }
@@ -420,14 +418,14 @@ public class StructuredSearchProcessor {
         return request.getCity();
     }
 
-    private BigDecimal effectiveMinPrice(SearchV2Request request) {
+    private BigDecimal effectiveMinPrice(SearchRequest request) {
         if (request.getOverrides() != null && request.getOverrides().getMinPrice() != null) {
             return request.getOverrides().getMinPrice();
         }
         return request.getFilters() == null ? null : request.getFilters().getMinPrice();
     }
 
-    private BigDecimal effectiveMaxPrice(SearchV2Request request) {
+    private BigDecimal effectiveMaxPrice(SearchRequest request) {
         if (request.getOverrides() != null && request.getOverrides().getMaxPrice() != null) {
             return request.getOverrides().getMaxPrice();
         }
@@ -465,9 +463,7 @@ public class StructuredSearchProcessor {
     }
 
     SearchPlan buildSearchPlan(JsonNode intentStructure, SearchIntentStructureRequest request) {
-        List<String> categoryInputs = collectCategoryInputs(intentStructure, request);
-        List<StructuredCategorySignal> categorySignals = intentCategoryMapper.map(categoryInputs);
-        List<String> categoryAliases = collectCategoryAliases(categorySignals, request);
+        List<String> categoryAliases = collectCategoryInputs(intentStructure, request);
         List<String> exactTerms = resolveExactTerms(intentStructure, request);
         List<String> semanticTerms = resolveSemanticTerms(intentStructure);
         List<String> relatedTerms = combineTerms(resolveRelatedTerms(intentStructure), resolveAliasTargets(exactTerms),
@@ -481,7 +477,7 @@ public class StructuredSearchProcessor {
                 .maxPrice(resolveMaxPrice(intentStructure, request))
                 .minPackageGrams(resolveMinPackageGrams(request))
                 .maxPackageGrams(resolveMaxPackageGrams(request))
-                .canonicalCategoryKeys(categorySignals.stream().map(StructuredCategorySignal::getCanonicalKey).toList())
+                .canonicalCategoryKeys(List.of())
                 .categoryAliases(categoryAliases)
                 .hardMatchTerms(resolveHardMatchTerms(intentStructure, request))
                 .qualifierTerms(resolveQualifierTerms(intentStructure, request))
@@ -753,18 +749,9 @@ public class StructuredSearchProcessor {
         Set<String> terms = new LinkedHashSet<>();
         addTerm(terms, request.getSelectedCategory());
         addTerm(terms, intentStructure.path("product").path("primary_category").asText(""));
-        addTerm(terms, intentStructure.path("product").path("subcategory").asText(""));
         addTerm(terms, intentStructure.path("product").path("product_type").asText(""));
         addTerm(terms, intentStructure.path("service").path("primary_category").asText(""));
-        addTerm(terms, intentStructure.path("service").path("subcategory").asText(""));
         addTerm(terms, intentStructure.path("service").path("service_type").asText(""));
-        return terms.stream().toList();
-    }
-
-    private List<String> collectCategoryAliases(List<StructuredCategorySignal> signals, SearchIntentStructureRequest request) {
-        Set<String> terms = new LinkedHashSet<>();
-        addTerm(terms, request.getSelectedCategory());
-        signals.forEach(signal -> addTerms(terms, signal.getAliases()));
         return terms.stream().toList();
     }
 
@@ -1026,14 +1013,14 @@ public class StructuredSearchProcessor {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private SearchV2CardResponse toV2Card(
+    private SearchCardResponse toV2Card(
             ScoredSearchDocument scored,
             Map<UUID, BusinessProfileDto> businessProfiles,
             String language) {
         SearchDocument document = scored.getDocument();
         UUID businessId = document.getBusiness() == null ? null : document.getBusiness().getId();
         BusinessProfileDto brandProfile = businessId == null ? null : businessProfiles.get(businessId);
-        return SearchV2CardResponse.builder()
+        return SearchCardResponse.builder()
                 .component(component(document.getDocumentType().name()))
                 .resultId(document.getId())
                 .businessId(document.getBusiness() != null ? document.getBusiness().getId() : null)

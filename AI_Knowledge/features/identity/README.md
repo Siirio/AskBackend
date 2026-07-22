@@ -13,9 +13,12 @@ Customer and business authentication: email-based login/registration, Google OAu
 - Access tokens are HS256 JWTs signed with `auth.jwt.secret`. The `sid` claim points to a hashed, revocable server-side session so logout and expiry remain enforceable.
 - Remember-me extends session TTL via backend config.
 - Successful OTP, password, and Google logins update `lastLoginAt`.
-- Business onboarding: creates Business + BusinessBranch + BusinessMember + BusinessContact.
+- Business onboarding: creates Business + BusinessProfile + OWNER BusinessMember, with an optional initial BusinessBranch.
+- AppUser is the personal account. Business and platform memberships are optional work contexts attached to that account; login opens the personal customer context and the user enters a business cabinet explicitly.
+- Unified password login authenticates the exact AppUser whose password matched. It never verifies one same-email record and silently starts a session for another record.
 - Staff do NOT self-register. Owner creates staff → staff activates via login + password change.
-- Roles: CUSTOMER, BUSINESS_OWNER, BUSINESS_MANAGER, BUSINESS_WORKER, PLATFORM_SUPER_ADMIN, PLATFORM_ADMIN, PLATFORM_MODERATOR.
-- BusinessMemberRole: OWNER, MANAGER, WORKER. Hierarchy: OWNER > MANAGER > WORKER.
+- A staff temporary password is BCrypt-hashed for authentication and separately encrypted for owner/manager display. It remains visible in staff lists across later sessions while password change is required and is cleared when the staff user sets a permanent password.
+- Authorization roles are centralized as CUSTOMER, OWNER, MANAGER, WORKER, SUPER_ADMIN, ADMIN, and MODERATOR; role groups distinguish customer, business, and platform access.
+- Business membership hierarchy: OWNER > MANAGER > WORKER.
 - Account data export is not part of the profile or account lifecycle surface; permanent deletion remains available.
 - Email delivery switch is `AUTH_VERIFICATION_TEST_MODE` (true → LoggingEmailCodeSender/LocalBusinessInvitationEmailSender log instead of SMTP; AuthProcessor exposes test branches). Local profile sets `auth.verification.test-mode: true` directly — Spring Boot does NOT read `.env` (no dotenv dependency). The dead `AUTH_VERIFICATION_EMAIL_ENABLED`/`AUTH_VERIFICATION_SMS_ENABLED` keys were removed from application-local.yml and compose.yml. `AUTH_VERIFICATION_STAGING_BYPASS` only skips code-hash comparison, it does NOT stop the send attempt.

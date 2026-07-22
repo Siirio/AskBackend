@@ -16,8 +16,9 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.entity.BusinessBranch;
+import kz.ask.business.core.domain.entity.Business;
+import kz.ask.business.category.domain.entity.Category;
+import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -26,7 +27,7 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Getter
 @Setter
-@Table(name = "product")
+@Table(name = "item")
 public class Item extends BaseUuidV7Entity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -40,8 +41,13 @@ public class Item extends BaseUuidV7Entity {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "category_label")
-    private String categoryLabel;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
+
+    public String getCategoryLabel() {
+        return category == null ? null : category.getName();
+    }
 
     private String description;
 
@@ -52,7 +58,7 @@ public class Item extends BaseUuidV7Entity {
 
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled;
 
     @Column(name = "moderation_status", nullable = false)

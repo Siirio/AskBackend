@@ -21,3 +21,4 @@
 - Unsupported formats rejected before upload with clear error message
 - Business users see Excel only. Assigned platform importers see Excel plus TXT/MD/PDF AI Autodump.
 - The business can request catalog help from onboarding, the item area, or the service area. Product and service buttons preselect the matching scope and explain the service, pricing state, sources, and deliverable before submission.
+- The final request dialog contains only contact channel and contact value. Sources already collected during onboarding are forwarded without rendering them again; source fields may be empty when the Ask team must obtain them through the selected contact channel.

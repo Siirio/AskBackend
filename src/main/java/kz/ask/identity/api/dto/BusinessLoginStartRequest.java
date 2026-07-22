@@ -18,5 +18,5 @@ public class BusinessLoginStartRequest {
     @NotBlank
     @Email
     private String email;
-    private Boolean rememberMe;
+    private Boolean isRememberMe;
 }

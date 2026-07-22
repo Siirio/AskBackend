@@ -12,8 +12,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.Set;
 import kz.ask.identity.domain.entity.AppUser;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,7 +30,7 @@ public class PlatformMembership extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PlatformRole role;
+    private Role role;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
@@ -38,5 +38,5 @@ public class PlatformMembership extends BaseUuidV7Entity {
             joinColumns = @JoinColumn(name = "platform_membership_id"))
     @Column(name = "permission", nullable = false)
     @Enumerated(EnumType.STRING)
-    private Set<PlatformPermission> permissions;
+    private Set<Permission> permissions;
 }

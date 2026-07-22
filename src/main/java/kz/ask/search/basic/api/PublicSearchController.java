@@ -1,8 +1,8 @@
 package kz.ask.search.basic.api;
 
 import jakarta.validation.Valid;
-import kz.ask.search.basic.api.dto.SearchV2Request;
-import kz.ask.search.basic.api.dto.SearchV2Response;
+import kz.ask.search.basic.api.dto.SearchRequest;
+import kz.ask.search.basic.api.dto.SearchResponse;
 import kz.ask.search.basic.application.processor.StructuredSearchProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +19,7 @@ public class PublicSearchController {
     private final StructuredSearchProcessor processor;
 
     @PostMapping
-    public ResponseEntity<SearchV2Response> search(@Valid @RequestBody SearchV2Request request) {
+    public ResponseEntity<SearchResponse> search(@Valid @RequestBody SearchRequest request) {
         return ResponseEntity.ok(processor.search(request));
     }
 }

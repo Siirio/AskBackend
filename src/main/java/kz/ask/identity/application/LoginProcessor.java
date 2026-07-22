@@ -3,8 +3,8 @@ package kz.ask.identity.application;
 import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
-import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.dto.BusinessRegistrationResult;
+import kz.ask.business.core.domain.BusinessService;
+import kz.ask.business.core.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.api.dto.AuthUserResponse;
@@ -14,7 +14,8 @@ import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
+import kz.ask.identity.authorization.domain.enums.RoleGroup;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
@@ -57,11 +58,10 @@ public class LoginProcessor {
             throw new AuthException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        AppUserDto canonicalUser = activeUsers.stream()
-                .filter(user -> user.getRole() == AppRole.CUSTOMER)
-                .findFirst()
-                .orElse(passwordMatch);
-        return loginSingleRole(canonicalUser, List.of());
+        return loginSingleRole(passwordMatch, activeUsers.stream()
+                .map(user -> user.getRole().name())
+                .distinct()
+                .toList());
     }
 
     private AuthSessionResponse loginSingleRole(AppUserDto user, List<String> allRoles) {
@@ -69,17 +69,15 @@ public class LoginProcessor {
 
         BusinessRegistrationResult bizResult = resolveBusiness(user);
 
-        if (user.getMustChangePassword()) {
+        if (user.getIsPasswordChangeRequired()) {
             Long ttl = identityService.staffActivationSessionTtl();
             AuthSessionDto session = identityService.createSession(user.getId(), "ROLE_USER", false, ttl, true);
             return buildSessionResponse(session, user, bizResult, allRoles);
         }
 
-        boolean isPlatformRole = user.getRole() == AppRole.PLATFORM_SUPER_ADMIN
-                || user.getRole() == AppRole.PLATFORM_ADMIN
-                || user.getRole() == AppRole.PLATFORM_MODERATOR;
+        boolean isPlatformRole = user.getRole().getGroup() == RoleGroup.PLATFORM;
 
-        if (!isPlatformRole && Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+        if (!isPlatformRole && Boolean.TRUE.equals(user.getIsTwoFactorEnabled())) {
             VerificationDto challenge = identityService.createVerification(
                     user.getId(), user.getEmail(),
                     VerificationChannel.EMAIL, VerificationPurpose.LOGIN,
@@ -98,11 +96,11 @@ public class LoginProcessor {
         return buildSessionResponse(session, user, bizResult, allRoles);
     }
 
-    private String resolveAuthority(AppRole role) {
+    private String resolveAuthority(Role role) {
         return switch (role) {
-            case PLATFORM_SUPER_ADMIN -> "ROLE_SUPER_ADMIN";
-            case PLATFORM_ADMIN -> "ROLE_ADMIN";
-            case PLATFORM_MODERATOR -> "ROLE_MODERATOR";
+            case SUPER_ADMIN -> "ROLE_SUPER_ADMIN";
+            case ADMIN -> "ROLE_ADMIN";
+            case MODERATOR -> "ROLE_MODERATOR";
             default -> "ROLE_USER";
         };
     }
@@ -122,7 +120,7 @@ public class LoginProcessor {
         }
 
         AppUserDto user = identityService.findById(principal.getUserId());
-        if (user == null || !user.getMustChangePassword()) {
+        if (user == null || !user.getIsPasswordChangeRequired()) {
             throw new ValidationException(ErrorCode.PASSWORD_CHANGE_NOT_REQUIRED);
         }
 
@@ -148,10 +146,10 @@ public class LoginProcessor {
                         session.getExpiresAt()))
                 .expiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()))
                 .expiresAt(session.getExpiresAt())
-                .remembered(session.getRemembered())
-                .activationRequired(session.getActivationRequired())
+                .isRemembered(session.getIsRemembered())
+                .isActivationRequired(session.getIsActivationRequired())
                 .role(session.getAuthority())
-                .startRoute(resolveStartRoute(session.getAuthority(), bizResult))
+                .startRoute(resolveStartRoute())
                 .user(buildUserResponse(user))
                 .allRoles(allRoles);
         sessionCapabilitiesProcessor.apply(builder, user);
@@ -160,6 +158,9 @@ public class LoginProcessor {
             var business = AuthBusinessContextResponse.builder()
                     .businessId(bizResult.getBusiness().getId())
                     .businessName(bizResult.getBusiness().getName())
+                    .businessCategoryId(bizResult.getBusiness().getCategoryId())
+                    .businessCategoryName(bizResult.getBusiness().getCategoryName())
+                    .businessScope(bizResult.getBusiness().getScope())
                     .membershipId(bizResult.getMember().getId())
                     .memberRole(bizResult.getMember().getRole());
             if (bizResult.getBranch() != null) {
@@ -181,10 +182,7 @@ public class LoginProcessor {
                 .build();
     }
 
-    private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult) {
-        if (bizResult != null) {
-            return "BUSINESS_CABINET";
-        }
+    private String resolveStartRoute() {
         return "CLIENT_SEARCH";
     }
 

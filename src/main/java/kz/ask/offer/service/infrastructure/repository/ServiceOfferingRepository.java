@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> {
 
-    @Query("SELECT DISTINCT s.categoryLabel FROM Service s WHERE s.business.id = :businessId AND s.categoryLabel IS NOT NULL AND LOWER(s.categoryLabel) LIKE LOWER(CONCAT(:query, '%')) ORDER BY s.categoryLabel")
+    @Query("SELECT DISTINCT s.category.name FROM Service s WHERE s.business.id = :businessId AND LOWER(s.category.name) LIKE LOWER(CONCAT(:query, '%')) ORDER BY s.category.name")
     List<String> findDistinctCategoryLabelsByBusiness(UUID businessId, String query);
 
     Long countByBusinessId(UUID businessId);
@@ -21,10 +21,14 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
 
     @Query("""
         SELECT so FROM Service so
-        WHERE (:branchId IS NULL OR so.branch.id = :branchId)
-          AND (:categoryLabel IS NULL OR LOWER(so.categoryLabel) = LOWER(:categoryLabel))
-          AND (:active IS NULL OR so.active = :active)
+        WHERE so.business.id = :businessId
+          AND (:branchId IS NULL OR so.branch.id = :branchId)
+          AND (:categoryLabel IS NULL OR LOWER(so.category.name) = LOWER(:categoryLabel))
+          AND (:active IS NULL OR so.isActive = :active)
           AND (:query IS NULL OR LOWER(so.name) LIKE :query OR LOWER(COALESCE(so.description, '')) LIKE :query)
         """)
-    Page<Service> search(UUID branchId, String categoryLabel, Boolean active, String query, Pageable pageable);
+    Page<Service> search(UUID businessId, UUID branchId, String categoryLabel, Boolean active,
+                          String query, Pageable pageable);
+
+    List<Service> findByIdIn(List<UUID> ids);
 }

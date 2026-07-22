@@ -34,4 +34,4 @@ Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonic
 
 DeepSeek interpretation is optional. Deterministic interpretation always runs inside the frontend-selected scope, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
 
-AI enrichment runs only after `POST /api/v1/platform/ai-enrichment` with `documentType` and `aggregateIds`. It requires `USE_AI_CATALOG_TOOLS`; catalog documents are not enriched automatically.
+AI enrichment runs only after `POST /api/v1/platform/ai-enrichment` with `targetType` (`PRODUCT`, `SERVICE`, or `UNIQUE_OFFER`) and `aggregateIds`. It requires `USE_AI_ITEMS_SERVICES_TOOLS` and an unexpired managed-import grant assigned to that platform user for the target business and scope. Records are never enriched automatically on creation.

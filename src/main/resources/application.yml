@@ -139,23 +139,11 @@ ask:
       repair: ${ASK_SEARCH_RECONCILIATION_REPAIR:true}
       batch-size: ${ASK_SEARCH_RECONCILIATION_BATCH_SIZE:250}
       interval: ${ASK_SEARCH_RECONCILIATION_INTERVAL:PT30S}
-    ai-enrichment:
-      enabled: ${ASK_SEARCH_AI_ENRICHMENT_ENABLED:true}
-      batch-size: ${ASK_SEARCH_AI_ENRICHMENT_BATCH_SIZE:20}
-      interval: ${ASK_SEARCH_AI_ENRICHMENT_INTERVAL:PT30S}
-      processing-timeout: ${ASK_SEARCH_AI_ENRICHMENT_PROCESSING_TIMEOUT:PT5M}
-      max-attempts: ${ASK_SEARCH_AI_ENRICHMENT_MAX_ATTEMPTS:5}
-      retry-base-delay: ${ASK_SEARCH_AI_ENRICHMENT_RETRY_BASE_DELAY:PT1M}
-      retry-max-delay: ${ASK_SEARCH_AI_ENRICHMENT_RETRY_MAX_DELAY:PT6H}
-      schema-version: ${ASK_SEARCH_AI_ENRICHMENT_SCHEMA_VERSION:attribute-v1}
-      max-tokens: ${ASK_SEARCH_AI_ENRICHMENT_MAX_TOKENS:4000}
 
 business:
-  catalog:
-    deadline: ${BUSINESS_CATALOG_DEADLINE:P7D}
   managed-import:
-    chat-subject: ${MANAGED_IMPORT_CHAT_SUBJECT:Catalog import}
-    initial-message: ${MANAGED_IMPORT_INITIAL_MESSAGE:Your managed catalog import request was sent. An Ask team member will join this chat and help prepare the catalog.}
+    chat-subject: ${MANAGED_IMPORT_CHAT_SUBJECT:Items and services import}
+    initial-message: ${MANAGED_IMPORT_INITIAL_MESSAGE:Your managed items and services import request was sent. An Ask team member will join this chat and help prepare the data.}
   invitation:
     ttl-seconds: ${ASK_BUSINESS_INVITATION_TTL_SECONDS:604800}
     token-bytes: ${ASK_BUSINESS_INVITATION_TOKEN_BYTES:32}

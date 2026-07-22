@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,5 +30,5 @@ public class CreateAdminRequest {
     private String displayName;
 
     @NotNull
-    private PlatformRole role;
+    private Role role;
 }

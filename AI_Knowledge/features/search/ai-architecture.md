@@ -2,35 +2,29 @@
 
 ## Purpose
 
-Search AI helps ASK understand a user query and enrich the search projection. It is not a second catalog, a moderation engine, or a result selector. PostgreSQL remains canonical, Meilisearch remains the candidate engine, and the selected `PRODUCT` or `SERVICE` scope remains immutable.
+Search AI helps ASK understand a user query and enrich the search projection. It is not a second Item/Service store, a moderation engine, or a result selector. PostgreSQL remains canonical, Meilisearch remains the candidate engine, and the selected `ITEM` or `SERVICE` scope remains immutable.
 
 ## Target package map
 
 Use lowercase Java packages even when the product name is written as AI.
 
 ```text
-kz.ask.search.search
-├── basic
-│   ├── api/PublicSearchController
-│   ├── application/processor/StructuredSearchProcessor
-│   ├── domain/{SearchProjectionService, MeilisearchService, SearchOutboxService}
-│   └── infrastructure/{config, mapper, repository, scheduler}
-└── ai
-    ├── api/PlatformAiEnrichmentController
-    ├── application/PlatformAiEnrichmentProcessor
-    ├── domain/{SearchIntentStructurer, SearchAiEnrichmentService}
-    └── infrastructure/{cache, client, config, repository, scheduler}
+kz.ask
+├── ai/infrastructure/{client,config}                 shared DeepSeek transport and extraction contract
+├── catalog/enrichment/{api,application}              platform-triggered canonical catalog enrichment
+└── search
+    ├── basic                                         deterministic retrieval and projection
+    └── ai_driven/search_query_enrichment             query understanding and index-only enrichment
 ```
 
-`basic` owns deterministic retrieval and projection. `ai` owns provider-facing query interpretation and enrichment. The basic slice may call the AI slice as an optional consultant; the AI slice does not select results.
+`catalog.enrichment` owns the platform action that updates selected catalog records. `search.ai_driven` owns query understanding and derived search metadata only. Shared provider transport is outside both features; neither feature selects search results.
 
 ## Responsibility boundaries
 
 | Role | Input | Output | Must not do |
 | --- | --- | --- | --- |
-| Item setter enricher | Item creation/update DTO and accepted evidence | Proposed item search metadata | Persist an item, set an entity field, publish an outbox event, or decide moderation |
-| Service setter enricher | Service creation/update DTO and accepted evidence | Proposed service search metadata | Persist a service, set an entity field, publish an outbox event, or decide booking or availability |
-| Search enricher | Canonical search projection plus accepted metadata | Index-only aliases, normalized terms, and evidence-bearing attributes | Change canonical catalog data or choose a business/result |
+| Catalog enrichment | Existing Item, Service, or UniqueOffer text fields | Missing factual description, additive tags, and additive structured attributes | Replace manual data, invent operational facts, use web search, read images, or decide moderation |
+| Search enricher | Canonical search projection plus accepted metadata | Index-only aliases, normalized terms, and evidence-bearing attributes | Change canonical Item/Service data or choose a business/result |
 | RASE search consultant | Raw query, immutable scope, and explicit filters | Validated query interpretation or retrieval hints | Change scope/filters, query businesses directly, rank cards, or invent stock, delivery, schedules, or availability |
 
 `RASE` is the advisory search-AI boundary: it may consult an AI provider, but all provider output is validated before retrieval. It is optional; deterministic interpretation is the fallback.
@@ -38,11 +32,11 @@ kz.ask.search.search
 ## Data flow
 
 ```text
-catalog DTO -> item/service setter enricher -> accepted metadata -> search projection -> search enricher -> Meilisearch
+Business, Item, or Service DTO -> accepted metadata -> search projection -> Meilisearch
 raw customer query + immutable scope -> RASE consultant -> validated interpretation -> candidate retrieval -> deterministic ranking -> response
 ```
 
-No arrow from an enricher goes to a catalog entity, moderation status, business selection, request, chat, notification, or availability claim.
+Catalog enrichment may fill only missing descriptions and add text-supported tags or attributes to Item, Service, and UniqueOffer records. It must not replace manual data, change moderation, select a business, create requests/chats/notifications, or claim availability.
 
 ## Moderation is a policy, not a search-AI concern
 
@@ -55,13 +49,13 @@ Policy data needs an owner and a documented source. Short-lived experiments may 
 1. Move one live responsibility with its consumer and update every import in the same change.
 2. Remove `SearchTermEnricher`'s sport-nutrition and bike-rental literals unless a documented owner supplies a curated vocabulary.
 3. Split `StructuredSearchProcessor` by runtime responsibility: request orchestration, RASE consultation, candidate retrieval, deterministic ranking, and response mapping. Processors use DTOs only; repositories and entities remain behind domain services.
-4. Move catalog mutations and moderation out of processors. Their domain services own persistence; mappers own entity/DTO copying.
+4. Move Item/Service mutations and moderation out of processors. Their domain services own persistence; mappers own entity/DTO copying.
 
 ## Current violations to remove
 
 - `StructuredSearchProcessor` combines repository/entity access, query structuring, candidate retrieval, ranking, and response construction.
 - `SearchTermEnricher` embeds product verticals directly in generic search.
 - `BusinessProductProcessor` owns `Item` mutation, three repositories, mapping, search-outbox publication, and moderation.
-- `PlatformAiEnrichmentProcessor` mutates `SearchDocument` directly instead of using a DTO-only domain service boundary.
+- Catalog enrichment has one target-aware processor rather than three duplicated feature implementations; target-specific allowlists remain inside that processor until dedicated catalog domain services are introduced.
 
 The current package move preserves the existing runtime path. The next cleanup replaces the remaining non-generic vocabulary and DTO/service violations only after the product documentation is approved feature by feature.

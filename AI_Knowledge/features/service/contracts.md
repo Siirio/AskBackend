@@ -1,23 +1,19 @@
 # Service — REST API Contracts
 
-## Client Service Endpoints
+Public customers discover Services through the unified search endpoint; this feature does not expose
+a separate public listing or detail API in the current backend contract.
+
+## Business service endpoints
+
 | Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | /api/v1/services | No | Search/list services |
-| GET | /api/v1/services/{offerId} | No | Service detail |
+| --- | --- | --- | --- |
+| GET | /api/v1/businesses/{businessId}/services?branchId={optional} | OWNER/MANAGER/WORKER | List business services, optionally narrowed to a branch |
+| POST | /api/v1/businesses/{businessId}/services | OWNER/MANAGER/WORKER | Create a Service with an optional `branchId` |
+| PATCH | /api/v1/businesses/{businessId}/services/{serviceId} | OWNER/MANAGER/WORKER | Update a Service |
 
-## Business Admin Service Endpoints
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/WORKER | List branch services |
-| POST | /api/v1/business-admin/branches/{branchId}/services | OWNER/MANAGER/WORKER | Create service + offer |
-| PATCH | /api/v1/business-admin/branches/{branchId}/services/{serviceOfferingId} | OWNER/MANAGER/WORKER | Update service |
+## Service data
 
-## Service Branch Offer Model
-- service_offering: business_id, category_id, name, description, attributes (JSONB), image_url, status
-- service_branch_offer: service_offering_id, branch_id, base_price, schedule_text, active, status
-- ServiceBranchOffer is the only branch relationship; duplicating to another branch creates a new offer with copied initial price.
-
-## Customer contact
-
-A service card may explicitly open or resume the shared customer-to-business conversation. Search does not create supplier responses, bookings, or calendar reservations.
+- A Service belongs to a Business.
+- It stores one `SERVICE` category identity, description, and canonical attributes.
+- A branch association is optional and contains only location-specific facts such as price, schedule, and visibility.
+- A service card can explicitly open the shared customer-to-business conversation. Search creates neither bookings nor requests.

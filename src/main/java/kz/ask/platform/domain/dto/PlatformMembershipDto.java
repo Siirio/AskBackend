@@ -2,8 +2,8 @@ package kz.ask.platform.domain.dto;
 
 import java.util.Set;
 import java.util.UUID;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +18,7 @@ public class PlatformMembershipDto {
     private UUID userId;
     private String email;
     private String displayName;
-    private PlatformRole role;
+    private Role role;
     private String status;
-    private Set<PlatformPermission> permissions;
+    private Set<Permission> permissions;
 }

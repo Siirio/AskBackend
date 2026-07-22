@@ -1,6 +1,5 @@
 package kz.ask.search.basic.domain;
 
-import java.time.Instant;
 import java.util.UUID;
 import kz.ask.search.basic.domain.dto.SearchOutboxEventDto;
 import kz.ask.search.basic.domain.dto.SearchProjectionResult;
@@ -20,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SearchProjectionServiceImpl implements SearchProjectionService {
 
-    private static final String PROJECTION_SOURCE = "CATALOG";
+    private static final String PROJECTION_SOURCE = "ITEMS_SERVICES";
 
     private final SearchDocumentRepository searchDocumentRepository;
 
@@ -48,7 +47,6 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
                     .build();
         }
 
-        prepareForVersion(document, event.getAggregateVersion());
         document.setSource(PROJECTION_SOURCE);
         document.setAvailabilityStatus(SearchAvailabilityStatus.UNKNOWN);
         document.setAvailabilitySource(SearchAvailabilitySource.UNKNOWN);
@@ -100,21 +98,6 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
         return document.getId() != null
                 && document.getUpdatedAt() != null
                 && document.getUpdatedAt().toEpochMilli() > aggregateVersion;
-    }
-
-    private void prepareForVersion(SearchDocument document, Long version) {
-        boolean isNewVersion = document.getId() == null
-                || document.getUpdatedAt() == null
-                || version > document.getUpdatedAt().toEpochMilli();
-        if (isNewVersion) {
-            document.setAiEnrichmentAvailableAt(Instant.now());
-            document.setAiEnrichmentStartedAt(null);
-            document.setAiEnrichmentWorkerId(null);
-            document.setAiEnrichmentAttemptCount(0);
-            document.setAiEnrichmentError(null);
-            document.setAiEnrichmentDead(Boolean.FALSE);
-            document.setAiEnrichmentRequested(Boolean.FALSE);
-        }
     }
 
     private SearchDocumentType toDocumentType(kz.ask.search.basic.domain.enums.SearchAggregateType aggregateType) {

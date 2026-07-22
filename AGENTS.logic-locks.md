@@ -1,5 +1,15 @@
 # Approved Domain Foundation
 
+## LOCKED: Requirements authority and conflict handling
+
+**Approved signal:** User clarification on 2026-07-22.
+
+**Protected behavior:** The user's current instructions together with applicable `AI_Knowledge` feature documentation jointly define intended behavior. Applicable feature documentation must be read before behavior is diagnosed or changed. Existing code is not proof of correctness unless the exact behavior is explicitly locked as working or documented as approved.
+
+**Conflict rule:** Stop and ask the user when instructions, documentation, or locks conflict, or when material behavior, data, authorization, or acceptance criteria are missing. Never silently choose existing code or an assumption.
+
+**Allowed changes:** Synchronize documentation and locks after the user resolves the conflict or approves changed behavior.
+
 ## LOCKED: Search is catalog-only and user-scoped
 
 **Approved signal:** User clarification on 2026-07-21.
@@ -24,3 +34,10 @@
 
 **Scope:** business membership entities, authorization services, staff and invitation flows.
 
+## LOCKED: Canonical entity terminology across layers
+
+**Approved signal:** User correction on 2026-07-22.
+
+**Protected behavior:** API fields, DTOs, backend code, frontend state and documentation use entity terminology unchanged. `BusinessScope` accepts and returns only `ITEM`, `SERVICE`, or `BOTH`; `ManagedImportRequest.selectedSourceTypes` is exposed as `selectedSourceTypes`.
+
+**Scope:** Seller onboarding, managed import, platform access, persistence mappings and related contracts.

@@ -1,7 +1,7 @@
 package kz.ask.chat.application;
 
 import java.util.UUID;
-import kz.ask.business.domain.BusinessMemberService;
+import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.shared.error.ErrorCode;

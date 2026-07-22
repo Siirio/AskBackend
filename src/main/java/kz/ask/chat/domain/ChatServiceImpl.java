@@ -57,6 +57,7 @@ public class ChatServiceImpl implements ChatService {
         conv.setCustomerId(customerId);
         conv.setSubject(subject);
         conv.setConversationType(ConversationType.GENERAL_SUPPORT);
+        prepareNewConversation(conv, ConversationStatus.PENDING);
         conv.setLastMessageAt(Instant.now());
         conv = conversationRepository.save(conv);
         return toConversationDto(conv);
@@ -69,6 +70,8 @@ public class ChatServiceImpl implements ChatService {
         conv.setBusinessId(businessId);
         conv.setCustomerId(null);
         conv.setSubject(customerName);
+        conv.setConversationType(ConversationType.GENERAL_SUPPORT);
+        prepareNewConversation(conv, ConversationStatus.PENDING);
         conv.setLastMessageAt(Instant.now());
         conv = conversationRepository.save(conv);
         return toConversationDto(conv);
@@ -90,7 +93,7 @@ public class ChatServiceImpl implements ChatService {
                     conversation.setBusinessId(businessId);
                     conversation.setSubject(PLATFORM_SUPPORT_SUBJECT);
                     conversation.setConversationType(ConversationType.PLATFORM_SUPPORT);
-                    conversation.setConversationStatus(ConversationStatus.PENDING);
+                    prepareNewConversation(conversation, ConversationStatus.PENDING);
                     conversation.setLastMessageAt(Instant.now());
                     return toConversationDto(conversationRepository.save(conversation));
                 });
@@ -216,7 +219,7 @@ public class ChatServiceImpl implements ChatService {
         conversation.setCustomerId(ownerId);
         conversation.setSubject(subject);
         conversation.setConversationType(ConversationType.MANAGED_IMPORT);
-        conversation.setConversationStatus(ConversationStatus.PENDING);
+        prepareNewConversation(conversation, ConversationStatus.PENDING);
         conversation.setManagedImportRequestId(managedImportRequestId);
         conversation.setLastMessageAt(Instant.now());
         conversation = conversationRepository.save(conversation);
@@ -376,5 +379,11 @@ public class ChatServiceImpl implements ChatService {
             throw new ValidationException(ErrorCode.FILE_INVALID);
         }
         return attachmentUrl;
+    }
+
+    private void prepareNewConversation(ChatConversation conversation, ConversationStatus status) {
+        conversation.setConversationStatus(status);
+        conversation.setCustomerUnreadCount(0);
+        conversation.setBusinessUnreadCount(0);
     }
 }

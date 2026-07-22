@@ -2,8 +2,8 @@ package kz.ask.identity.application;
 
 import java.util.List;
 
-import kz.ask.business.domain.BusinessMemberService;
-import kz.ask.business.domain.BusinessInvitationService;
+import kz.ask.business.member.domain.BusinessMemberService;
+import kz.ask.business.invitation.domain.BusinessInvitationService;
 import kz.ask.identity.api.dto.AuthBusinessMembershipResponse;
 import kz.ask.identity.api.dto.AuthCustomerProfileResponse;
 import kz.ask.identity.api.dto.AuthPlatformMembershipResponse;
@@ -35,7 +35,7 @@ public class SessionCapabilitiesProcessor {
                                 .build())
                         .toList();
 
-        builder.customerProfile(AuthCustomerProfileResponse.builder().enabled(true).build())
+        builder.customerProfile(AuthCustomerProfileResponse.builder().isEnabled(true).build())
                 .businessMemberships(businessMemberships)
                 .platformMembership(buildPlatformMembership(user))
                 .pendingInvitationsCount(Math.toIntExact(

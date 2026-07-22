@@ -26,7 +26,7 @@ public class CustomerRegisterRequest {
     private String password;
     @NotBlank
     private String passwordConfirmation;
-    private Boolean rememberMe;
+    private Boolean isRememberMe;
     private String countryCode = "KZ";
     private String locale = "ru";
 

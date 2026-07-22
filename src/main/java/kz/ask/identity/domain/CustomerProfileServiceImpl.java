@@ -32,7 +32,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                 .orElseGet(() -> createDefaultProfile(userId));
 
         if (req.getDisplayName() != null) {
-            profile.setDisplayName(req.getDisplayName());
+            profile.getUser().setDisplayName(req.getDisplayName());
         }
 
         return toResponse(profile);
@@ -53,7 +53,6 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         AppUser user = appUserRepository.getReferenceById(userId);
         CustomerProfile profile = new CustomerProfile();
         profile.setUser(user);
-        profile.setDisplayName(user.getDisplayName());
         return customerProfileRepository.save(profile);
     }
 
@@ -62,7 +61,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
             return CustomerProfileResponse.builder().build();
         }
         return CustomerProfileResponse.builder()
-                .displayName(profile.getDisplayName())
+                .displayName(profile.getUser().getDisplayName())
                 .iconFileId(profile.getIconFileId())
                 .build();
     }

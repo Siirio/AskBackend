@@ -13,8 +13,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Map;
-import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.entity.BusinessBranch;
+import kz.ask.business.core.domain.entity.Business;
+import kz.ask.business.category.domain.entity.Category;
+import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -34,8 +35,13 @@ public class Service extends BaseUuidV7Entity {
     @JoinColumn(name = "branch_id")
     private BusinessBranch branch;
 
-    @Column(name = "category_label")
-    private String categoryLabel;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
+
+    public String getCategoryLabel() {
+        return category == null ? null : category.getName();
+    }
 
     @Column(nullable = false)
     private String name;
@@ -51,7 +57,7 @@ public class Service extends BaseUuidV7Entity {
     private String scheduleText;
 
     @Column(nullable = false)
-    private Boolean active;
+    private Boolean isActive;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")

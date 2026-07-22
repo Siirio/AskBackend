@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import kz.ask.platform.domain.entity.PlatformMembership;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,5 +19,5 @@ public interface PlatformMembershipRepository extends JpaRepository<PlatformMemb
     @EntityGraph(attributePaths = {"permissions", "user"})
     List<PlatformMembership> findAllByOrderByCreatedAtDesc();
 
-    long countByRole(PlatformRole role);
+    long countByRole(Role role);
 }

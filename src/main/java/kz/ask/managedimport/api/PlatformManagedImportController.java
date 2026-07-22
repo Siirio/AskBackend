@@ -36,11 +36,11 @@ public class PlatformManagedImportController {
                 managedImportProcessor.activate(principal, requestId));
     }
 
-    @GetMapping("/businesses/{businessId}/catalog-access")
-    public ResponseEntity<ManagedImportAccessResponse> catalogAccess(
+    @GetMapping("/businesses/{businessId}/items-services-access")
+    public ResponseEntity<ManagedImportAccessResponse> itemsServicesAccess(
             @AuthenticationPrincipal AskPrincipal principal,
             @PathVariable UUID businessId) {
         return ResponseEntity.ok(
-                managedImportProcessor.catalogAccess(principal, businessId));
+                managedImportProcessor.itemsServicesAccess(principal, businessId));
     }
 }

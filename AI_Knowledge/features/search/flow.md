@@ -13,6 +13,6 @@ flowchart LR
     P --> H
 ```
 
-The customer sees the raw query context, fixed scope, catalog cards, and clearly labelled relaxed alternatives. Diagnostics are operational data, not UI content.
+The customer sees the raw query context, fixed scope, Item/Service cards, and clearly labelled relaxed alternatives. Diagnostics are operational data, not UI content.
 
-Do not let AI switch scope, select a business, invent availability, create requests, chats, notifications, or supplier outreach. Search only returns catalog retrieval results.
+Do not let AI switch scope, select a business, invent availability, create requests, chats, notifications, or supplier outreach. Search only returns Item/Service retrieval results.

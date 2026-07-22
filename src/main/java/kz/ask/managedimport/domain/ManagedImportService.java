@@ -4,9 +4,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import kz.ask.business.domain.enums.CatalogSourceType;
-import kz.ask.business.domain.enums.CatalogScope;
-import kz.ask.business.domain.enums.PreferredContactChannel;
+import kz.ask.business.core.domain.enums.ImportSourceType;
+import kz.ask.business.core.domain.enums.BusinessScope;
+import kz.ask.business.core.domain.enums.PreferredContactChannel;
 import kz.ask.managedimport.domain.dto.ManagedImportDto;
 
 public interface ManagedImportService {
@@ -14,8 +14,8 @@ public interface ManagedImportService {
     ManagedImportDto create(
             UUID businessId,
             UUID requestedByUserId,
-            CatalogScope catalogScope,
-            Set<CatalogSourceType> sourceTypes,
+            BusinessScope businessScope,
+            Set<ImportSourceType> selectedSourceTypes,
             PreferredContactChannel preferredContactChannel,
             String preferredContactValue,
             String sourceLinks,
@@ -29,7 +29,7 @@ public interface ManagedImportService {
 
     Boolean hasActiveGrant(UUID businessId, UUID platformUserId);
 
-    CatalogScope activeScope(UUID businessId, UUID platformUserId);
+    BusinessScope activeScope(UUID businessId, UUID platformUserId);
 
     void expireDue(Instant now);
 }

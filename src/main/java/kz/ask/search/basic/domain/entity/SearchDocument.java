@@ -17,8 +17,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.entity.BusinessBranch;
+import kz.ask.business.core.domain.entity.Business;
+import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.search.basic.domain.enums.SearchAvailabilitySource;
 import kz.ask.search.basic.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
@@ -116,27 +116,4 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(name = "indexed_at")
     private Instant indexedAt;
 
-    @Column(name = "ai_enrichment_version")
-    private Long aiEnrichmentVersion;
-
-    @Column(name = "ai_enrichment_available_at", nullable = false)
-    private Instant aiEnrichmentAvailableAt;
-
-    @Column(name = "ai_enrichment_started_at")
-    private Instant aiEnrichmentStartedAt;
-
-    @Column(name = "ai_enrichment_worker_id")
-    private String aiEnrichmentWorkerId;
-
-    @Column(name = "ai_enrichment_attempt_count", nullable = false)
-    private Integer aiEnrichmentAttemptCount;
-
-    @Column(name = "ai_enrichment_error", length = 2000)
-    private String aiEnrichmentError;
-
-    @Column(name = "ai_enrichment_dead", nullable = false)
-    private Boolean aiEnrichmentDead;
-
-    @Column(name = "ai_enrichment_requested", nullable = false)
-    private Boolean aiEnrichmentRequested;
 }

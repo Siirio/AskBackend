@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/business-admin/branches/{branchId}/products")
+@RequestMapping("/api/v1/businesses/{businessId}/items")
 @RequiredArgsConstructor
 public class BusinessProductController {
 
@@ -31,34 +31,35 @@ public class BusinessProductController {
 
     @GetMapping
     public ResponseEntity<BusinessProductListResponse> listProducts(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID businessId,
+                                                                      @RequestParam(required = false) UUID branchId,
                                                                       @RequestParam(required = false) Boolean enabled,
                                                                       @RequestParam(required = false) String query,
                                                                       @RequestParam(defaultValue = "0") Integer page,
                                                                       @RequestParam(defaultValue = "20") Integer size) {
-        return ResponseEntity.ok(processor.listProducts(principal, branchId, enabled, query, page, size));
+        return ResponseEntity.ok(processor.listProducts(principal, businessId, branchId, enabled, query, page, size));
     }
 
     @PostMapping
     public ResponseEntity<BusinessProductRowResponse> createProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID businessId,
                                                                       @Valid @RequestBody BusinessProductCreateRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(processor.createProduct(principal, branchId, req));
+                .body(processor.createProduct(principal, businessId, req));
     }
 
     @PatchMapping("/{productId}")
     public ResponseEntity<BusinessProductRowResponse> updateProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID businessId,
                                                                       @PathVariable UUID productId,
                                                                       @Valid @RequestBody BusinessProductUpdateRequest req) {
-        return ResponseEntity.ok(processor.updateProduct(principal, branchId, productId, req));
+        return ResponseEntity.ok(processor.updateProduct(principal, businessId, productId, req));
     }
 
     @DeleteMapping("/{productId}")
     public ResponseEntity<BusinessProductRowResponse> deleteProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID branchId,
+                                                                      @PathVariable UUID businessId,
                                                                       @PathVariable UUID productId) {
-        return ResponseEntity.ok(processor.deleteProduct(principal, branchId, productId));
+        return ResponseEntity.ok(processor.deleteProduct(principal, businessId, productId));
     }
 }

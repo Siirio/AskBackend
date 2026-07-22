@@ -1,6 +1,6 @@
 # Retired Requests — REST API Contracts
 
-The routes below are legacy contracts scheduled for removal. The approved catalog-search flow does not call them and does not create supplier checks.
+The routes below are legacy contracts scheduled for removal. The approved item/service search flow does not call them and does not create supplier checks.
 
 ## Customer Requests
 | Method | Path | Auth | Purpose |

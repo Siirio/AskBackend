@@ -47,7 +47,6 @@ PRODUCT_SEARCH shape:
   },
   "item": {
     "primary_category": "",
-    "subcategory": "",
     "product_type": "",
     "normalized_product_name": "",
     "brand": "",
@@ -107,7 +106,6 @@ SERVICE_SEARCH shape:
   },
   "service": {
     "primary_category": "",
-    "subcategory": "",
     "service_type": "",
     "desired_result": "",
     "target_customer": "",

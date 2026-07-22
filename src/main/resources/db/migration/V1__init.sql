@@ -17,8 +17,8 @@ CREATE TABLE app_user (
     password_hash           VARCHAR(255) NOT NULL,
     role                    VARCHAR(50)  NOT NULL,
     status                  VARCHAR(50)  NOT NULL,
-    must_change_password    BOOLEAN     NOT NULL,
-    two_factor_enabled      BOOLEAN     NOT NULL,
+    is_password_change_required    BOOLEAN     NOT NULL,
+    is_two_factor_enabled          BOOLEAN     NOT NULL,
     temp_password_encrypted VARCHAR(255),
     activated_at            TIMESTAMPTZ,
     last_login_at           TIMESTAMPTZ
@@ -37,7 +37,7 @@ CREATE TABLE auth_challenge (
     max_attempts      INTEGER     NOT NULL,
     expires_at        TIMESTAMPTZ NOT NULL,
     status            VARCHAR(50)  NOT NULL,
-    remember_me       BOOLEAN,
+    is_remember_me    BOOLEAN,
     registration_data TEXT
 );
 
@@ -48,8 +48,8 @@ CREATE TABLE auth_session (
     user_id             UUID        NOT NULL REFERENCES app_user(id),
     token_hash          VARCHAR(255) NOT NULL UNIQUE,
     authority           VARCHAR(50)  NOT NULL,
-    remembered          BOOLEAN     NOT NULL,
-    activation_required BOOLEAN     NOT NULL,
+    is_remembered          BOOLEAN     NOT NULL,
+    is_activation_required BOOLEAN     NOT NULL,
     expires_at          TIMESTAMPTZ NOT NULL,
     revoked_at          TIMESTAMPTZ
 );
@@ -59,7 +59,6 @@ CREATE TABLE customer_profile (
     created_at   TIMESTAMPTZ NOT NULL,
     updated_at   TIMESTAMPTZ NOT NULL,
     user_id      UUID        NOT NULL UNIQUE REFERENCES app_user(id),
-    display_name VARCHAR(255),
     icon_file_id VARCHAR(2048)
 );
 
@@ -89,7 +88,6 @@ CREATE TABLE business (
     legal_form         VARCHAR(32),
     catalog_setup_mode VARCHAR(32),
     catalog_scope      VARCHAR(32)  NOT NULL,
-    moderation_status  VARCHAR(32)  NOT NULL,
     is_online          BOOLEAN      NOT NULL
 );
 
@@ -104,7 +102,7 @@ CREATE TABLE business_branch (
     address_details VARCHAR(512),
     latitude        NUMERIC,
     longitude       NUMERIC,
-    online_only        BOOLEAN     NOT NULL,
+    is_online_only     BOOLEAN     NOT NULL,
     working_hour_start TIMESTAMPTZ,
     working_hour_end   TIMESTAMPTZ
 );
@@ -233,13 +231,13 @@ CREATE TABLE unique_offer (
     cover_url        VARCHAR(255),
     discount_percent INTEGER,
     discount_amount  NUMERIC,
-    enabled          BOOLEAN     NOT NULL,
+    is_enabled       BOOLEAN     NOT NULL,
     currency         VARCHAR(3),
     tags             JSONB
 );
 
 -- ---------------------------------------------------------------------------
--- Catalog
+-- Items
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE item (
@@ -252,7 +250,7 @@ CREATE TABLE item (
     name              VARCHAR(255) NOT NULL,
     description       VARCHAR(255),
     price             NUMERIC,
-    enabled           BOOLEAN     NOT NULL,
+    is_enabled        BOOLEAN     NOT NULL,
     moderation_status VARCHAR(32) NOT NULL,
     moderation_note   VARCHAR(500),
     attributes        JSONB
@@ -279,7 +277,7 @@ CREATE TABLE service_offering (
     service_mode   VARCHAR(50)  NOT NULL,
     base_price     NUMERIC,
     schedule_text  VARCHAR(255),
-    active         BOOLEAN     NOT NULL,
+    is_active      BOOLEAN     NOT NULL,
     attributes     JSONB
 );
 
@@ -469,8 +467,8 @@ CREATE TABLE search_document (
     ai_enrichment_worker_id      VARCHAR(128),
     ai_enrichment_attempt_count  INTEGER        NOT NULL,
     ai_enrichment_error          VARCHAR(2000),
-    ai_enrichment_dead           BOOLEAN        NOT NULL,
-    ai_enrichment_requested      BOOLEAN        NOT NULL,
+    is_ai_enrichment_dead           BOOLEAN        NOT NULL,
+    is_ai_enrichment_requested      BOOLEAN        NOT NULL,
     search_vector                TSVECTOR GENERATED ALWAYS AS (
         to_tsvector('simple',
             coalesce(normalized_title, '') || ' ' ||

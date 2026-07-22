@@ -19,11 +19,12 @@ public class BusinessProductRowResponse {
 
     private UUID productId;
     private UUID branchId;
+    private UUID categoryId;
     private String categoryLabel;
     private String name;
     private String description;
     private List<String> tags;
     private BigDecimal price;
-    private Boolean enabled;
+    private Boolean isEnabled;
     private Instant updatedAt;
 }

@@ -8,8 +8,8 @@ import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.platform.domain.entity.PlatformMembership;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.platform.infrastructure.mapper.PlatformMembershipMapper;
 import kz.ask.platform.infrastructure.repository.PlatformMembershipRepository;
 
@@ -45,7 +45,7 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
 
     @Override
     @Transactional
-    public PlatformMembershipDto create(UUID userId, PlatformRole role, Set<PlatformPermission> permissions) {
+    public PlatformMembershipDto create(UUID userId, Role role, Set<Permission> permissions) {
         if (platformMembershipRepository.findByUserId(userId).isPresent()) {
             throw new ValidationException(ErrorCode.PLATFORM_MEMBERSHIP_EXISTS);
         }
@@ -60,7 +60,7 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
 
     @Override
     @Transactional
-    public PlatformMembershipDto update(UUID membershipId, PlatformRole role, Set<PlatformPermission> permissions) {
+    public PlatformMembershipDto update(UUID membershipId, Role role, Set<Permission> permissions) {
         PlatformMembership membership = platformMembershipRepository.findById(membershipId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PLATFORM_MEMBERSHIP_NOT_FOUND));
         if (role != null) {
@@ -92,7 +92,7 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
 
     @Override
     @Transactional(readOnly = true)
-    public long countByRole(PlatformRole role) {
+    public long countByRole(Role role) {
         return platformMembershipRepository.countByRole(role);
     }
 }

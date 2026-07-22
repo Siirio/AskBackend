@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
-    S[Customer search] --> C[Published catalog result]
+    S[Customer search] --> C[Published item or service result]
     C -->|explicit contact| M[Business-wide conversation]
     R[Legacy request and supplier-response routes] -. scheduled for removal .-> X[No approved product flow]
 ```

@@ -9,9 +9,12 @@ import org.springframework.data.domain.Pageable;
 
 public interface ServiceService {
 
-    Page<ServiceOfferingDto> listOffers(UUID branchId, String categoryLabel, Boolean active, String query, Pageable pageable);
+    Page<ServiceOfferingDto> listOffers(UUID businessId, UUID branchId, String categoryName,
+                                        Boolean active, String query, Pageable pageable);
 
-    ServiceOfferingDto createService(UUID businessId, UUID branchId, BusinessServiceCreateRequest req);
+    ServiceOfferingDto findById(UUID businessId, UUID serviceOfferingId);
 
-    ServiceOfferingDto updateService(UUID serviceOfferingId, BusinessServiceUpdateRequest req);
+    ServiceOfferingDto createService(UUID businessId, BusinessServiceCreateRequest request);
+
+    ServiceOfferingDto updateService(UUID businessId, UUID serviceOfferingId, BusinessServiceUpdateRequest request);
 }

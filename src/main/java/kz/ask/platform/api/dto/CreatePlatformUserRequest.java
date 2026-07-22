@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.util.Set;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
+import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,8 +25,8 @@ public class CreatePlatformUserRequest {
     private String email;
 
     @NotNull
-    private PlatformRole role;
+    private Role role;
 
     @NotEmpty
-    private Set<PlatformPermission> permissions;
+    private Set<Permission> permissions;
 }

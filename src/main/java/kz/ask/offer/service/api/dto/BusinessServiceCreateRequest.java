@@ -1,9 +1,11 @@
 package kz.ask.offer.service.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.UUID;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +20,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessServiceCreateRequest {
 
-    private String categoryLabel;
+    private UUID categoryId;
+    private String categoryName;
+    private UUID branchId;
 
     @NotBlank
     @Size(max = 255)
@@ -27,13 +31,14 @@ public class BusinessServiceCreateRequest {
     @Size(max = 2000)
     private String description;
 
+    @NotNull
     private ServiceMode serviceMode;
 
     private BigDecimal basePrice;
 
     private String scheduleText;
 
-    private Boolean active;
+    private Boolean isActive;
 
     private Map<String, Object> attributes;
 }

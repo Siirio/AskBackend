@@ -19,7 +19,7 @@ import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.identity.domain.entity.Verification;
 import kz.ask.identity.domain.entity.AuthSession;
 import kz.ask.identity.domain.entity.CustomerProfile;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.VerificationStatus;
@@ -88,7 +88,7 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public AppUserDto createUser(String email, String displayName, String password, AppRole role) {
+    public AppUserDto createUser(String email, String displayName, String password, Role role) {
         AppUser user = verificationMapper.toAppUserEntity(
                 blankToNull(email), displayName,
                 hashPassword(password), role, UserStatus.PENDING);
@@ -203,14 +203,13 @@ public class IdentityServiceImpl implements IdentityService {
         if (!customerProfileRepository.findByUserId(userId).isPresent()) {
             CustomerProfile profile = new CustomerProfile();
             profile.setUser(user);
-            profile.setDisplayName(user.getDisplayName());
             customerProfileRepository.save(profile);
         }
     }
 
     @Override
     @Transactional
-    public AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role) {
+    public AppUserDto createStaffUser(String email, String displayName, String tempPassword, Role role) {
         AppUser user = verificationMapper.toStaffUserEntity(
                 email, displayName, hashPassword(tempPassword), encrypt(tempPassword), role);
         AppUser saved = appUserRepository.save(user);
@@ -237,7 +236,7 @@ public class IdentityServiceImpl implements IdentityService {
         AppUser user = appUserRepository.getReferenceById(userId);
         user.setPasswordHash(hashPassword(newPassword));
         user.setTempPasswordEncrypted(null);
-        user.setMustChangePassword(false);
+        user.setIsPasswordChangeRequired(false);
         user.setActivatedAt(Instant.now());
         user.setStatus(UserStatus.ACTIVE);
     }
@@ -248,8 +247,33 @@ public class IdentityServiceImpl implements IdentityService {
         AppUser user = appUserRepository.getReferenceById(userId);
         user.setPasswordHash(hashPassword(newTempPassword));
         user.setTempPasswordEncrypted(encrypt(newTempPassword));
-        user.setMustChangePassword(true);
+        user.setIsPasswordChangeRequired(true);
         user.setStatus(UserStatus.PASSWORD_RESET_REQUIRED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String revealTemporaryPassword(UUID userId) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
+        if (!Boolean.TRUE.equals(user.getIsPasswordChangeRequired())) {
+            return null;
+        }
+        return decrypt(user.getTempPasswordEncrypted());
+    }
+
+    @Override
+    @Transactional
+    public void deletePendingStaffUser(UUID userId) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, userId));
+        if (user.getStatus() != UserStatus.PENDING_ACTIVATION || user.getActivatedAt() != null) {
+            throw new ValidationException(ErrorCode.STAFF_ALREADY_ACTIVATED);
+        }
+        authSessionRepository.deleteByUserId(userId);
+        verificationRepository.deleteByUserId(userId);
+        customerProfileRepository.deleteByUserId(userId);
+        appUserRepository.delete(user);
     }
 
     @Override
@@ -344,7 +368,7 @@ public class IdentityServiceImpl implements IdentityService {
     @Transactional
     public void toggleTwoFactor(UUID userId) {
         AppUser user = appUserRepository.getReferenceById(userId);
-        user.setTwoFactorEnabled(!Boolean.TRUE.equals(user.getTwoFactorEnabled()));
+        user.setIsTwoFactorEnabled(!Boolean.TRUE.equals(user.getIsTwoFactorEnabled()));
     }
 
     @Override
@@ -367,15 +391,15 @@ public class IdentityServiceImpl implements IdentityService {
         user.setDisplayName(deletedDisplayName);
         user.setPasswordHash(hashPassword(generateToken()));
         user.setStatus(UserStatus.DELETED);
-        user.setMustChangePassword(false);
-        user.setTwoFactorEnabled(false);
+        user.setIsPasswordChangeRequired(false);
+        user.setIsTwoFactorEnabled(false);
         user.setTempPasswordEncrypted(null);
     }
 
     @Override
     public Boolean isTwoFactorEnabled(UUID userId) {
         return appUserRepository.findById(userId)
-                .map(u -> Boolean.TRUE.equals(u.getTwoFactorEnabled()))
+                .map(u -> Boolean.TRUE.equals(u.getIsTwoFactorEnabled()))
                 .orElse(false);
     }
 

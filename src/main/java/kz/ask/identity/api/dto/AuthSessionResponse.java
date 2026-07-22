@@ -16,8 +16,8 @@ public class AuthSessionResponse {
     private String tokenType;
     private Long expiresIn;
     private Instant expiresAt;
-    private Boolean remembered;
-    private Boolean activationRequired;
+    private Boolean isRemembered;
+    private Boolean isActivationRequired;
     private String role;
     private String startRoute;
     private AuthUserResponse user;

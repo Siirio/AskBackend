@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import kz.ask.business.domain.BusinessMemberService;
+import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.chat.api.dto.ChatAttachmentDto;
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.api.dto.ChatFileDownloadDto;
@@ -16,7 +16,7 @@ import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
-import kz.ask.platform.domain.enums.PlatformPermission;
+import kz.ask.identity.authorization.domain.enums.Permission;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -123,8 +123,8 @@ public class ChatFileProcessor {
     }
 
     private boolean hasManagedImportPermission(PlatformMembershipDto membership) {
-        return membership.getPermissions().contains(PlatformPermission.MANAGE_MANAGED_IMPORTS)
-                || membership.getPermissions().contains(PlatformPermission.MANAGE_SUPPORT_CHATS);
+        return membership.getPermissions().contains(Permission.MANAGE_MANAGED_IMPORTS)
+                || membership.getPermissions().contains(Permission.MANAGE_SUPPORT_CHATS);
     }
 
     private Set<String> splitConfig(String value) {

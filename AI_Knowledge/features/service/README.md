@@ -1,12 +1,13 @@
 # Services
 
-Service offerings, branch-level availability, and chat-first customer contact. Search does not create booking or request records.
+Services owned by a Business, optional branch-specific facts, and chat-first customer contact. Search does not create booking or request records.
 
 ## Key decisions
 - Services are NOT products. Scheduled service logic must stay explicit.
 - ServiceOffering: business-owned service definition (name, description, category, status).
-- ServiceBranchOffer: branch-level visibility, price, duration, schedule text.
-- ServiceBranchOffer.active toggles live search appearance.
+- A Service can be created before any branch exists.
+- A Service has one flat `SERVICE` category selected from suggestions or explicitly created by a user.
+- A later branch association may hold location-specific price, schedule, or visibility.
 - ON_DEMAND: works without resources/schedules/windows.
 - SCHEDULED: may use resources, schedules, windows, and booking.
 - ServiceResource: optional abstract capacity — NOT specialist accounts.

@@ -9,5 +9,5 @@ import lombok.Setter;
 @Builder
 public class AuthCustomerProfileResponse {
 
-    private Boolean enabled;
+    private Boolean isEnabled;
 }

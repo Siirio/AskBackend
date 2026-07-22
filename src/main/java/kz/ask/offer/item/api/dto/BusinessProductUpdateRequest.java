@@ -3,6 +3,7 @@ package kz.ask.offer.item.api.dto;
 import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +17,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessProductUpdateRequest {
 
-    private String categoryLabel;
+    private UUID categoryId;
+    private String categoryName;
+    private UUID branchId;
 
     private String name;
 
@@ -27,5 +30,5 @@ public class BusinessProductUpdateRequest {
     @DecimalMin(value = "0", inclusive = true)
     private BigDecimal price;
 
-    private Boolean enabled;
+    private Boolean isEnabled;
 }

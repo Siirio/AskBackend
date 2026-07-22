@@ -1,5 +1,15 @@
 # Project: ASK Backend
 
+## Requirements Authority
+
+- The user's current instructions together with applicable `AI_Knowledge` documentation are the source of truth for product behavior and implementation decisions.
+- Existing code is not evidence of approved behavior unless the relevant behavior is explicitly `LOCKED` as working or is documented as approved.
+- Before diagnosing, reviewing, implementing, extending, preserving, or deleting behavior, read the applicable `AI_Knowledge/features/{domain}/` README, contracts, flows, UX/UI expectations, and locks when present.
+- If the user's instruction conflicts with documentation or a lock, if documentation conflicts internally, or if material behavior, data, authorization, or acceptance criteria are under-specified, stop and ask the user. Do not resolve the conflict by treating existing code or an assumption as authoritative.
+
+## Entity Authority
+- Runtime entity definitions are the source of truth for persisted domain fields. Do not add, restore, or rename entity fields merely to satisfy stale callers, DTOs, migrations, or compilation errors; trace and remove or update the stale behavior instead.
+
 REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
 ## Tech Stack

@@ -4,7 +4,7 @@
 
 This feature is being retired from the approved item flow. It remains documented only until the code, API, and fresh baseline tables are removed.
 
-The approved model does not create supplier checks from search. Customers search published catalog offers and explicitly open a business-wide conversation when they want to contact a seller.
+The approved model does not create supplier checks from search. Customers search published item and service offers and explicitly open a business-wide conversation when they want to contact a seller.
 
 ## Key decisions
 - Customer intent is represented by an explicit customer-to-business conversation, not a request broadcast.

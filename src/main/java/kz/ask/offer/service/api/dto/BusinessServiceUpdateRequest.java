@@ -2,6 +2,7 @@ package kz.ask.offer.service.api.dto;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.UUID;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +17,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BusinessServiceUpdateRequest {
 
-    private String categoryLabel;
+    private UUID categoryId;
+    private String categoryName;
+    private UUID branchId;
 
     private String name;
 
@@ -28,7 +31,7 @@ public class BusinessServiceUpdateRequest {
 
     private String scheduleText;
 
-    private Boolean active;
+    private Boolean isActive;
 
     private Map<String, Object> attributes;
 }

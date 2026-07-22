@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface CustomerProfileRepository extends JpaRepository<CustomerProfile, UUID> {
 
     Optional<CustomerProfile> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

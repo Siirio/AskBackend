@@ -13,10 +13,10 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-import kz.ask.business.domain.entity.Business;
-import kz.ask.business.domain.enums.CatalogSourceType;
-import kz.ask.business.domain.enums.CatalogScope;
-import kz.ask.business.domain.enums.PreferredContactChannel;
+import kz.ask.business.core.domain.entity.Business;
+import kz.ask.business.core.domain.enums.ImportSourceType;
+import kz.ask.business.core.domain.enums.BusinessScope;
+import kz.ask.business.core.domain.enums.PreferredContactChannel;
 import kz.ask.identity.domain.entity.AppUser;
 import kz.ask.managedimport.domain.enums.ManagedImportStatus;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
@@ -37,13 +37,26 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
     @JoinColumn(name = "requested_by_user_id", nullable = false)
     private AppUser requestedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responsible_platform_user_id")
+    private AppUser responsiblePlatformUser;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ManagedImportStatus status;
 
+    @Column(name = "business_scope", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private BusinessScope businessScope;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private CatalogScope catalogScope;
+    private PreferredContactChannel preferredContactChannel;
+
+    @Column(nullable = false)
+    private String preferredContactValue;
+
+    private UUID conversationId;
 
     @ElementCollection
     @CollectionTable(
@@ -51,14 +64,17 @@ public class ManagedImportRequest extends BaseUuidV7Entity {
             joinColumns = @JoinColumn(name = "managed_import_request_id"))
     @Column(name = "source_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    private Set<CatalogSourceType> selectedSourceTypes;
+    private Set<ImportSourceType> selectedSourceTypes;
 
     private String sourceLinks; 
 
     private String sourceNotes;
 
-    @Column(nullable = false)
     private Instant expiresAt;
 
+    private Instant activatedAt;
+
     private Instant completedAt;
+
+    private Integer productsPublishedCount;
 }

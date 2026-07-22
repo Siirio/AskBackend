@@ -1,7 +1,6 @@
 package kz.ask.search.basic.infrastructure.repository;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -11,7 +10,6 @@ import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -51,47 +49,6 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         order by d.id
         """)
     List<SearchDocument> findReindexBatch(@Param("afterId") UUID afterId, Pageable pageable);
-
-    @Query(value = """
-        select * from search_document
-        where ai_enrichment_requested = true
-          and ai_enrichment_dead = false
-          and ai_enrichment_available_at <= :now
-          and (ai_enrichment_started_at is null or ai_enrichment_started_at < :staleBefore)
-        order by ai_enrichment_available_at, id
-        limit :batchSize
-        for update skip locked
-        """, nativeQuery = true)
-    List<SearchDocument> lockAiEnrichmentBatch(@Param("now") Instant now,
-                                                @Param("staleBefore") Instant staleBefore,
-                                                @Param("batchSize") Integer batchSize);
-
-    @Modifying
-    @Query(value = """
-        update search_document
-        set ai_enrichment_started_at = null, ai_enrichment_worker_id = null,
-            ai_enrichment_available_at = :availableAt, ai_enrichment_error = :error,
-            updated_at = :now
-        where id = :documentId and ai_enrichment_worker_id = :workerId
-        """, nativeQuery = true)
-    int markAiEnrichmentRetry(@Param("documentId") UUID documentId,
-                              @Param("workerId") String workerId,
-                              @Param("availableAt") Instant availableAt,
-                              @Param("error") String error,
-                              @Param("now") Instant now);
-
-    @Modifying
-    @Query(value = """
-        update search_document
-        set ai_enrichment_started_at = null, ai_enrichment_worker_id = null,
-            ai_enrichment_dead = true, ai_enrichment_requested = false,
-            ai_enrichment_error = :error, updated_at = :now
-        where id = :documentId and ai_enrichment_worker_id = :workerId
-        """, nativeQuery = true)
-    int markAiEnrichmentDead(@Param("documentId") UUID documentId,
-                             @Param("workerId") String workerId,
-                             @Param("error") String error,
-                             @Param("now") Instant now);
 
     @Query(value = """
         select d.id

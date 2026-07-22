@@ -7,10 +7,8 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.platform.domain.PlatformMembershipService;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -64,7 +62,7 @@ public class PlatformSuperAdminBootstrap implements ApplicationRunner {
         AppUserDto user;
         if (users.isEmpty()) {
             user = identityService.createUser(
-                    sa.getEmail(), sa.getDisplayName(), password, AppRole.PLATFORM_SUPER_ADMIN);
+                    sa.getEmail(), sa.getDisplayName(), password, Role.SUPER_ADMIN);
             identityService.activateUser(user.getId());
             log.info("Created PLATFORM_SUPER_ADMIN user: {}", sa.getEmail());
         } else {
@@ -77,7 +75,7 @@ public class PlatformSuperAdminBootstrap implements ApplicationRunner {
             return;
         }
         platformMembershipService.create(
-                user.getId(), PlatformRole.SUPER_ADMIN, EnumSet.allOf(PlatformPermission.class));
+                user.getId(), Role.SUPER_ADMIN, Role.SUPER_ADMIN.getPermissions());
         log.info("Created SUPER_ADMIN platform membership for {}", sa.getEmail());
     }
 

@@ -18,7 +18,7 @@ Rollback keeps PostgreSQL canonical. Point `MEILISEARCH_INDEX_NAME` at the last 
 
 Set `ASK_SEARCH_RECONCILIATION_ENABLED=true` to schedule bounded comparison. `ASK_SEARCH_RECONCILIATION_REPAIR=true` enqueues repairs for missing or stale documents and removes confirmed orphans. Review counts and sampled IDs before enabling repair in a new environment.
 
-Moderator-hidden products are non-live in both projection and reconciliation, so repair cannot reintroduce them.
+Moderator-hidden Items are non-live in both projection and reconciliation, so repair cannot reintroduce them.
 
 ## Dead outbox events
 

@@ -44,6 +44,9 @@ public interface ManagedImportRequestRepository
             UUID businessId,
             List<ManagedImportStatus> statuses);
 
+    List<ManagedImportRequest> findByBusinessIdAndResponsiblePlatformUserIdAndStatusAndExpiresAtAfter(
+            UUID businessId, UUID responsiblePlatformUserId, ManagedImportStatus status, Instant now);
+
     @EntityGraph(attributePaths = {
             "business", "requestedBy", "responsiblePlatformUser", "selectedSourceTypes"
     })

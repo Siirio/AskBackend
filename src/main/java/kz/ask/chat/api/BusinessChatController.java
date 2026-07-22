@@ -2,7 +2,7 @@ package kz.ask.chat.api;
 
 import java.util.List;
 import java.util.UUID;
-import kz.ask.business.domain.BusinessService;
+import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.api.dto.ChatConversationListResponse;
 import kz.ask.chat.api.dto.ChatMessageDto;
@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BusinessChatController {
 
     private final ChatService chatService;
-    private final BusinessService businessService;
+    private final BusinessMemberService businessMemberService;
 
     @GetMapping
     public ChatConversationListResponse listConversations(@AuthenticationPrincipal AskPrincipal principal,
@@ -71,7 +71,7 @@ public class BusinessChatController {
     }
 
     private void requireBusinessMember(UUID businessId, UUID userId) {
-        if (!businessService.isManagerOrAboveOfBusiness(businessId, userId)) {
+        if (businessMemberService.findByBusinessAndUser(businessId, userId) == null) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

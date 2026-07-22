@@ -1,0 +1,11 @@
+package kz.ask.identity.authorization.domain.enums;
+
+public enum Permission {
+    MANAGE_PLATFORM_USERS,
+    MANAGE_MANAGED_IMPORTS,
+    EDIT_ITEMS_SERVICES_DURING_IMPORT,
+    USE_AI_ITEMS_SERVICES_TOOLS,
+    PUBLISH_ITEMS_SERVICES_DURING_IMPORT,
+    MANAGE_SUPPORT_CHATS,
+    MODERATE_CONTENT
+}

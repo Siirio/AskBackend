@@ -1,6 +1,5 @@
 package kz.ask.platform.application;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -8,15 +7,14 @@ import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.platform.api.dto.CreateAdminRequest;
 import kz.ask.platform.api.dto.CreatePlatformUserRequest;
 import kz.ask.platform.api.dto.UpdatePlatformUserRequest;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
-import kz.ask.platform.domain.enums.PlatformPermission;
-import kz.ask.platform.domain.enums.PlatformRole;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
@@ -70,13 +68,13 @@ public class PlatformUsersProcessor {
             throw new ValidationException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        AppRole appRole = mapToAppRole(request.getRole());
+        Role appRole = request.getRole();
         AppUserDto user = identityService.createUser(
                 request.getEmail(), request.getDisplayName(), request.getPassword(), appRole);
         identityService.activateUser(user.getId());
 
         PlatformMembershipDto membership = platformMembershipService.create(
-                user.getId(), request.getRole(), EnumSet.allOf(PlatformPermission.class));
+                user.getId(), request.getRole(), request.getRole().getPermissions());
 
         significantEventService.record(
                 principal.getUserId(), SignificantEventType.PLATFORM_ADMIN_CREATED,
@@ -100,8 +98,8 @@ public class PlatformUsersProcessor {
             throw new ValidationException(ErrorCode.CANNOT_DELETE_SELF);
         }
 
-        if (target.getRole() == PlatformRole.SUPER_ADMIN
-                && platformMembershipService.countByRole(PlatformRole.SUPER_ADMIN) <= 1) {
+        if (target.getRole() == Role.SUPER_ADMIN
+                && platformMembershipService.countByRole(Role.SUPER_ADMIN) <= 1) {
             throw new ValidationException(ErrorCode.CANNOT_DELETE_LAST_SUPER_ADMIN);
         }
 
@@ -122,23 +120,16 @@ public class PlatformUsersProcessor {
     private void requireManagePlatformUsers(AskPrincipal principal) {
         PlatformMembershipDto membership = platformMembershipService.findActiveByUser(principal.getUserId());
         if (membership == null
-                || !membership.getPermissions().contains(PlatformPermission.MANAGE_PLATFORM_USERS)) {
+                || !membership.getPermissions().contains(Permission.MANAGE_PLATFORM_USERS)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }
 
     private void requireSuperAdmin(AskPrincipal principal) {
         PlatformMembershipDto membership = platformMembershipService.findActiveByUser(principal.getUserId());
-        if (membership == null || membership.getRole() != PlatformRole.SUPER_ADMIN) {
+        if (membership == null || membership.getRole() != Role.SUPER_ADMIN) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }
 
-    private AppRole mapToAppRole(PlatformRole platformRole) {
-        return switch (platformRole) {
-            case SUPER_ADMIN -> AppRole.PLATFORM_SUPER_ADMIN;
-            case ADMIN -> AppRole.PLATFORM_ADMIN;
-            case MODERATOR -> AppRole.PLATFORM_MODERATOR;
-        };
-    }
 }

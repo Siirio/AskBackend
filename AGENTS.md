@@ -1,5 +1,15 @@
 # Project: ASK Backend
 
+## Requirements Authority
+- The user's current instructions together with applicable `AI_Knowledge` documentation are the source of truth for product behavior and implementation decisions.
+- Existing code is not evidence of approved behavior unless the relevant behavior is explicitly `LOCKED` as working or is documented as approved.
+- Before diagnosing, reviewing, implementing, extending, preserving, or deleting behavior, compare the user's instruction with the applicable `AI_Knowledge` feature documentation and locks.
+- If the user's instruction conflicts with documentation, a lock, or leaves a material behavior, data, or authorization decision under-specified, stop and ask the user. Do not resolve the conflict by treating existing code as authoritative.
+
+## Entity Authority
+- Runtime entity definitions are the source of truth for persisted domain fields. Do not add, restore, or rename entity fields merely to satisfy stale callers, DTOs, migrations, or compilation errors; trace and remove or update the stale behavior instead.
+- Use entity names and enum values unchanged across DTOs, endpoints, frontend state, and documentation because synonym mappings create contract drift; `BusinessScope` is always `ITEM`, `SERVICE`, or `BOTH`.
+
 REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
 ## Tech Stack
@@ -174,7 +184,7 @@ The **Frontend slice** column is the cross-repo lookup key: our `AI_Knowledge/fe
 |---------|--------|---------|----------------|
 | Identity & Auth | identity/ | Yes | `auth/` (session, roles) **and** `profile/` (settings, sign out) |
 | Business & Branches | business/ | Yes | `business-cabinet/` |
-| Catalog (Products) | catalog/ | Yes | `catalog/` |
+| Items | item/ | Yes | `catalog/` |
 | Services | service/ | Yes | `services/` — plural |
 | Unified Search | search/ | Yes | `search/` |
 | Fallback Requests | request/ | Yes | `requests/` — plural |

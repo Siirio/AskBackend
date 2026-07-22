@@ -54,7 +54,7 @@ public class Verification extends BaseUuidV7Entity {
     @Enumerated(EnumType.STRING)
     private VerificationStatus status;
 
-    private Boolean rememberMe;
+    private Boolean isRememberMe;
 
     private String registrationData;
 

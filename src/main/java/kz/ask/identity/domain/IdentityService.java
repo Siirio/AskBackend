@@ -5,15 +5,15 @@ import java.util.UUID;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 
 public interface IdentityService {
 
-    AppUserDto createUser(String email, String displayName, String password, AppRole role);
+    AppUserDto createUser(String email, String displayName, String password, Role role);
 
-    AppUserDto createStaffUser(String email, String displayName, String tempPassword, AppRole role);
+    AppUserDto createStaffUser(String email, String displayName, String tempPassword, Role role);
 
     VerificationDto createVerification(UUID userId, String email,
                                      VerificationChannel channel,
@@ -40,6 +40,10 @@ public interface IdentityService {
     void activateStaff(UUID userId, String newPassword);
 
     void resetStaffPassword(UUID userId, String newTempPassword);
+
+    String revealTemporaryPassword(UUID userId);
+
+    void deletePendingStaffUser(UUID userId);
 
     void updateUserStatus(UUID userId, String status);
 

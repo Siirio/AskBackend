@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
-import kz.ask.business.domain.BusinessService;
-import kz.ask.business.domain.dto.BusinessRegistrationResult;
+import kz.ask.business.core.domain.BusinessService;
+import kz.ask.business.core.domain.dto.BusinessRegistrationResult;
 import kz.ask.identity.api.dto.AuthBusinessContextResponse;
 import kz.ask.identity.api.dto.VerificationResponse;
 import kz.ask.identity.api.dto.AuthSessionResponse;
@@ -29,7 +29,7 @@ import kz.ask.identity.domain.IdentityService;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
@@ -69,13 +69,13 @@ public class AuthProcessor {
     @Transactional
     public VerificationResponse startCustomerLogin(CustomerLoginStartRequest req) {
         AppUserDto user = identityService.findAllActiveByEmail(req.getEmail()).stream()
-                .filter(u -> u.getRole() == AppRole.CUSTOMER)
+                .filter(u -> u.getRole() == Role.CUSTOMER)
                 .findFirst()
                 .orElse(null);
         if (user == null) {
             return unknownLoginChallenge(req.getEmail());
         }
-        return createLoginChallenge(user.getId(), req.getEmail(), req.getRememberMe());
+        return createLoginChallenge(user.getId(), req.getEmail(), req.getIsRememberMe());
     }
 
     @Transactional
@@ -88,12 +88,12 @@ public class AuthProcessor {
         if (existingUser != null) {
             String registrationData = serializeRegistrationAcceptance(req);
             return createRegisterChallenge(
-                    existingUser.getId(), AppRole.CUSTOMER, req.getEmail(),
-                    req.getRememberMe(), registrationData);
+                    existingUser.getId(), Role.CUSTOMER, req.getEmail(),
+                    req.getIsRememberMe(), registrationData);
         }
         AppUserDto pendingCustomer = usersWithEmail.stream()
                 .filter(user -> user.getStatus() == UserStatus.PENDING)
-                .filter(user -> user.getRole() == AppRole.CUSTOMER)
+                .filter(user -> user.getRole() == Role.CUSTOMER)
                 .findFirst()
                 .orElse(null);
         if (pendingCustomer != null) {
@@ -101,17 +101,17 @@ public class AuthProcessor {
                     pendingCustomer.getId(), req.getEmail(), req.getDisplayName(), req.getPassword());
             String registrationData = serializeRegistrationAcceptance(req);
             return createRegisterChallenge(
-                    pendingCustomer.getId(), AppRole.CUSTOMER, req.getEmail(),
-                    req.getRememberMe(), registrationData);
+                    pendingCustomer.getId(), Role.CUSTOMER, req.getEmail(),
+                    req.getIsRememberMe(), registrationData);
         }
         if (!usersWithEmail.isEmpty()) {
             return unknownRegistrationChallenge(req.getEmail());
         }
         AppUserDto pendingUser = identityService.createUser(
-                req.getEmail(), req.getDisplayName(), req.getPassword(), AppRole.CUSTOMER);
+                req.getEmail(), req.getDisplayName(), req.getPassword(), Role.CUSTOMER);
         String registrationData = serializeRegistrationAcceptance(req);
         return createRegisterChallenge(
-                pendingUser.getId(), AppRole.CUSTOMER, req.getEmail(), req.getRememberMe(), registrationData);
+                pendingUser.getId(), Role.CUSTOMER, req.getEmail(), req.getIsRememberMe(), registrationData);
     }
 
     @Transactional
@@ -123,7 +123,7 @@ public class AuthProcessor {
         if (user == null) {
             return unknownLoginChallenge(req.getEmail());
         }
-        return createLoginChallenge(user.getId(), req.getEmail(), req.getRememberMe());
+        return createLoginChallenge(user.getId(), req.getEmail(), req.getIsRememberMe());
     }
 
     @Transactional
@@ -137,7 +137,7 @@ public class AuthProcessor {
         if (user == null) {
             pendingUser = usersWithEmail.stream()
                     .filter(candidate -> candidate.getStatus() == UserStatus.PENDING)
-                    .filter(candidate -> candidate.getRole() == AppRole.CUSTOMER)
+                    .filter(candidate -> candidate.getRole() == Role.CUSTOMER)
                     .findFirst()
                     .orElse(null);
         }
@@ -146,7 +146,7 @@ public class AuthProcessor {
         }
         if (user == null && pendingUser == null) {
             user = identityService.createUser(
-                    req.getEmail(), req.getBusinessName(), req.getPassword(), AppRole.CUSTOMER);
+                    req.getEmail(), req.getBusinessName(), req.getPassword(), Role.CUSTOMER);
         } else if (pendingUser != null) {
             identityService.updatePendingUserCredentials(
                     pendingUser.getId(), req.getEmail(), req.getBusinessName(), req.getPassword());
@@ -154,7 +154,7 @@ public class AuthProcessor {
         }
         String registrationData = serializeBusinessRegistration(req);
         return createRegisterChallenge(
-                user.getId(), AppRole.CUSTOMER, req.getEmail(), req.getRememberMe(), registrationData);
+                user.getId(), Role.CUSTOMER, req.getEmail(), req.getIsRememberMe(), registrationData);
     }
 
     @Transactional
@@ -172,7 +172,6 @@ public class AuthProcessor {
             }
             identityService.clearChallengeRegistrationData(challenge.getId());
         }
-        user = canonicalUser(user);
         identityService.recordLogin(user.getId());
         user = identityService.findById(user.getId());
 
@@ -194,7 +193,7 @@ public class AuthProcessor {
         }
 
         String authority = authorityForSession(user, bizResult);
-        AuthSessionDto session = identityService.createSession(user.getId(), authority, challenge.getRememberMe());
+        AuthSessionDto session = identityService.createSession(user.getId(), authority, challenge.getIsRememberMe());
 
         AuthSessionResponse response = buildSessionResponse(session, user, bizResult);
         response.setAllRoles(allRoles);
@@ -344,7 +343,7 @@ public class AuthProcessor {
                 .build();
     }
 
-    private VerificationResponse createRegisterChallenge(UUID userId, AppRole role, String email,
+    private VerificationResponse createRegisterChallenge(UUID userId, Role role, String email,
                                                            Boolean rememberMe, String registrationData) {
         VerificationDto challenge = identityService.createVerification(
                 userId, email, VerificationChannel.EMAIL, VerificationPurpose.REGISTER, rememberMe, registrationData);
@@ -362,7 +361,10 @@ public class AuthProcessor {
         payload.setBranchName(req.getBranchName());
         payload.setBranchCityId(req.getBranchCityId());
         payload.setBranchAddress(req.getBranchAddress());
-        payload.setOnlineOnly(req.getOnlineOnly());
+        payload.setIsOnlineOnly(req.getIsOnlineOnly());
+        payload.setBusinessCategoryId(req.getBusinessCategoryId());
+        payload.setBusinessCategoryName(req.getBusinessCategoryName());
+        payload.setBusinessScope(req.getBusinessScope());
         payload.setEmail(req.getEmail());
         payload.setCountryCode(req.getCountryCode());
         payload.setLocale(req.getLocale());
@@ -399,11 +401,15 @@ public class AuthProcessor {
         return businessService.registerBusiness(
                 owner.getId(),
                 payload.getBusinessName(),
+                payload.getBusinessCategoryId(),
+                payload.getBusinessCategoryName(),
+                payload.getBusinessScope(),
                 payload.getBranchName(),
                 payload.getBranchCityId(),
                 payload.getBranchAddress(),
-                payload.getOnlineOnly(),
-                payload.getEmail());
+                payload.getIsOnlineOnly(),
+                payload.getEmail(),
+                payload.getCountryCode());
     }
 
     private String authorityForSession(AppUserDto user, BusinessRegistrationResult bizResult) {
@@ -434,13 +440,13 @@ public class AuthProcessor {
                             session.getExpiresAt()))
                     .expiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()))
                     .expiresAt(session.getExpiresAt())
-                    .remembered(session.getRemembered())
-                    .activationRequired(session.getActivationRequired())
+                    .isRemembered(session.getIsRemembered())
+                    .isActivationRequired(session.getIsActivationRequired())
                     .role(session.getAuthority())
-                    .startRoute(resolveStartRoute(session.getAuthority(), bizResult, user));
+                    .startRoute(resolveStartRoute());
         } else {
             builder.role(user.getRole().name())
-                    .startRoute(resolveStartRoute(null, bizResult, user));
+                    .startRoute(resolveStartRoute());
         }
 
         if (bizResult != null) {
@@ -464,6 +470,9 @@ public class AuthProcessor {
         var builder = AuthBusinessContextResponse.builder()
                 .businessId(bizResult.getBusiness().getId())
                 .businessName(bizResult.getBusiness().getName())
+                .businessCategoryId(bizResult.getBusiness().getCategoryId())
+                .businessCategoryName(bizResult.getBusiness().getCategoryName())
+                .businessScope(bizResult.getBusiness().getScope())
                 .membershipId(bizResult.getMember().getId())
                 .memberRole(bizResult.getMember().getRole());
 
@@ -475,10 +484,7 @@ public class AuthProcessor {
         return builder.build();
     }
 
-    private String resolveStartRoute(String authority, BusinessRegistrationResult bizResult, AppUserDto user) {
-        if (bizResult != null) {
-            return "BUSINESS_CABINET";
-        }
+    private String resolveStartRoute() {
         return "CLIENT_SEARCH";
     }
 
@@ -490,10 +496,4 @@ public class AuthProcessor {
         return businessService.findByMember(user.getId());
     }
 
-    private AppUserDto canonicalUser(AppUserDto user) {
-        return identityService.findAllActiveByEmail(user.getEmail()).stream()
-                .filter(candidate -> candidate.getRole() == AppRole.CUSTOMER)
-                .findFirst()
-                .orElse(user);
-    }
 }

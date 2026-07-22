@@ -20,12 +20,13 @@ public class ServiceOfferingDto {
     private UUID id;
     private UUID businessId;
     private UUID branchId;
+    private UUID categoryId;
     private String categoryLabel;
     private String name;
     private String description;
     private ServiceMode serviceMode;
     private BigDecimal basePrice;
     private String scheduleText;
-    private Boolean active;
+    private Boolean isActive;
     private Instant updatedAt;
 }

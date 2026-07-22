@@ -24,7 +24,7 @@ public class VerificationDto {
     private Integer maxAttempts;
     private Instant expiresAt;
     private VerificationStatus status;
-    private Boolean rememberMe;
+    private Boolean isRememberMe;
     private String registrationData;
     private String codePlain;
 }

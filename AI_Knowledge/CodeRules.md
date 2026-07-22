@@ -9,7 +9,7 @@
 - Follow existing patterns: mirror the codebase. Don't invent new approaches.
 
 ## Package structure
-Feature-first: `kz.ask.{shared,identity,business,catalog,service,search,request,messaging}`
+Feature-first: `kz.ask.{shared,identity,business,item,service,search,request,messaging}`
 Each feature: `api/` `application/` `domain/` `infrastructure/`
 No global `controller/`, `service/`, `repository/`, `dto/`, `mapper/` packages.
 
