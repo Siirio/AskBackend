@@ -361,7 +361,7 @@ public class AuthProcessor {
         payload.setBranchName(req.getBranchName());
         payload.setBranchCityId(req.getBranchCityId());
         payload.setBranchAddress(req.getBranchAddress());
-        payload.setIsOnlineOnly(req.getIsOnlineOnly());
+        payload.setOnlineOnly(req.getOnlineOnly());
         payload.setBusinessCategoryId(req.getBusinessCategoryId());
         payload.setBusinessCategoryName(req.getBusinessCategoryName());
         payload.setBusinessScope(req.getBusinessScope());
@@ -407,7 +407,7 @@ public class AuthProcessor {
                 payload.getBranchName(),
                 payload.getBranchCityId(),
                 payload.getBranchAddress(),
-                payload.getIsOnlineOnly(),
+                payload.getOnlineOnly(),
                 payload.getEmail(),
                 payload.getCountryCode());
     }

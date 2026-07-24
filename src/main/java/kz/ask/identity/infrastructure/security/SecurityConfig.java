@@ -111,7 +111,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/session").authenticated()
                 .requestMatchers("/api/v1/auth/logout").authenticated()
                 .requestMatchers("/api/v1/**").authenticated()
-                .anyRequest().permitAll()
+                .anyRequest().denyAll()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

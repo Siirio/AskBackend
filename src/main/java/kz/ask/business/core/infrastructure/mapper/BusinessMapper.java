@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import kz.ask.business.member.domain.dto.BranchMemberDto;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
+import kz.ask.business.branch.domain.dto.SpecialOpeningIntervalDto;
+import kz.ask.business.branch.domain.dto.WeeklyOpeningIntervalDto;
 import kz.ask.business.core.domain.dto.BusinessDto;
 import kz.ask.business.member.domain.dto.BusinessMemberDto;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
@@ -16,6 +18,8 @@ import kz.ask.business.category.domain.entity.Category;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.branch.domain.entity.BusinessBranch;
+import kz.ask.business.branch.domain.entity.SpecialOpeningInterval;
+import kz.ask.business.branch.domain.entity.WeeklyOpeningInterval;
 import kz.ask.business.member.domain.entity.BusinessMember;
 import kz.ask.business.profile.domain.entity.BusinessProfile;
 import kz.ask.shared.domain.entity.City;
@@ -45,7 +49,7 @@ public class BusinessMapper {
         business.setCategory(category);
         business.setScope(scope);
         business.setCountryCode(countryCode);
-        business.setIsOnline(Boolean.TRUE.equals(onlineOnly));
+        business.setOnlineOnly(Boolean.TRUE.equals(onlineOnly));
         business.setLegalForm(legalForm);
         business.setLegalIdentifier(legalIdentifier);
         business.setLegalName(legalName);
@@ -55,17 +59,18 @@ public class BusinessMapper {
     }
 
     public BusinessBranch toBranchEntity(Business business, City city, String name,
-                                          String address, String addressDetails, Boolean onlineOnly,
-                                          BigDecimal latitude, BigDecimal longitude) {
+                                          String address, String addressDetails,
+                                          BigDecimal latitude, BigDecimal longitude,
+                                          String timeZoneId) {
         BusinessBranch branch = new BusinessBranch();
         branch.setBusiness(business);
         branch.setCity(city);
         branch.setName(name);
         branch.setAddress(address);
         branch.setAddressDetails(addressDetails);
-        branch.setIsOnlineOnly(onlineOnly);
         branch.setLatitude(latitude);
         branch.setLongitude(longitude);
+        branch.setTimeZoneId(timeZoneId);
         return branch;
     }
 
@@ -100,7 +105,8 @@ public class BusinessMapper {
     public UniqueOffer toUniqueOfferEntity(Business business, String name, String description,
                                              java.time.Instant startDate, java.time.Instant endDate,
                                              UniqueOfferType type, UniqueOfferStatus status, String coverUrl,
-                                             List<String> tags) {
+                                             Integer discountPercent, BigDecimal discountAmount,
+                                             Boolean isActive, String currency, List<String> tags) {
         UniqueOffer offer = new UniqueOffer();
         offer.setBusiness(business);
         offer.setName(name);
@@ -110,10 +116,31 @@ public class BusinessMapper {
         offer.setType(type);
         offer.setStatus(status);
         offer.setCoverUrl(coverUrl);
+        offer.setDiscountPercent(discountPercent);
+        offer.setDiscountAmount(discountAmount);
         offer.setTags(tags == null ? List.of() : tags);
-        offer.setIsEnabled(Boolean.TRUE);
-        offer.setCurrency("KZT");
+        offer.setIsActive(isActive != null ? isActive : Boolean.TRUE);
+        offer.setCurrency(currency != null ? currency : "KZT");
         return offer;
+    }
+
+    public void updateUniqueOffer(UniqueOffer offer, String name, String description,
+                                   java.time.Instant startDate, java.time.Instant endDate,
+                                   String type, String status, String coverUrl,
+                                   Integer discountPercent, BigDecimal discountAmount,
+                                   Boolean isActive, String currency, List<String> tags) {
+        if (name != null) offer.setName(name);
+        if (description != null) offer.setDescription(description);
+        if (startDate != null) offer.setStartDate(startDate);
+        if (endDate != null) offer.setEndDate(endDate);
+        if (type != null) offer.setType(UniqueOfferType.valueOf(type));
+        if (status != null) offer.setStatus(UniqueOfferStatus.valueOf(status));
+        if (coverUrl != null) offer.setCoverUrl(coverUrl);
+        if (discountPercent != null) offer.setDiscountPercent(discountPercent);
+        if (discountAmount != null) offer.setDiscountAmount(discountAmount);
+        if (isActive != null) offer.setIsActive(isActive);
+        if (currency != null) offer.setCurrency(currency);
+        if (tags != null) offer.setTags(tags);
     }
 
     public BranchMember toBranchMemberEntity(BusinessBranch branch, AppUser user,
@@ -132,6 +159,7 @@ public class BusinessMapper {
                 .categoryId(entity.getCategory().getId())
                 .categoryName(entity.getCategory().getName())
                 .scope(entity.getScope())
+                .onlineOnly(entity.getOnlineOnly())
                 .build();
     }
 
@@ -163,11 +191,32 @@ public class BusinessMapper {
                 .name(entity.getName())
                 .address(entity.getAddress())
                 .addressDetails(entity.getAddressDetails())
-                .isOnlineOnly(entity.getIsOnlineOnly())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
-                .workingHourStart(entity.getWorkingHourStart())
-                .workingHourEnd(entity.getWorkingHourEnd())
+                .timeZoneId(entity.getTimeZoneId())
+                .weeklyHours(entity.getWeeklyHours() != null
+                        ? entity.getWeeklyHours().stream().map(this::toWeeklyDto).toList()
+                        : null)
+                .specialHours(entity.getSpecialHours() != null
+                        ? entity.getSpecialHours().stream().map(this::toSpecialDto).toList()
+                        : null)
+                .build();
+    }
+
+    private WeeklyOpeningIntervalDto toWeeklyDto(WeeklyOpeningInterval entity) {
+        return WeeklyOpeningIntervalDto.builder()
+                .dayOfWeek(entity.getDayOfWeek())
+                .opensAt(entity.getOpensAt())
+                .closesAt(entity.getClosesAt())
+                .build();
+    }
+
+    private SpecialOpeningIntervalDto toSpecialDto(SpecialOpeningInterval entity) {
+        return SpecialOpeningIntervalDto.builder()
+                .date(entity.getDate())
+                .closed(entity.getClosed())
+                .opensAt(entity.getOpensAt())
+                .closesAt(entity.getClosesAt())
                 .build();
     }
 
@@ -184,7 +233,7 @@ public class BusinessMapper {
                 .coverUrl(entity.getCoverUrl())
                 .discountPercent(entity.getDiscountPercent())
                 .discountAmount(entity.getDiscountAmount())
-                .isEnabled(entity.getIsEnabled())
+                .isActive(entity.getIsActive())
                 .currency(entity.getCurrency())
                 .tags(entity.getTags())
                 .build();

@@ -3,6 +3,7 @@ package kz.ask.offer.item.api.dto;
 import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,10 +26,14 @@ public class BusinessProductUpdateRequest {
 
     private String description;
 
+    private String deepLink;
+
     private List<String> tags;
+
+    private Map<String, Object> attributes;
 
     @DecimalMin(value = "0", inclusive = true)
     private BigDecimal price;
 
-    private Boolean isEnabled;
+    private Boolean isActive;
 }

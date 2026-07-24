@@ -16,16 +16,16 @@
 | GET | /api/v1/business-admin/chats/{conversationId}/messages | BUSINESS | Get messages |
 | POST | /api/v1/business-admin/chats/{conversationId}/read | BUSINESS | Mark as read |
 
-## Platform Chat (MANAGED_IMPORT conversations only)
+## Platform Chat
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/platform/chat/conversations | MANAGE_MANAGED_IMPORTS or MANAGE_SUPPORT_CHATS | List MANAGED_IMPORT conversations |
+| GET | /api/v1/platform/chat/conversations | MANAGE_MANAGED_IMPORTS or MANAGE_SUPPORT_CHATS | List conversations allowed by type and grant |
 | GET | /api/v1/platform/chat/conversations/{conversationId}/messages | same | Get messages |
 | POST | /api/v1/platform/chat/conversations/{conversationId}/messages | same | Send message as PLATFORM |
 | POST | /api/v1/platform/chat/conversations/{conversationId}/read | same | Mark read (resets businessUnreadCount) |
 | POST | /api/v1/platform/chat/conversations/{conversationId}/close | MANAGE_SUPPORT_CHATS | Close conversation |
 
-Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — platform staff must not read private customer↔business chats.
+`MANAGE_SUPPORT_CHATS` authorizes `GENERAL_SUPPORT` and `PLATFORM_SUPPORT`. `MANAGED_IMPORT` requires `MANAGE_MANAGED_IMPORTS` plus the assigned, unexpired grant for that conversation's Business.
 
 ## Chat Files
 | Method | Path | Auth | Purpose |
@@ -33,7 +33,7 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 | POST | /api/v1/chat/upload?conversationId={id} | Participant | Upload attachment (multipart `file`) → `{ url }` |
 | GET | /api/v1/chat/files/{storedName} | Participant | Download attachment |
 
-- Participant = conversation customer or member of conversation business. Platform access is limited to MANAGED_IMPORT conversations, an active grant, and MANAGE_MANAGED_IMPORTS or MANAGE_SUPPORT_CHATS.
+- Participant = conversation customer or member of conversation business. Platform attachment access for MANAGED_IMPORT remains limited to the assigned active grant and MANAGE_MANAGED_IMPORTS.
 - Upload validation: non-empty, size ≤ `ask.chat.max-file-size`, extension + declared content-type whitelists (`ask.chat.allowed-extensions`, `ask.chat.allowed-content-types`), magic-byte check in storage.
 - Stored name is a random UUID + extension; original name only returned via Content-Disposition (UTF-8 encoded builder, no header injection).
 - Download responds with `X-Content-Type-Options: nosniff` + `Content-Disposition: attachment`.
@@ -41,7 +41,7 @@ Platform endpoints reject GENERAL_SUPPORT conversations (403 ACCESS_DENIED) — 
 
 ## ChatConversation Model
 - conversationId, businessId, customerId, customerName, subject
-- conversationType: GENERAL_SUPPORT (default) | MANAGED_IMPORT
+- conversationType: GENERAL_SUPPORT (default) | PLATFORM_SUPPORT | MANAGED_IMPORT
 - status: PENDING → IN_CHAT (first PLATFORM message) → CLOSED
 - customerUnreadCount, businessUnreadCount (int, default 0)
 - lastMessageAt, createdAt

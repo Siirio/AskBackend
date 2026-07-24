@@ -4,7 +4,7 @@
 - Items tab: list view with name, category, price, status (enabled/disabled)
 - Actions per item: edit, enable, disable, delete
 - No separate business status (active/needs update/completed) — just enabled/disabled/deleted
-- Create/edit form: name, description, category (real UUID from backend), tags, characteristics, price
+- Create/edit form: name, description, category (real UUID from backend), deep link, tags, characteristics, price, enabled state
 
 ## Item visibility
 - Only enabled Items appear in client search; a branch only contributes optional location facts

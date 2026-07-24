@@ -6,7 +6,6 @@ import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.core.domain.BusinessService;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.member.domain.BranchMemberService;
-import kz.ask.identity.authorization.domain.enums.Permission;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.offer.service.api.dto.BusinessServiceCreateRequest;
@@ -14,8 +13,6 @@ import kz.ask.offer.service.api.dto.BusinessServiceListResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.offer.service.domain.ServiceService;
-import kz.ask.platform.domain.PlatformMembershipService;
-import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.search.basic.domain.SearchOutboxService;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
@@ -39,7 +36,6 @@ public class BusinessServiceProcessor {
     private final BranchMemberService branchMemberService;
     private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
-    private final PlatformMembershipService platformMembershipService;
     private final ManagedImportService managedImportService;
 
     @Transactional(readOnly = true)
@@ -97,6 +93,7 @@ public class BusinessServiceProcessor {
                 .serviceMode(dto.getServiceMode())
                 .basePrice(dto.getBasePrice())
                 .scheduleText(dto.getScheduleText())
+                .attributes(dto.getAttributes())
                 .isActive(dto.getIsActive())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
@@ -113,10 +110,6 @@ public class BusinessServiceProcessor {
     }
 
     private boolean hasPlatformServiceAccess(UUID userId, UUID businessId) {
-        PlatformMembershipDto membership = platformMembershipService.findActiveByUser(userId);
-        if (membership == null || !membership.getPermissions().contains(Permission.EDIT_ITEMS_SERVICES_DURING_IMPORT)) {
-            return false;
-        }
         BusinessScope scope = managedImportService.activeScope(businessId, userId);
         return scope == BusinessScope.SERVICE || scope == BusinessScope.BOTH;
     }

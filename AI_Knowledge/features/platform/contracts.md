@@ -8,22 +8,44 @@
 | PATCH | /api/v1/platform/users/{membershipId} | Update role and/or permissions (null-safe partial) |
 | POST | /api/v1/platform/users/{membershipId}/deactivate | Set status INACTIVE |
 
+## Platform Moderation (requires granular permissions)
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | /api/v1/platform/moderation-actions | Execute moderation action (BLOCK/UNBLOCK/FLAG/APPROVE/REJECT) |
+| GET | /api/v1/platform/moderation/queue | View moderation queue (requires VIEW_MODERATION_QUEUE) |
+| GET | /api/v1/platform/reports | List open reports (requires VIEW_MODERATION_QUEUE) |
+| PATCH | /api/v1/platform/reports/{reportId} | Resolve report (requires VIEW_MODERATION_QUEUE) |
+
+## Moderation Permissions (replaces monolithic MODERATE_CONTENT)
+- MODERATE_ITEMS, MODERATE_SERVICES, MODERATE_UNIQUE_OFFERS, MODERATE_BUSINESSES
+- MODERATE_BRANCHES, MODERATE_BUSINESS_MEMBERS, MODERATE_APP_USERS, MODERATE_CHATS
+- VIEW_MODERATION_QUEUE
+
+## ModerationActionRequest
+```json
+{
+  "targetType": "PRODUCT|SERVICE|BUSINESS|USER|MESSAGE",
+  "targetId": "uuid",
+  "action": "BLOCK|UNBLOCK|FLAG|APPROVE|REJECT",
+  "reasonCode": "string?",
+  "note": "string?",
+  "expiresAt": "ISO8601?"
+}
+```
+
 ## Key DTOs
 - PlatformMembershipDto: id, userId, email, displayName, role, status, permissions
 - CreatePlatformUserRequest: email (@Email), role, permissions (@NotEmpty)
 - UpdatePlatformUserRequest: role?, permissions? (replace-all when present)
 
 ## Errors
-- 403 ACCESS_DENIED — caller lacks MANAGE_PLATFORM_USERS
+- 403 ACCESS_DENIED — caller lacks required permission
 - 404 USER_NOT_FOUND — no active user with that email
 - 400 PLATFORM_MEMBERSHIP_EXISTS — user already has an ACTIVE membership
 
 ## Config
-- ask.platform.super-admin-email / ASK_PLATFORM_SUPER_ADMIN_EMAIL — bootstrap SUPER_ADMIN on startup (skip if blank, user missing, or membership exists)
+- ask.platform.super-admin-email / ASK_PLATFORM_SUPER_ADMIN_EMAIL — bootstrap SUPER_ADMIN on startup
 
-## Related Surfaces (other features)
-- Platform chat: see features/messaging/contracts.md
-- Managed imports: /api/v1/platform/managed-imports (PlatformManagedImportController), /api/v1/businesses/{businessId}/managed-imports (BusinessManagedImportController)
-- Resolving a content report requires a `RESOLVED` or `REJECTED` status plus a non-blank resolution; only an `OPEN` report can transition.
-- Moderation operates on explicit Business, Item, or Service records; there is no partial-data setup review workflow.
-- `POST /api/v1/platform/ai-enrichment` enriches selected `PRODUCT`, `SERVICE`, or `UNIQUE_OFFER` records from their own text fields. It requires an active platform membership, returns `enrichedCount`, and never uses web search or image input.
+## Role Permissions
+- SUPER_ADMIN, ADMIN: all permissions except EDIT_ITEMS_SERVICES_DURING_IMPORT
+- MODERATOR: moderation permissions + MANAGE_SUPPORT_CHATS (not MANAGE_PLATFORM_USERS)

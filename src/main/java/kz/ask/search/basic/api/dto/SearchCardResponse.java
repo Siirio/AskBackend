@@ -1,9 +1,9 @@
 package kz.ask.search.basic.api.dto;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import kz.ask.business.branch.api.dto.BranchOpeningSummaryResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -26,6 +26,5 @@ public class SearchCardResponse {
     private String branchName;
     private String branchAddress;
     private String branchCity;
-    private OffsetDateTime workingHourStart;
-    private OffsetDateTime workingHourEnd;
+    private BranchOpeningSummaryResponse openingSummary;
 }

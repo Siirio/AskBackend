@@ -32,7 +32,8 @@
 - After email verification, role choice is mandatory. Customer choice requires `USER_TERMS` and `PRIVACY_POLICY`; seller choice requires `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 - Seller onboarding is available only after the seller-role documents were accepted.
 - Business: email, password, businessName, branchName, branchCityId, branchAddress, onlineOnly, acceptedBusinessRules
-- If onlineOnly=true, physical address optional
+- If onlineOnly=true, no physical branch can be created. The onlineOnly field replaces the ambiguous isOnline/isOnlineOnly split.
+- Branch creation is rejected while Business.onlineOnly is true
 
 ## Profile
 - PATCH /api/v1/auth/profile: partial update (only non-null fields changed)

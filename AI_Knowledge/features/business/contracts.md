@@ -3,9 +3,9 @@
 ## Branches
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | List branches |
-| POST | /api/v1/businesses/{businessId}/branches | OWNER | Create branch |
-| PATCH | /api/v1/businesses/{businessId}/branches/{branchId} | OWNER | Update branch |
+| GET | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | List branches (wrapped in `BranchListResponse`) |
+| POST | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | Create branch |
+| PATCH | /api/v1/branches/{branchId} | OWNER/MANAGER | Update branch |
 
 ## Registration
 `POST /api/v1/auth/business/register` accepts a business name, `businessScope`, and either
@@ -56,17 +56,17 @@ with `@`, or an international WhatsApp phone number.
 ## Members Management
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/businesses/{businessId}/members | OWNER/MANAGER | List members (email, displayName, role, status) |
-| PATCH | /api/v1/businesses/{businessId}/members/{membershipId} | OWNER | Change role (never to/from OWNER) |
-| POST | /api/v1/businesses/{businessId}/members/{membershipId}/deactivate | OWNER, or MANAGER for WORKER | Deactivate member (OWNER protected) |
+| GET | /api/v1/businesses/{businessId}/members | OWNER/MANAGER | List members (wrapped in `BusinessMemberListResponse`) |
+| PATCH | /api/v1/members/{membershipId} | OWNER | Change role (never to/from OWNER) |
+| POST | /api/v1/members/{membershipId}/deactivate | OWNER, or MANAGER for WORKER | Deactivate member (OWNER protected) |
 
 ## Invitations
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/businesses/{businessId}/invitations | OWNER (MANAGER/WORKER), MANAGER (WORKER only) | Create invitation by email |
-| GET | /api/v1/businesses/{businessId}/invitations | OWNER/MANAGER | List invitations |
-| DELETE | /api/v1/businesses/{businessId}/invitations/{invitationId} | OWNER/MANAGER | Revoke pending invitation |
-| GET | /api/v1/me/invitations | Bearer | My pending invitations |
+| GET | /api/v1/businesses/{businessId}/invitations | OWNER/MANAGER | List invitations (wrapped in `BusinessInvitationListResponse`) |
+| DELETE | /api/v1/invitations/{invitationId} | OWNER/MANAGER | Revoke pending invitation |
+| GET | /api/v1/me/invitations | Bearer | My pending invitations (wrapped in `BusinessInvitationListResponse`) |
 | POST | /api/v1/me/invitations/{invitationId}/accept | Bearer | Accept → creates ACTIVE membership |
 | POST | /api/v1/me/invitations/{invitationId}/decline | Bearer | Decline |
 
@@ -80,8 +80,14 @@ with `@`, or an international WhatsApp phone number.
 - CreateStaffRequest: name, role (default WORKER), login (email)
 - UpdateStaffRequest: role, status
 - StaffResponse: id, displayName, email, role, status, branchName, tempPassword (only while pending), activatedAt
-- BranchResponse: id, businessId, cityId, cityName, name, address, addressDetails, onlineOnly, status, latitude, longitude
-- Branch create/update receives latitude and longitude selected by the business. The frontend may use a configurable geocoder and map provider; the backend persists coordinates without a provider-specific identifier or URL.
+- BranchResponse: id, businessId, cityId, cityName, name, address, addressDetails, latitude, longitude, timeZoneId, weeklyHours, specialHours, openingSummary (computed OPEN/CLOSED/UNKNOWN)
+- BranchListResponse: branches (List&lt;BranchResponse&gt;)
+- BusinessInvitationResponse: id, businessId, businessName, invitedEmail, invitedRole, invitedByDisplayName, status, expiresAt, branchIds
+- BusinessInvitationListResponse: invitations (List&lt;BusinessInvitationResponse&gt;)
+- BusinessMemberDto: id, businessId, businessName, userId, email, displayName, role
+- BusinessMemberListResponse: members (List&lt;BusinessMemberDto&gt;)
+- Branch create/update accepts `timeZoneId` (IANA), `weeklyHours` (DayOfWeek + LocalTime opensAt/closesAt), and `specialHours` (LocalDate + closed/opensAt/closesAt overrides). OWNER or MANAGER may set schedule.
+- Branch create/update receives latitude and longitude internally from map selection or a supported map-link resolver. The frontend never asks the user to enter or displays the numeric coordinates. Persistence stays provider-independent.
 
 ## Categories
 

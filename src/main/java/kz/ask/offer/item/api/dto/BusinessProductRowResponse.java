@@ -3,6 +3,7 @@ package kz.ask.offer.item.api.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,8 +24,10 @@ public class BusinessProductRowResponse {
     private String categoryLabel;
     private String name;
     private String description;
+    private String deepLink;
     private List<String> tags;
+    private Map<String, Object> attributes;
     private BigDecimal price;
-    private Boolean isEnabled;
+    private Boolean isActive;
     private Instant updatedAt;
 }

@@ -8,8 +8,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 import kz.ask.identity.domain.entity.AppUser;
+import kz.ask.platform.domain.enums.ModerationActionType;
 import kz.ask.platform.domain.enums.ModerationStatus;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
@@ -33,7 +35,18 @@ public class ModerationAction extends BaseUuidV7Entity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    private ModerationActionType action;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private ModerationStatus moderationStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "performed_by_user_id", nullable = false)
+    private AppUser performedBy;
+
+    @Column(name = "expires_at")
+    private Instant expiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "made_by_user_id")

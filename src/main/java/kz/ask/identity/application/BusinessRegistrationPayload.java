@@ -13,7 +13,7 @@ public class BusinessRegistrationPayload {
     private String branchName;
     private UUID branchCityId;
     private String branchAddress;
-    private Boolean isOnlineOnly;
+    private Boolean onlineOnly;
     private UUID businessCategoryId;
     private String businessCategoryName;
     private BusinessScope businessScope;

@@ -1,11 +1,14 @@
 package kz.ask.business.core.domain;
 
 import java.util.UUID;
+import kz.ask.business.core.domain.dto.BusinessDto;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.core.domain.dto.BusinessRegistrationResult;
 
 public interface BusinessService {
+
+    BusinessDto findById(UUID businessId);
 
     BusinessRegistrationResult registerBusiness(UUID ownerId,
                                                 String businessName,

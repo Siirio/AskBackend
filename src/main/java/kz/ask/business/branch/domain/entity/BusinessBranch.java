@@ -6,14 +6,17 @@ import kz.ask.shared.domain.entity.City;
 import lombok.Getter;
 import lombok.Setter;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 
 @Entity
@@ -34,16 +37,22 @@ public class BusinessBranch extends BaseUuidV7Entity {
     @Column(length = 512)
     private String addressDetails;
 
-    @Column(nullable = false)
-    private Boolean isOnlineOnly;
-
-    private OffsetDateTime workingHourStart;
-
-    private OffsetDateTime workingHourEnd;
-
     private BigDecimal latitude;
 
     private BigDecimal longitude;
+
+    @Column(name = "time_zone_id")
+    private String timeZoneId;
+
+    @ElementCollection
+    @CollectionTable(name = "branch_weekly_hours",
+            joinColumns = @JoinColumn(name = "branch_id"))
+    private List<WeeklyOpeningInterval> weeklyHours = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "branch_special_hours",
+            joinColumns = @JoinColumn(name = "branch_id"))
+    private List<SpecialOpeningInterval> specialHours = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "business_id", nullable = false)

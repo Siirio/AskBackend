@@ -18,18 +18,16 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/businesses/{businessId}/items")
 @RequiredArgsConstructor
 public class BusinessProductController {
 
     private final BusinessProductProcessor processor;
 
-    @GetMapping
+    @GetMapping("/api/v1/businesses/{businessId}/items")
     public ResponseEntity<BusinessProductListResponse> listProducts(@AuthenticationPrincipal AskPrincipal principal,
                                                                       @PathVariable UUID businessId,
                                                                       @RequestParam(required = false) UUID branchId,
@@ -40,7 +38,7 @@ public class BusinessProductController {
         return ResponseEntity.ok(processor.listProducts(principal, businessId, branchId, enabled, query, page, size));
     }
 
-    @PostMapping
+    @PostMapping("/api/v1/businesses/{businessId}/items")
     public ResponseEntity<BusinessProductRowResponse> createProduct(@AuthenticationPrincipal AskPrincipal principal,
                                                                       @PathVariable UUID businessId,
                                                                       @Valid @RequestBody BusinessProductCreateRequest req) {
@@ -48,18 +46,17 @@ public class BusinessProductController {
                 .body(processor.createProduct(principal, businessId, req));
     }
 
-    @PatchMapping("/{productId}")
+    @PatchMapping("/api/v1/items/{itemId}")
     public ResponseEntity<BusinessProductRowResponse> updateProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID businessId,
-                                                                      @PathVariable UUID productId,
+                                                                      @PathVariable UUID itemId,
                                                                       @Valid @RequestBody BusinessProductUpdateRequest req) {
-        return ResponseEntity.ok(processor.updateProduct(principal, businessId, productId, req));
+        return ResponseEntity.ok(processor.updateProduct(principal, itemId, req));
     }
 
-    @DeleteMapping("/{productId}")
-    public ResponseEntity<BusinessProductRowResponse> deleteProduct(@AuthenticationPrincipal AskPrincipal principal,
-                                                                      @PathVariable UUID businessId,
-                                                                      @PathVariable UUID productId) {
-        return ResponseEntity.ok(processor.deleteProduct(principal, businessId, productId));
+    @DeleteMapping("/api/v1/items/{itemId}")
+    public ResponseEntity<Void> deleteProduct(@AuthenticationPrincipal AskPrincipal principal,
+                                                @PathVariable UUID itemId) {
+        processor.deleteProduct(principal, itemId);
+        return ResponseEntity.noContent().build();
     }
 }

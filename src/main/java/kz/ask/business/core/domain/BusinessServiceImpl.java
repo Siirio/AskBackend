@@ -35,6 +35,14 @@ public class BusinessServiceImpl implements BusinessService {
     private final BusinessMapper businessMapper;
 
     @Override
+    @Transactional(readOnly = true)
+    public BusinessDto findById(UUID businessId) {
+        return businessRepository.findById(businessId)
+                .map(businessMapper::toBusinessDto)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public BusinessRegistrationResult registerBusiness(UUID ownerId,
                                                         String businessName,
@@ -53,9 +61,9 @@ public class BusinessServiceImpl implements BusinessService {
         Category category = businessCategoryId != null
                 ? categoryService.requireActiveCategory(businessCategoryId, CategoryType.BUSINESS)
                 : categoryService.resolveOrCreate(businessCategoryName, CategoryType.BUSINESS);
-        Boolean online = branchName == null || branchName.isBlank() || Boolean.TRUE.equals(onlineOnly);
+        Boolean computedOnlineOnly = branchName == null || branchName.isBlank() || Boolean.TRUE.equals(onlineOnly);
         Business business = businessRepository.save(businessMapper.toBusinessEntity(
-                businessName, category, businessScope, countryCode, online));
+                businessName, category, businessScope, countryCode, computedOnlineOnly));
         UUID businessId = business.getId();
         BusinessDto businessDto = businessMapper.toBusinessDto(business);
 
@@ -63,7 +71,7 @@ public class BusinessServiceImpl implements BusinessService {
         if (branchName != null && !branchName.isBlank()) {
             branchDto = businessBranchService.create(
                     businessId, branchCityId, branchName.trim(), branchAddress, null,
-                    Boolean.TRUE.equals(onlineOnly), null, null);
+                    null, null, null, null, null);
         }
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);

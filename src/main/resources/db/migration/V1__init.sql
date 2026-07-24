@@ -1,8 +1,9 @@
 -- =============================================================================
--- V1: Fresh-deploy baseline — all tables, indexes, and reference data
+-- V1: Fresh-deploy baseline — all tables, indexes, and constraints
 -- =============================================================================
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ---------------------------------------------------------------------------
 -- Identity
@@ -74,21 +75,31 @@ CREATE TABLE city (
     country_code VARCHAR(10)  NOT NULL
 );
 
+CREATE TABLE category (
+    id         UUID        NOT NULL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    name       VARCHAR(255) NOT NULL,
+    slug       VARCHAR(255),
+    type       VARCHAR(16)  NOT NULL,
+    source     VARCHAR(16)  NOT NULL
+);
+
 CREATE TABLE business (
-    id                 UUID        NOT NULL PRIMARY KEY,
-    created_at         TIMESTAMPTZ NOT NULL,
-    updated_at         TIMESTAMPTZ NOT NULL,
-    name               VARCHAR(255) NOT NULL,
-    legal_name         VARCHAR(255),
-    bin                VARCHAR(255),
-    iin                VARCHAR(255),
-    legal_identifier   VARCHAR(32),
-    country_code       VARCHAR(8),
-    currency           VARCHAR(3),
-    legal_form         VARCHAR(32),
-    catalog_setup_mode VARCHAR(32),
-    catalog_scope      VARCHAR(32)  NOT NULL,
-    is_online          BOOLEAN      NOT NULL
+    id               UUID        NOT NULL PRIMARY KEY,
+    created_at       TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL,
+    name             VARCHAR(255) NOT NULL,
+    legal_name       VARCHAR(255),
+    bin              VARCHAR(255),
+    iin              VARCHAR(255),
+    legal_identifier VARCHAR(32),
+    country_code     VARCHAR(8),
+    currency         VARCHAR(3),
+    legal_form       VARCHAR(32),
+    category_id      UUID        NOT NULL,
+    scope            VARCHAR(16) NOT NULL,
+    online_only      BOOLEAN     NOT NULL
 );
 
 CREATE TABLE business_branch (
@@ -102,9 +113,22 @@ CREATE TABLE business_branch (
     address_details VARCHAR(512),
     latitude        NUMERIC,
     longitude       NUMERIC,
-    is_online_only     BOOLEAN     NOT NULL,
-    working_hour_start TIMESTAMPTZ,
-    working_hour_end   TIMESTAMPTZ
+    time_zone_id    VARCHAR(64)
+);
+
+CREATE TABLE branch_weekly_hours (
+    branch_id   UUID        NOT NULL REFERENCES business_branch(id),
+    day_of_week SMALLINT    NOT NULL,
+    opens_at    TIME,
+    closes_at   TIME
+);
+
+CREATE TABLE branch_special_hours (
+    branch_id   UUID        NOT NULL REFERENCES business_branch(id),
+    date        DATE        NOT NULL,
+    closed      BOOLEAN,
+    opens_at    TIME,
+    closes_at   TIME
 );
 
 CREATE TABLE business_member (
@@ -199,24 +223,6 @@ CREATE TABLE business_verification (
     corporate_email VARCHAR(255)
 );
 
-CREATE TABLE category (
-    id         UUID        NOT NULL PRIMARY KEY,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
-    parent_id  UUID        REFERENCES category(id),
-    name       VARCHAR(255) NOT NULL,
-    slug       VARCHAR(255),
-    scope      VARCHAR(16)  NOT NULL
-);
-
-CREATE TABLE category_alias (
-    id          UUID        NOT NULL PRIMARY KEY,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL,
-    category_id UUID        NOT NULL REFERENCES category(id),
-    alias       VARCHAR(255) NOT NULL UNIQUE
-);
-
 CREATE TABLE unique_offer (
     id               UUID        NOT NULL PRIMARY KEY,
     created_at       TIMESTAMPTZ NOT NULL,
@@ -231,7 +237,7 @@ CREATE TABLE unique_offer (
     cover_url        VARCHAR(255),
     discount_percent INTEGER,
     discount_amount  NUMERIC,
-    is_enabled       BOOLEAN     NOT NULL,
+    is_active        BOOLEAN     NOT NULL,
     currency         VARCHAR(3),
     tags             JSONB
 );
@@ -246,11 +252,12 @@ CREATE TABLE item (
     updated_at        TIMESTAMPTZ NOT NULL,
     business_id       UUID        NOT NULL REFERENCES business(id),
     branch_id         UUID        REFERENCES business_branch(id),
-    category_label    VARCHAR(255),
+    category_id       UUID        NOT NULL,
     name              VARCHAR(255) NOT NULL,
     description       VARCHAR(255),
+    deep_link         VARCHAR(2048),
     price             NUMERIC,
-    is_enabled        BOOLEAN     NOT NULL,
+    is_active         BOOLEAN     NOT NULL,
     moderation_status VARCHAR(32) NOT NULL,
     moderation_note   VARCHAR(500),
     attributes        JSONB
@@ -271,7 +278,7 @@ CREATE TABLE service_offering (
     updated_at     TIMESTAMPTZ NOT NULL,
     business_id    UUID        NOT NULL REFERENCES business(id),
     branch_id      UUID        REFERENCES business_branch(id),
-    category_label VARCHAR(255),
+    category_id    UUID        NOT NULL,
     name           VARCHAR(255) NOT NULL,
     description    VARCHAR(255),
     service_mode   VARCHAR(50)  NOT NULL,
@@ -280,7 +287,6 @@ CREATE TABLE service_offering (
     is_active      BOOLEAN     NOT NULL,
     attributes     JSONB
 );
-
 
 -- ---------------------------------------------------------------------------
 -- Unique Offer join tables (after item + service_offering)
@@ -357,7 +363,7 @@ CREATE TABLE managed_import_request (
     business_id                  UUID        NOT NULL REFERENCES business(id),
     requested_by_user_id         UUID        NOT NULL REFERENCES app_user(id),
     status                       VARCHAR(32) NOT NULL,
-    catalog_scope                VARCHAR(32) NOT NULL,
+    business_scope               VARCHAR(32) NOT NULL,
     preferred_contact_channel    VARCHAR(32) NOT NULL,
     preferred_contact_value      VARCHAR(512) NOT NULL,
     source_links                 TEXT,
@@ -381,16 +387,19 @@ CREATE TABLE managed_import_request_source (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE moderation_action (
-    id                UUID        NOT NULL PRIMARY KEY,
-    created_at        TIMESTAMPTZ NOT NULL,
-    updated_at        TIMESTAMPTZ NOT NULL,
-    target_type       VARCHAR(32) NOT NULL,
-    target_id         UUID        NOT NULL,
-    moderation_status VARCHAR(32) NOT NULL,
-    made_by_user_id   UUID        REFERENCES app_user(id),
-    reason_code       VARCHAR(64),
-    details           TEXT,
-    note              VARCHAR(2000)
+    id                    UUID        NOT NULL PRIMARY KEY,
+    created_at            TIMESTAMPTZ NOT NULL,
+    updated_at            TIMESTAMPTZ NOT NULL,
+    target_type           VARCHAR(32) NOT NULL,
+    target_id             UUID        NOT NULL,
+    action                VARCHAR(50) NOT NULL,
+    moderation_status     VARCHAR(32) NOT NULL,
+    performed_by_user_id  UUID        NOT NULL REFERENCES app_user(id),
+    made_by_user_id       UUID        REFERENCES app_user(id),
+    reason_code           VARCHAR(64),
+    details               TEXT,
+    note                  VARCHAR(2000),
+    expires_at            TIMESTAMPTZ
 );
 
 -- ---------------------------------------------------------------------------
@@ -461,14 +470,6 @@ CREATE TABLE search_document (
     availability_source          VARCHAR(32)    NOT NULL,
     last_business_updated_at     TIMESTAMPTZ,
     indexed_at                   TIMESTAMPTZ,
-    ai_enrichment_version        BIGINT,
-    ai_enrichment_available_at   TIMESTAMPTZ    NOT NULL,
-    ai_enrichment_started_at     TIMESTAMPTZ,
-    ai_enrichment_worker_id      VARCHAR(128),
-    ai_enrichment_attempt_count  INTEGER        NOT NULL,
-    ai_enrichment_error          VARCHAR(2000),
-    is_ai_enrichment_dead           BOOLEAN        NOT NULL,
-    is_ai_enrichment_requested      BOOLEAN        NOT NULL,
     search_vector                TSVECTOR GENERATED ALWAYS AS (
         to_tsvector('simple',
             coalesce(normalized_title, '') || ' ' ||
@@ -506,23 +507,6 @@ CREATE TABLE search_outbox_event (
     attempt_count         INTEGER     NOT NULL,
     last_error            VARCHAR(2000),
     status                VARCHAR(20) NOT NULL
-);
-
-CREATE TABLE search_ai_metadata (
-    id                 UUID           NOT NULL PRIMARY KEY,
-    created_at         TIMESTAMPTZ    NOT NULL,
-    updated_at         TIMESTAMPTZ    NOT NULL,
-    aggregate_type     VARCHAR(32)    NOT NULL,
-    aggregate_id       UUID           NOT NULL,
-    attribute_key      VARCHAR(128)   NOT NULL,
-    attribute_value    JSONB          NOT NULL,
-    confidence         NUMERIC(5,4)   NOT NULL,
-    evidence           VARCHAR(1000)  NOT NULL,
-    source             VARCHAR(32)    NOT NULL,
-    model_version      VARCHAR(128)   NOT NULL,
-    schema_version     VARCHAR(128)   NOT NULL,
-    extracted_at       TIMESTAMPTZ    NOT NULL,
-    verification_state VARCHAR(32)    NOT NULL
 );
 
 CREATE TABLE search_query_alias (
@@ -580,6 +564,8 @@ CREATE UNIQUE INDEX uq_business_invitation_pending
     ON business_invitation (business_id, lower(invited_email), invited_role)
     WHERE status = 'PENDING';
 
+CREATE UNIQUE INDEX uq_category_name_type ON category (name, type);
+
 CREATE INDEX idx_product_business ON item (business_id);
 CREATE INDEX idx_product_moderation_status ON item (moderation_status, created_at);
 CREATE INDEX idx_product_attributes ON item USING GIN (attributes);
@@ -609,8 +595,6 @@ CREATE INDEX idx_legal_acceptance_user ON legal_acceptance (user_id, accepted_at
 CREATE INDEX idx_significant_event_business_created ON significant_event (business_id, created_at);
 CREATE INDEX idx_significant_event_type_created ON significant_event (event_type, created_at);
 
-CREATE INDEX idx_category_alias_lookup ON category_alias (alias);
-
 CREATE INDEX idx_search_query_alias_value ON search_query_alias (alias_value);
 
 -- Search document indexes
@@ -621,7 +605,6 @@ CREATE INDEX idx_search_document_active_type_price ON search_document (document_
 CREATE INDEX idx_search_document_business_active ON search_document (business_id, document_type, id);
 CREATE INDEX idx_search_document_verified_attributes ON search_document USING GIN (verified_attributes);
 CREATE INDEX idx_search_document_ai_attributes ON search_document USING GIN (ai_attributes);
-CREATE INDEX idx_search_document_ai_enrichment ON search_document (ai_enrichment_available_at, id);
 
 -- Search outbox indexes
 CREATE UNIQUE INDEX uq_search_outbox_event
@@ -631,14 +614,8 @@ CREATE INDEX idx_search_outbox_aggregate ON search_outbox_event (aggregate_type,
 CREATE INDEX idx_search_outbox_processing ON search_outbox_event (processing_started_at)
     WHERE status = 'PROCESSING';
 
--- Search AI metadata indexes
-CREATE UNIQUE INDEX uq_search_ai_metadata_fact
-    ON search_ai_metadata (aggregate_type, aggregate_id, attribute_key, schema_version, model_version);
-CREATE INDEX idx_search_ai_metadata_aggregate ON search_ai_metadata (aggregate_type, aggregate_id);
-CREATE INDEX idx_search_ai_metadata_value ON search_ai_metadata USING GIN (attribute_value);
-
 -- =============================================================================
--- Constraints (check constraints for enums)
+-- Constraints
 -- =============================================================================
 
 ALTER TABLE search_outbox_event
@@ -647,13 +624,19 @@ ALTER TABLE search_outbox_event
     ADD CONSTRAINT chk_search_outbox_attempt_count
         CHECK (attempt_count >= 0);
 
-ALTER TABLE search_ai_metadata
-    ADD CONSTRAINT chk_search_ai_metadata_confidence
-        CHECK (confidence >= 0 AND confidence <= 1),
-    ADD CONSTRAINT chk_search_ai_verification_state
-        CHECK (verification_state IN ('AI_DERIVED', 'BUSINESS_CONFIRMED', 'BUSINESS_CORRECTED', 'REJECTED'));
+-- FK for business.category_id (deferred: business created before category)
+ALTER TABLE business
+    ADD CONSTRAINT fk_business_category FOREIGN KEY (category_id) REFERENCES category(id);
 
--- FK for chat_attachment (deferred because chat_conversation FK was set up above)
+-- FK for item.category_id (deferred: item created before category unique constraint)
+ALTER TABLE item
+    ADD CONSTRAINT fk_item_category FOREIGN KEY (category_id) REFERENCES category(id);
+
+-- FK for service_offering.category_id
+ALTER TABLE service_offering
+    ADD CONSTRAINT fk_service_category FOREIGN KEY (category_id) REFERENCES category(id);
+
+-- FK for chat_attachment (deferred: chat_conversation FK set up above)
 ALTER TABLE chat_attachment
     ADD CONSTRAINT fk_chat_attachment_conversation
         FOREIGN KEY (conversation_id) REFERENCES chat_conversation(id) ON DELETE CASCADE;
@@ -662,44 +645,3 @@ ALTER TABLE chat_attachment
 ALTER TABLE chat_conversation
     ADD CONSTRAINT fk_chat_managed_import_request
         FOREIGN KEY (managed_import_request_id) REFERENCES managed_import_request(id);
-
--- =============================================================================
--- Reference data: cities
--- =============================================================================
-
-INSERT INTO city (id, created_at, updated_at, name, country_code) VALUES
-  ('00000000-0000-0000-0000-0000000000c1', now(), now(), 'Кызылорда',         'KZ'),
-  ('00000000-0000-0000-0000-0000000000c2', now(), now(), 'Алматы',             'KZ'),
-  ('00000000-0000-0000-0000-0000000000c3', now(), now(), 'Астана',             'KZ'),
-  ('00000000-0000-0000-0000-0000000000c4', now(), now(), 'Шымкент',            'KZ'),
-  ('00000000-0000-0000-0000-0000000000c5', now(), now(), 'Караганда',          'KZ'),
-  ('00000000-0000-0000-0000-0000000000c6', now(), now(), 'Актобе',             'KZ'),
-  ('00000000-0000-0000-0000-0000000000c7', now(), now(), 'Тараз',              'KZ'),
-  ('00000000-0000-0000-0000-0000000000c8', now(), now(), 'Павлодар',           'KZ'),
-  ('00000000-0000-0000-0000-0000000000c9', now(), now(), 'Усть-Каменогорск',   'KZ'),
-  ('00000000-0000-0000-0000-0000000000ca', now(), now(), 'Семей',              'KZ'),
-  ('00000000-0000-0000-0000-0000000000cb', now(), now(), 'Атырау',             'KZ'),
-  ('00000000-0000-0000-0000-0000000000cc', now(), now(), 'Костанай',           'KZ'),
-  ('00000000-0000-0000-0000-0000000000cd', now(), now(), 'Уральск',            'KZ'),
-  ('00000000-0000-0000-0000-0000000000ce', now(), now(), 'Петропавловск',      'KZ'),
-  ('00000000-0000-0000-0000-0000000000cf', now(), now(), 'Актау',              'KZ'),
-  ('00000000-0000-0000-0000-0000000000d0', now(), now(), 'Темиртау',           'KZ'),
-  ('00000000-0000-0000-0000-0000000000d1', now(), now(), 'Туркестан',          'KZ'),
-  ('00000000-0000-0000-0000-0000000000d2', now(), now(), 'Кокшетау',           'KZ'),
-  ('00000000-0000-0000-0000-0000000000d3', now(), now(), 'Талдыкорган',        'KZ'),
-  ('00000000-0000-0000-0000-0000000000d4', now(), now(), 'Экибастуз',          'KZ'),
-  ('00000000-0000-0000-0000-0000000000d5', now(), now(), 'Рудный',             'KZ'),
-  ('00000000-0000-0000-0000-0000000000d6', now(), now(), 'Жезказган',          'KZ'),
-  ('00000000-0000-0000-0000-0000000000d7', now(), now(), 'Конаев',             'KZ');
-
--- =============================================================================
--- Reference data: categories
--- =============================================================================
-
-INSERT INTO category (id, created_at, updated_at, parent_id, name, slug, scope) VALUES
-  ('00000000-0000-0000-0000-0000000000a1', now(), now(), null, 'Автозапчасти',    'autoparts',    'PRODUCT'),
-  ('00000000-0000-0000-0000-0000000000a2', now(), now(), null, 'Бытовая техника',  'appliances',   'PRODUCT'),
-  ('00000000-0000-0000-0000-0000000000a3', now(), now(), null, 'Услуги красоты',   'beauty',       'SERVICE'),
-  ('00000000-0000-0000-0000-0000000000a4', now(), now(), null, 'Ремонт и сервис',  'repair',       'PRODUCT'),
-  ('00000000-0000-0000-0000-0000000000a5', now(), now(), null, 'Строительство',    'construction', 'PRODUCT'),
-  ('00000000-0000-0000-0000-0000000000af', now(), now(), null, 'Общее',            'general',      'PRODUCT');

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
+import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.business.branch.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.category.domain.CategoryService;
 import kz.ask.business.category.domain.entity.Category;
@@ -12,7 +13,6 @@ import kz.ask.business.core.domain.BusinessService;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.core.infrastructure.repository.BusinessRepository;
 import kz.ask.business.member.domain.BranchMemberService;
-import kz.ask.identity.authorization.domain.enums.Permission;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.moderation.domain.ModerationKeywords;
@@ -22,9 +22,8 @@ import kz.ask.offer.item.api.dto.BusinessProductRowResponse;
 import kz.ask.offer.item.api.dto.BusinessProductUpdateRequest;
 import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
+import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
-import kz.ask.platform.domain.PlatformMembershipService;
-import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.search.basic.domain.SearchOutboxService;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
@@ -48,12 +47,12 @@ public class BusinessProductProcessor {
     private final BusinessBranchService businessBranchService;
     private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
-    private final PlatformMembershipService platformMembershipService;
     private final ManagedImportService managedImportService;
     private final ProductRepository productRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
     private final SearchOutboxService searchOutboxService;
+    private final ItemMapper itemMapper;
 
     @Transactional(readOnly = true)
     public BusinessProductListResponse listProducts(AskPrincipal principal, UUID businessId, UUID branchId,
@@ -68,20 +67,20 @@ public class BusinessProductProcessor {
             if (query != null && !query.isBlank()) {
                 items = productRepository.searchByBranchAndName(branchId, term(query), request);
             } else if (enabled != null) {
-                items = productRepository.findByBranchIdAndIsEnabled(branchId, enabled, request);
+                items = productRepository.findByBranchIdAndIsActive(branchId, enabled, request);
             } else {
                 items = productRepository.findByBranchId(branchId, request);
             }
         } else if (query != null && !query.isBlank()) {
             items = productRepository.searchByBusinessAndName(businessId, term(query), request);
         } else if (enabled != null) {
-            items = productRepository.findByBusinessIdAndIsEnabled(businessId, enabled, request);
+            items = productRepository.findByBusinessIdAndIsActive(businessId, enabled, request);
         } else {
             items = productRepository.findByBusinessId(businessId, request);
         }
-        Page<ProductOfferDto> offers = items.map(this::toOfferDto);
+        Page<ProductOfferDto> offers = items.map(itemMapper::toProductOfferDto);
         return BusinessProductListResponse.builder()
-                .items(offers.getContent().stream().map(this::toRowResponse).toList())
+                .items(offers.getContent().stream().map(itemMapper::toBusinessProductRowResponse).toList())
                 .page(offers.getNumber())
                 .size(offers.getSize())
                 .totalElements(offers.getTotalElements())
@@ -96,72 +95,59 @@ public class BusinessProductProcessor {
         if (branchId != null) requireBranch(businessId, branchId);
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         Item item = new Item();
-        item.setBusiness(businessRepository.getReferenceById(businessId));
-        item.setBranch(branchId == null ? null : businessBranchRepository.getReferenceById(branchId));
-        item.setCategory(resolveCategory(req.getCategoryId(), req.getCategoryName()));
-        item.setName(req.getName().trim());
-        item.setDescription(req.getDescription());
-        item.setTags(req.getTags());
-        item.setPrice(req.getPrice());
-        item.setIsEnabled(req.getIsEnabled() != null ? req.getIsEnabled() : Boolean.TRUE);
+        itemMapper.applyCreateFields(item,
+                businessRepository.getReferenceById(businessId),
+                branchId == null ? null : businessBranchRepository.getReferenceById(branchId),
+                resolveCategory(req.getCategoryId(), req.getCategoryName()),
+                req);
         item.setModerationStatus(ProductModerationStatus.PENDING);
         applyAutoModeration(item);
-        ProductOfferDto dto = toOfferDto(productRepository.save(item));
+        ProductOfferDto dto = itemMapper.toProductOfferDto(productRepository.save(item));
         publishSearchEvent(dto);
-        return toRowResponse(dto);
+        return itemMapper.toBusinessProductRowResponse(dto);
     }
 
     @Transactional
-    public BusinessProductRowResponse updateProduct(AskPrincipal principal, UUID businessId, UUID productId,
+    public BusinessProductRowResponse updateProduct(AskPrincipal principal, UUID itemId,
                                                     BusinessProductUpdateRequest req) {
-        Item item = productRepository.findById(productId)
+        Item item = productRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
-        requireBusiness(item, businessId);
+        UUID businessId = item.getBusiness().getId();
         UUID branchId = req.getBranchId() != null ? req.getBranchId()
                 : item.getBranch() == null ? null : item.getBranch().getId();
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         if (req.getName() != null && req.getName().isBlank()) {
             throw new ValidationException(ErrorCode.PRODUCT_NAME_BLANK);
         }
-        if (req.getCategoryId() != null || req.getCategoryName() != null) {
-            item.setCategory(resolveCategory(req.getCategoryId(), req.getCategoryName()));
-        }
+        Category category = (req.getCategoryId() != null || req.getCategoryName() != null)
+                ? resolveCategory(req.getCategoryId(), req.getCategoryName()) : null;
+        BusinessBranch branch = null;
         if (req.getBranchId() != null) {
             requireBranch(businessId, req.getBranchId());
-            item.setBranch(businessBranchRepository.getReferenceById(req.getBranchId()));
+            branch = businessBranchRepository.getReferenceById(req.getBranchId());
         }
-        if (req.getName() != null) item.setName(req.getName().trim());
-        if (req.getDescription() != null) item.setDescription(req.getDescription());
-        if (req.getTags() != null) item.setTags(req.getTags());
-        if (req.getPrice() != null) item.setPrice(req.getPrice());
-        if (req.getIsEnabled() != null) item.setIsEnabled(req.getIsEnabled());
-        ProductOfferDto dto = toOfferDto(productRepository.save(item));
+        itemMapper.applyUpdateFields(item, req, branch, category);
+        ProductOfferDto dto = itemMapper.toProductOfferDto(productRepository.save(item));
         publishSearchEvent(dto);
-        return toRowResponse(dto);
+        return itemMapper.toBusinessProductRowResponse(dto);
     }
 
     @Transactional
-    public BusinessProductRowResponse deleteProduct(AskPrincipal principal, UUID businessId, UUID productId) {
-        Item item = productRepository.findById(productId)
+    public void deleteProduct(AskPrincipal principal, UUID itemId) {
+        Item item = productRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
-        requireBusiness(item, businessId);
+        UUID businessId = item.getBusiness().getId();
         UUID branchId = item.getBranch() == null ? null : item.getBranch().getId();
         requireAnyAccess(principal.getUserId(), businessId, branchId);
-        item.setIsEnabled(Boolean.FALSE);
-        ProductOfferDto dto = toOfferDto(productRepository.save(item));
-        publishSearchEvent(dto);
-        return toRowResponse(dto);
+        UUID productId = item.getId();
+        productRepository.delete(item);
+        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
+                SearchEventType.DELETE, Instant.now().toEpochMilli());
     }
 
     private Category resolveCategory(UUID categoryId, String categoryName) {
         if (categoryId != null) return categoryService.requireActiveCategory(categoryId, CategoryType.ITEM);
         return categoryService.resolveOrCreate(categoryName, CategoryType.ITEM);
-    }
-
-    private void requireBusiness(Item item, UUID businessId) {
-        if (item.getBusiness() == null || !businessId.equals(item.getBusiness().getId())) {
-            throw new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND);
-        }
     }
 
     private BusinessBranchDto requireBranch(UUID businessId, UUID branchId) {
@@ -178,10 +164,6 @@ public class BusinessProductProcessor {
     }
 
     private boolean hasPlatformProductAccess(UUID userId, UUID businessId) {
-        PlatformMembershipDto membership = platformMembershipService.findActiveByUser(userId);
-        if (membership == null || !membership.getPermissions().contains(Permission.EDIT_ITEMS_SERVICES_DURING_IMPORT)) {
-            return false;
-        }
         BusinessScope scope = managedImportService.activeScope(businessId, userId);
         return scope == BusinessScope.ITEM || scope == BusinessScope.BOTH;
     }
@@ -201,39 +183,11 @@ public class BusinessProductProcessor {
     }
 
     private void publishSearchEvent(ProductOfferDto dto) {
+        boolean visible = Boolean.TRUE.equals(dto.getIsActive())
+                && dto.getModerationStatus() == ProductModerationStatus.APPROVED;
         searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
-                Boolean.TRUE.equals(dto.getIsEnabled()) ? SearchEventType.UPSERT : SearchEventType.DELETE,
+                visible ? SearchEventType.UPSERT : SearchEventType.DELETE,
                 Instant.now().toEpochMilli());
     }
 
-    private ProductOfferDto toOfferDto(Item item) {
-        return ProductOfferDto.builder()
-                .productId(item.getId())
-                .businessId(item.getBusiness().getId())
-                .branchId(item.getBranch() == null ? null : item.getBranch().getId())
-                .categoryId(item.getCategory().getId())
-                .categoryLabel(item.getCategoryLabel())
-                .name(item.getName())
-                .description(item.getDescription())
-                .tags(item.getTags())
-                .price(item.getPrice())
-                .isEnabled(item.getIsEnabled())
-                .updatedAt(item.getUpdatedAt())
-                .build();
-    }
-
-    private BusinessProductRowResponse toRowResponse(ProductOfferDto dto) {
-        return BusinessProductRowResponse.builder()
-                .productId(dto.getProductId())
-                .branchId(dto.getBranchId())
-                .categoryId(dto.getCategoryId())
-                .categoryLabel(dto.getCategoryLabel())
-                .name(dto.getName())
-                .description(dto.getDescription())
-                .tags(dto.getTags())
-                .price(dto.getPrice())
-                .isEnabled(dto.getIsEnabled())
-                .updatedAt(dto.getUpdatedAt())
-                .build();
-    }
 }

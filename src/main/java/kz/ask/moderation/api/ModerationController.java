@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
+import kz.ask.moderation.api.dto.ContentReportResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
 import kz.ask.moderation.api.dto.ModerateProductRequest;
+import kz.ask.moderation.api.dto.ModerationActionRequest;
+import kz.ask.moderation.api.dto.ModerationActionResponse;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.moderation.api.dto.RejectProductRequest;
 import kz.ask.moderation.application.ModerationProcessor;
@@ -89,5 +92,12 @@ public class ModerationController {
             @RequestBody RejectProductRequest request) {
         moderationProcessor.rejectProduct(principal, productId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/platform/moderation-actions")
+    public ResponseEntity<ModerationActionResponse> executeModerationAction(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody ModerationActionRequest request) {
+        return ResponseEntity.ok(moderationProcessor.executeModerationAction(principal, request));
     }
 }

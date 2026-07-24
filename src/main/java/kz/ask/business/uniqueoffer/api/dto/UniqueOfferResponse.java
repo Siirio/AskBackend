@@ -20,7 +20,7 @@ public class UniqueOfferResponse {
     private String coverUrl;
     private Integer discountPercent;
     private java.math.BigDecimal discountAmount;
-    private Boolean isEnabled;
+    private Boolean isActive;
     private String currency;
     private List<String> tags;
     private List<UUID> productIds;

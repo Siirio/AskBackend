@@ -14,12 +14,17 @@ import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
+import kz.ask.moderation.api.dto.ModerationActionRequest;
+import kz.ask.moderation.api.dto.ModerationActionResponse;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.moderation.api.dto.RejectProductRequest;
+import kz.ask.moderation.infrastructure.mapper.ModerationMapper;
 import kz.ask.moderation.infrastructure.repository.ModerationActionRepository;
+import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
 import kz.ask.moderation.domain.entity.ModerationAction;
+import kz.ask.platform.domain.enums.ModerationActionType;
 import kz.ask.platform.domain.enums.ModerationStatus;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.identity.authorization.domain.enums.Permission;
@@ -46,28 +51,28 @@ public class ModerationProcessor {
     private final ProductRepository productRepository;
     private final SearchVisibilityService searchVisibilityService;
     private final SignificantEventService significantEventService;
+    private final ModerationMapper moderationMapper;
+    private final ItemMapper itemMapper;
 
     @Transactional
     public ContentReportResponse report(
             AskPrincipal principal,
             CreateContentReportRequest request) {
         ModerationAction action = new ModerationAction();
-        action.setTargetType(request.getTargetType());
-        action.setTargetId(request.getTargetId());
-        action.setReasonCode(request.getReasonCode());
-        action.setDetails(request.getDetails());
-        action.setModerationStatus(ModerationStatus.BEING_DISCUSSED);
-        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
-        return toResponse(moderationActionRepository.save(action));
+        moderationMapper.applyCreateFields(action, request.getTargetType(), request.getTargetId(),
+                ModerationActionType.FLAG, ModerationStatus.BEING_DISCUSSED,
+                request.getReasonCode(), request.getDetails(), null, null,
+                appUserRepository.getReferenceById(principal.getUserId()));
+        return moderationMapper.toContentReportResponse(moderationActionRepository.save(action));
     }
 
     @Transactional(readOnly = true)
     public List<ContentReportResponse> listOpen(AskPrincipal principal) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.VIEW_MODERATION_QUEUE);
         return moderationActionRepository
                 .findByModerationStatusOrderByCreatedAtAsc(ModerationStatus.BEING_DISCUSSED)
                 .stream()
-                .map(this::toResponse)
+                .map(moderationMapper::toContentReportResponse)
                 .toList();
     }
 
@@ -77,7 +82,7 @@ public class ModerationProcessor {
             UUID reportId,
             ModerationStatus status,
             String note) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.VIEW_MODERATION_QUEUE);
         if (status != ModerationStatus.VALID
                 && status != ModerationStatus.BANNED) {
             throw new ValidationException(ErrorCode.CONTENT_REPORT_INVALID_STATUS);
@@ -88,10 +93,10 @@ public class ModerationProcessor {
         if (action.getModerationStatus() != ModerationStatus.BEING_DISCUSSED) {
             throw new ConflictException(ErrorCode.CONTENT_REPORT_ALREADY_RESOLVED);
         }
-        action.setModerationStatus(status);
-        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
-        action.setNote(note);
-        return toResponse(action);
+        moderationMapper.applyResolveFields(action, status,
+                status == ModerationStatus.BANNED ? ModerationActionType.BLOCK : ModerationActionType.APPROVE,
+                appUserRepository.getReferenceById(principal.getUserId()), note);
+        return moderationMapper.toContentReportResponse(action);
     }
 
     @Transactional
@@ -99,7 +104,7 @@ public class ModerationProcessor {
             AskPrincipal principal,
             UUID productId,
             Boolean hidden) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.MODERATE_ITEMS);
         Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
         item.setModerationStatus(Boolean.TRUE.equals(hidden)
@@ -108,12 +113,11 @@ public class ModerationProcessor {
         searchVisibilityService.republishProductOffers(productId);
 
         ModerationAction action = new ModerationAction();
-        action.setTargetType(ModerationTargetType.PRODUCT);
-        action.setTargetId(productId);
-        action.setModerationStatus(Boolean.TRUE.equals(hidden)
-                ? ModerationStatus.BANNED
-                : ModerationStatus.VALID);
-        action.setMadeBy(appUserRepository.getReferenceById(principal.getUserId()));
+        moderationMapper.applyCreateFields(action, ModerationTargetType.PRODUCT, productId,
+                Boolean.TRUE.equals(hidden) ? ModerationActionType.BLOCK : ModerationActionType.APPROVE,
+                Boolean.TRUE.equals(hidden) ? ModerationStatus.BANNED : ModerationStatus.VALID,
+                null, null, null, null,
+                appUserRepository.getReferenceById(principal.getUserId()));
         moderationActionRepository.save(action);
 
         if (Boolean.TRUE.equals(hidden)) {
@@ -134,18 +138,18 @@ public class ModerationProcessor {
     @Transactional(readOnly = true)
     public Page<ProductModerationItemResponse> listModerationQueue(
             AskPrincipal principal, int page, int size) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.VIEW_MODERATION_QUEUE);
         int safeSize = Math.min(Math.max(size, 1), 100);
         int safePage = Math.max(page, 0);
         return productRepository
                 .findByModerationStatusOrderByCreatedAtAsc(
                         ProductModerationStatus.PENDING, PageRequest.of(safePage, safeSize))
-                .map(this::toModerationItemResponse);
+                .map(itemMapper::toProductModerationItemResponse);
     }
 
     @Transactional
     public void approveProduct(AskPrincipal principal, UUID productId) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.MODERATE_ITEMS);
         Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
         item.setModerationStatus(ProductModerationStatus.APPROVED);
@@ -154,7 +158,7 @@ public class ModerationProcessor {
 
     @Transactional
     public void rejectProduct(AskPrincipal principal, UUID productId, RejectProductRequest request) {
-        requirePermission(principal, Permission.MODERATE_CONTENT);
+        requirePermission(principal, Permission.MODERATE_ITEMS);
         if (request.getReason() == null || request.getReason().isBlank()) {
             throw new ValidationException(ErrorCode.MODERATION_REJECT_REASON_REQUIRED);
         }
@@ -168,27 +172,35 @@ public class ModerationProcessor {
                 item.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
     }
 
-    private ProductModerationItemResponse toModerationItemResponse(Item item) {
-        return ProductModerationItemResponse.builder()
-                .productId(item.getId())
-                .productName(item.getName())
-                .businessId(item.getBusiness().getId())
-                .createdAt(item.getCreatedAt())
-                .moderationNote(item.getModerationNote())
-                .moderationStatus(item.getModerationStatus().name())
-                .build();
+    @Transactional
+    public ModerationActionResponse executeModerationAction(AskPrincipal principal, ModerationActionRequest request) {
+        Permission requiredPermission = resolvePermission(request.getTargetType());
+        requirePermission(principal, requiredPermission);
+        ModerationAction action = new ModerationAction();
+        moderationMapper.applyCreateFields(action, request.getTargetType(), request.getTargetId(),
+                request.getAction(), toModerationStatus(request.getAction()),
+                request.getReasonCode(), null, request.getNote(), request.getExpiresAt(),
+                appUserRepository.getReferenceById(principal.getUserId()));
+        return moderationMapper.toModerationActionResponse(moderationActionRepository.save(action));
     }
 
-    private ContentReportResponse toResponse(ModerationAction action) {
-        return ContentReportResponse.builder()
-                .id(action.getId())
-                .targetType(action.getTargetType().name())
-                .targetId(action.getTargetId())
-                .reasonCode(action.getReasonCode())
-                .details(action.getDetails())
-                .status(action.getModerationStatus().name())
-                .note(action.getNote())
-                .createdAt(action.getCreatedAt())
-                .build();
+    private Permission resolvePermission(ModerationTargetType targetType) {
+        return switch (targetType) {
+            case PRODUCT -> Permission.MODERATE_ITEMS;
+            case SERVICE -> Permission.MODERATE_SERVICES;
+            case BUSINESS -> Permission.MODERATE_BUSINESSES;
+            case USER -> Permission.MODERATE_APP_USERS;
+            case MESSAGE -> Permission.MODERATE_CHATS;
+        };
     }
+
+    private ModerationStatus toModerationStatus(ModerationActionType action) {
+        return switch (action) {
+            case BLOCK -> ModerationStatus.BANNED;
+            case UNBLOCK, APPROVE -> ModerationStatus.VALID;
+            case REJECT -> ModerationStatus.BANNED;
+            case FLAG -> ModerationStatus.BEING_DISCUSSED;
+        };
+    }
+
 }

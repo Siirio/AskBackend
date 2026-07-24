@@ -35,7 +35,7 @@ Forbidden: Controller→Repository, Mapper→Service/Processor/Repository, Servi
 ## Domain service and DTO identity
 - A domain service exists only for exactly one entity and has the exact name `{Entity}Service` / `{Entity}ServiceImpl`. `Item` therefore uses `ItemService`; a differently named service is not a domain service.
 - A `*Dto` is the general DTO for exactly one entity and copies that entity's complete domain shape. Its name is `{Entity}Dto`.
-- `*Request` is transport input and `*Response` is transport output. No other DTO category is allowed: delete or replace `*Result`, `*Item`, `*Batch`, `*Payload`, `*Document`, and composite "context" DTOs.
+- `*Request` is transport input and `*Response` is transport output. `*ListResponse` wrappers are allowed for collection endpoints. Other composite DTOs (`*Result`, `*Item`, `*Batch`, `*Payload`, `*Document`, and ad-hoc context DTOs) remain forbidden.
 - A current caller is not a reason to keep a service or DTO. Keep it only when an active product document owns the behavior; then rename it to the allowed component type or move the behavior into its owning entity service.
 
 ## Entities
@@ -54,7 +54,7 @@ Forbidden: Controller→Repository, Mapper→Service/Processor/Repository, Servi
 - ServiceImpl: inject only own entity's repository. For other entities in same domain → call that entity's domain service.
 - `getReferenceById()` is the ONLY allowed cross-entity repository access (JPA proxy for relationships).
 - Services never set entity fields manually → delegate to Mapper. Composite result DTOs use `@Builder` directly in impl.
-- `@Transactional` on mutation methods only. Read-only queries must NOT have `@Transactional`.
+- `@Transactional` on mutation methods. `@Transactional(readOnly = true)` allowed on read queries where the caller benefits from Hibernate session consistency.
 - Use `@RequiredArgsConstructor`. Never throw `RuntimeException` — use `kz.ask.shared.error` hierarchy.
 - Never call `findAll()` — always filtered query methods with specific criteria.
 

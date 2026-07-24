@@ -51,6 +51,9 @@ public class Item extends BaseUuidV7Entity {
 
     private String description;
 
+    @Column(length = 2048)
+    private String deepLink;
+
     @ElementCollection
     @CollectionTable(name = "product_tag", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "tag", nullable = false)
@@ -58,8 +61,8 @@ public class Item extends BaseUuidV7Entity {
 
     private BigDecimal price;
 
-    @Column(name = "is_enabled", nullable = false)
-    private Boolean isEnabled;
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 
     @Column(name = "moderation_status", nullable = false)
     @Enumerated(EnumType.STRING)

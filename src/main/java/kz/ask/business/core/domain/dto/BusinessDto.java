@@ -16,4 +16,5 @@ public class BusinessDto {
     private UUID categoryId;
     private String categoryName;
     private BusinessScope scope;
+    private Boolean onlineOnly;
 }

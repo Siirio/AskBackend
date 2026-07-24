@@ -1,8 +1,8 @@
 package kz.ask.business.invitation.api;
 
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
+import kz.ask.business.invitation.api.dto.BusinessInvitationListResponse;
 import kz.ask.business.invitation.api.dto.BusinessInvitationResponse;
 import kz.ask.business.invitation.api.dto.CreateBusinessInvitationRequest;
 import kz.ask.business.invitation.application.BusinessInvitationProcessor;
@@ -34,24 +34,23 @@ public class BusinessInvitationController {
     }
 
     @GetMapping("/api/v1/businesses/{businessId}/invitations")
-    public ResponseEntity<List<BusinessInvitationResponse>> list(
+    public ResponseEntity<BusinessInvitationListResponse> list(
             @AuthenticationPrincipal AskPrincipal principal,
             @PathVariable UUID businessId) {
         return ResponseEntity.ok(
                 businessInvitationProcessor.listBusiness(principal, businessId));
     }
 
-    @DeleteMapping("/api/v1/businesses/{businessId}/invitations/{invitationId}")
+    @DeleteMapping("/api/v1/invitations/{invitationId}")
     public ResponseEntity<Void> revoke(
             @AuthenticationPrincipal AskPrincipal principal,
-            @PathVariable UUID businessId,
             @PathVariable UUID invitationId) {
-        businessInvitationProcessor.revoke(principal, businessId, invitationId);
+        businessInvitationProcessor.revoke(principal, invitationId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/v1/me/invitations")
-    public ResponseEntity<List<BusinessInvitationResponse>> listMine(
+    public ResponseEntity<BusinessInvitationListResponse> listMine(
             @AuthenticationPrincipal AskPrincipal principal) {
         return ResponseEntity.ok(businessInvitationProcessor.listMine(principal));
     }

@@ -1,7 +1,7 @@
 package kz.ask.business.branch.domain.dto;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,9 +19,9 @@ public class BusinessBranchDto {
     private String name;
     private String address;
     private String addressDetails;
-    private Boolean isOnlineOnly;
     private BigDecimal latitude;
     private BigDecimal longitude;
-    private OffsetDateTime workingHourStart;
-    private OffsetDateTime workingHourEnd;
+    private String timeZoneId;
+    private List<WeeklyOpeningIntervalDto> weeklyHours;
+    private List<SpecialOpeningIntervalDto> specialHours;
 }

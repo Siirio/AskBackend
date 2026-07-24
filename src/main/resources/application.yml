@@ -8,9 +8,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   datasource:
-    url: ${ASK_DB_URL:jdbc:postgresql://localhost:5432/ask}
-    username: ${ASK_DB_USERNAME:postgres}
-    password: ${ASK_DB_PASSWORD:admin}
+    url: ${ASK_DB_URL}
+    username: ${ASK_DB_USERNAME}
+    password: ${ASK_DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -35,7 +35,7 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: false
 
 auth:
   challenge:
@@ -61,7 +61,7 @@ auth:
       ttl: ${AUTH_STAFF_REMEMBERED_SESSION_TTL:2592000}
     activation-session:
       ttl: ${AUTH_STAFF_ACTIVATION_SESSION_TTL:300}
-    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
+    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY}
   verification:
     test-mode: ${AUTH_VERIFICATION_TEST_MODE:false}
     staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
@@ -76,7 +76,7 @@ auth:
     same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
     secure: ${AUTH_COOKIE_SECURE:false}
   jwt:
-    secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
+    secret: ${AUTH_JWT_SECRET}
   email:
     from: ${AUTH_EMAIL_FROM:noreply@ask.kz}
   account:
@@ -88,8 +88,8 @@ ask:
   cors:
     allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,https://ask.com.kz,https://stage.ask.com.kz,https://ask-frontend-stage-ask7.vercel.app}
   contact:
-    hmac-secret: ${ASK_CONTACT_HMAC_SECRET:change-me-contact-hmac-secret-32chr}
-    encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY:change-me-contact-encryption-key-32chr}
+    hmac-secret: ${ASK_CONTACT_HMAC_SECRET}
+    encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY}
     action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
   chat:
     upload-dir: ${ASK_CHAT_UPLOAD_DIR:uploads/chat}
@@ -97,10 +97,10 @@ ask:
     allowed-extensions: ${ASK_CHAT_ALLOWED_EXTENSIONS:png,jpg,jpeg,pdf,txt,md,csv,xlsx}
     allowed-content-types: ${ASK_CHAT_ALLOWED_CONTENT_TYPES:image/png,image/jpeg,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
   platform:
-    super-admin-email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:}
+    super-admin-email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL}
     superadmins:
-      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:superadmin@ask.com}
-        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD:874365rg3Tur4ygfcGHFsydhjIHTDuy74wFGJH}
+      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL}
+        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD}
         display-name: Superadmin
   ai:
     search:
@@ -141,6 +141,8 @@ ask:
       interval: ${ASK_SEARCH_RECONCILIATION_INTERVAL:PT30S}
 
 business:
+  item-import:
+    default-category-name: ${ASK_ITEM_IMPORT_DEFAULT_CATEGORY_NAME:Общее}
   managed-import:
     chat-subject: ${MANAGED_IMPORT_CHAT_SUBJECT:Items and services import}
     initial-message: ${MANAGED_IMPORT_INITIAL_MESSAGE:Your managed items and services import request was sent. An Ask team member will join this chat and help prepare the data.}

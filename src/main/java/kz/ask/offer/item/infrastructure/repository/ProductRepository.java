@@ -28,14 +28,14 @@ public interface ProductRepository extends JpaRepository<Item, UUID> {
     @Query("SELECT p FROM Item p WHERE p.branch.id = :branchId AND LOWER(p.name) LIKE LOWER(:query)")
     Page<Item> searchByBranchAndName(UUID branchId, String query, Pageable pageable);
 
-    Page<Item> findByBranchIdAndIsEnabled(UUID branchId, Boolean enabled, Pageable pageable);
+    Page<Item> findByBranchIdAndIsActive(UUID branchId, Boolean isActive, Pageable pageable);
 
     Page<Item> findByBranchId(UUID branchId, Pageable pageable);
 
     @Query("SELECT p FROM Item p WHERE p.business.id = :businessId AND LOWER(p.name) LIKE LOWER(:query)")
     Page<Item> searchByBusinessAndName(UUID businessId, String query, Pageable pageable);
 
-    Page<Item> findByBusinessIdAndIsEnabled(UUID businessId, Boolean enabled, Pageable pageable);
+    Page<Item> findByBusinessIdAndIsActive(UUID businessId, Boolean isActive, Pageable pageable);
 
     List<Item> findByIdIn(List<UUID> ids);
 }

@@ -155,6 +155,7 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public List<ChatConversationDto> listPlatformConversations() {
         return conversationRepository.findPlatformConversations(
+                        ConversationType.GENERAL_SUPPORT,
                         ConversationType.PLATFORM_SUPPORT,
                         ConversationType.MANAGED_IMPORT,
                         PageRequest.of(0, MAX_CONVERSATIONS))

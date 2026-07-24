@@ -57,8 +57,8 @@ public class UniqueOffer extends BaseUuidV7Entity {
     @Column(name = "discount_amount")
     private BigDecimal discountAmount;
 
-    @Column(name = "is_enabled", nullable = false)
-    private Boolean isEnabled;
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 
     @Column(length = 3)
     private String currency;

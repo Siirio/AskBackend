@@ -33,8 +33,9 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
     @Query("SELECT c FROM ChatConversation c WHERE c.conversationType = :type ORDER BY c.lastMessageAt DESC NULLS LAST, c.createdAt DESC")
     List<ChatConversation> findByConversationType(@Param("type") ConversationType type, Pageable pageable);
 
-    @Query("SELECT c FROM ChatConversation c WHERE c.conversationType IN (:supportType, :managedImportType) ORDER BY c.lastMessageAt DESC NULLS LAST, c.createdAt DESC")
+    @Query("SELECT c FROM ChatConversation c WHERE c.conversationType IN (:generalType, :supportType, :managedImportType) ORDER BY c.lastMessageAt DESC NULLS LAST, c.createdAt DESC")
     List<ChatConversation> findPlatformConversations(
+            @Param("generalType") ConversationType generalType,
             @Param("supportType") ConversationType supportType,
             @Param("managedImportType") ConversationType managedImportType,
             Pageable pageable);

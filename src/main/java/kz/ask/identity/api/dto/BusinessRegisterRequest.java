@@ -33,7 +33,7 @@ public class BusinessRegisterRequest {
     private String branchName;
     private UUID branchCityId;
     private String branchAddress;
-    private Boolean isOnlineOnly;
+    private Boolean onlineOnly;
     private UUID businessCategoryId;
     private String businessCategoryName;
     @NotNull

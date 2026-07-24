@@ -78,7 +78,8 @@ public enum ErrorCode {
     MODERATION_REJECT_REASON_REQUIRED("Причина отклонения обязательна"),
     CANNOT_DELETE_SELF("Невозможно удалить собственный аккаунт администратора"),
     CANNOT_DELETE_LAST_SUPER_ADMIN("Невозможно удалить последнего активного суперадминистратора"),
-    BUSINESS_VERIFICATION_NOT_FOUND("Верификация бизнеса не найдена");
+    BUSINESS_VERIFICATION_NOT_FOUND("Верификация бизнеса не найдена"),
+    BRANCH_NOT_ALLOWED_ONLINE_ONLY("Нельзя создать филиал для онлайн-бизнеса");
 
     private final String template;
 

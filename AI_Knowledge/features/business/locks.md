@@ -6,3 +6,5 @@ LOCKED | Multiple owners are valid | OWNER may assign OWNER, MANAGER, or WORKER;
 LOCKED | Business registration creates real persisted data | Not throwaway mock. Business, Member, and BusinessProfile must persist; a branch is optional | BusinessServiceImpl, AuthProcessor
 LOCKED | Item and Service creation never requires a branch | Branch association may be added later for location-specific delivery, price, or visibility | item/service creation flows, branch offer flows
 LOCKED | Categories are flat and typed | Every category is exactly BUSINESS, ITEM, or SERVICE and comes from SYSTEM or USER; no parent/child hierarchy exists | Category, category API, item/service/business forms, search interpretation
+LOCKED | Branch coordinates are internal map-derived data | Users select a place or provide a supported map link; frontend forms never ask for or display numeric latitude/longitude | branch forms, map resolver, branch persistence
+LOCKED | Branch opening hours are owned by the branch aggregate | Schedule is @ElementCollection inside BusinessBranch; no standalone schedule CRUD or artificial domain service | BusinessBranch entity, BranchOpeningHoursPolicy

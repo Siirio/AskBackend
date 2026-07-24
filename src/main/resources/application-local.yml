@@ -20,6 +20,8 @@ management:
 auth:
   jwt:
     secret: local-development-secret-key-at-least-256-bits-long
+  staff:
+    temp-password-key: local-temp-password-key-32chr-len
   verification:
     test-mode: true
     staging-bypass: true

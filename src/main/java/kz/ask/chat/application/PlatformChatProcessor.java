@@ -30,54 +30,62 @@ public class PlatformChatProcessor {
 
     @Transactional(readOnly = true)
     public List<ChatConversationDto> listConversations(AskPrincipal principal) {
-        requireAnyPermission(principal,
-                Permission.MANAGE_MANAGED_IMPORTS, Permission.MANAGE_SUPPORT_CHATS);
+        PlatformMembershipDto membership = requireMembership(principal);
         return chatService.listPlatformConversations().stream()
-                .filter(conversation -> conversation.getBusinessId() != null
-                        && managedImportService.hasActiveGrant(
-                                conversation.getBusinessId(), principal.getUserId()))
+                .filter(conversation -> canAccess(
+                        principal.getUserId(), membership, conversation))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ChatMessageDto> getMessages(AskPrincipal principal, UUID conversationId) {
-        requireAnyPermission(principal,
-                Permission.MANAGE_MANAGED_IMPORTS, Permission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(principal, conversationId);
+        requireConversationAccess(principal, conversationId);
         return chatService.getMessages(conversationId);
     }
 
     @Transactional
     public ChatMessageDto sendMessage(AskPrincipal principal, UUID conversationId, SendMessageRequest request) {
-        requireAnyPermission(principal,
-                Permission.MANAGE_MANAGED_IMPORTS, Permission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(principal, conversationId);
+        requireConversationAccess(principal, conversationId);
         return chatService.sendMessage(conversationId, principal.getUserId(), PLATFORM_SENDER, request);
     }
 
     @Transactional
     public void markRead(AskPrincipal principal, UUID conversationId) {
-        requireAnyPermission(principal,
-                Permission.MANAGE_MANAGED_IMPORTS, Permission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(principal, conversationId);
+        requireConversationAccess(principal, conversationId);
         chatService.markRead(conversationId, PLATFORM_SENDER);
     }
 
     @Transactional
     public ChatConversationDto closeConversation(AskPrincipal principal, UUID conversationId) {
         requireAnyPermission(principal, Permission.MANAGE_SUPPORT_CHATS);
-        requireManagedImportConversation(principal, conversationId);
+        requireConversationAccess(principal, conversationId);
         return chatService.closeConversation(conversationId);
     }
 
-    private void requireManagedImportConversation(AskPrincipal principal, UUID conversationId) {
+    private void requireConversationAccess(AskPrincipal principal, UUID conversationId) {
         ChatConversationDto conversation = chatService.getConversation(conversationId);
-        if (!ConversationType.MANAGED_IMPORT.name().equals(conversation.getConversationType())
-                || conversation.getBusinessId() == null
-                || !managedImportService.hasActiveGrant(
-                        conversation.getBusinessId(), principal.getUserId())) {
+        PlatformMembershipDto membership = requireMembership(principal);
+        if (!canAccess(principal.getUserId(), membership, conversation)) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    private boolean canAccess(UUID userId, PlatformMembershipDto membership,
+                              ChatConversationDto conversation) {
+        if (ConversationType.MANAGED_IMPORT.name().equals(conversation.getConversationType())) {
+            return membership.getPermissions().contains(Permission.MANAGE_MANAGED_IMPORTS)
+                    && conversation.getBusinessId() != null
+                    && managedImportService.hasActiveGrant(conversation.getBusinessId(), userId);
+        }
+        return membership.getPermissions().contains(Permission.MANAGE_SUPPORT_CHATS);
+    }
+
+    private PlatformMembershipDto requireMembership(AskPrincipal principal) {
+        PlatformMembershipDto membership = platformMembershipService.findActiveByUser(principal.getUserId());
+        if (membership == null) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+        return membership;
     }
 
     private void requireAnyPermission(AskPrincipal principal, Permission... permissions) {

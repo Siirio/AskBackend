@@ -11,6 +11,7 @@ import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.business.member.domain.BranchMemberService;
 import kz.ask.business.member.domain.dto.BusinessMemberDto;
 import kz.ask.identity.authorization.domain.enums.Role;
+import kz.ask.business.invitation.api.dto.BusinessInvitationListResponse;
 import kz.ask.business.invitation.api.dto.BusinessInvitationResponse;
 import kz.ask.business.invitation.api.dto.CreateBusinessInvitationRequest;
 import kz.ask.business.invitation.domain.BusinessInvitationService;
@@ -70,30 +71,29 @@ public class BusinessInvitationProcessor {
         return toResponse(created.getInvitation());
     }
 
-    public List<BusinessInvitationResponse> listBusiness(
+    public BusinessInvitationListResponse listBusiness(
             AskPrincipal principal,
             UUID businessId) {
         requireManagementRole(businessId, principal.getUserId());
-        return businessInvitationService.findByBusiness(businessId).stream()
+        List<BusinessInvitationResponse> invitations = businessInvitationService.findByBusiness(businessId).stream()
                 .map(this::toResponse)
                 .toList();
+        return BusinessInvitationListResponse.builder().invitations(invitations).build();
     }
 
     @Transactional
-    public void revoke(AskPrincipal principal, UUID businessId, UUID invitationId) {
-        requireManagementRole(businessId, principal.getUserId());
+    public void revoke(AskPrincipal principal, UUID invitationId) {
         BusinessInvitationDto invitation = businessInvitationService.findById(invitationId);
-        if (!invitation.getBusinessId().equals(businessId)) {
-            throw new NotFoundException(ErrorCode.INVITATION_NOT_FOUND);
-        }
+        requireManagementRole(invitation.getBusinessId(), principal.getUserId());
         businessInvitationService.revoke(invitationId);
     }
 
-    public List<BusinessInvitationResponse> listMine(AskPrincipal principal) {
+    public BusinessInvitationListResponse listMine(AskPrincipal principal) {
         AppUserDto user = requireUser(principal.getUserId());
-        return businessInvitationService.findPendingByEmail(user.getEmail()).stream()
+        List<BusinessInvitationResponse> invitations = businessInvitationService.findPendingByEmail(user.getEmail()).stream()
                 .map(this::toResponse)
                 .toList();
+        return BusinessInvitationListResponse.builder().invitations(invitations).build();
     }
 
     @Transactional

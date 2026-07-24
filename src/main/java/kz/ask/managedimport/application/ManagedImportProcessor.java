@@ -79,12 +79,19 @@ public class ManagedImportProcessor {
     public ManagedImportAccessResponse itemsServicesAccess(
             AskPrincipal principal,
             UUID businessId) {
-        requirePermission(principal, Permission.EDIT_ITEMS_SERVICES_DURING_IMPORT);
+        requirePlatformMembership(principal);
+        var businessScope = managedImportService.activeScope(
+                businessId, principal.getUserId());
         return ManagedImportAccessResponse.builder()
-                .allowed(true)
-                .businessScope(managedImportService.activeScope(
-                        businessId, principal.getUserId()))
+                .allowed(businessScope != null)
+                .businessScope(businessScope)
                 .build();
+    }
+
+    private void requirePlatformMembership(AskPrincipal principal) {
+        if (platformMembershipService.findActiveByUser(principal.getUserId()) == null) {
+            throw new ForbiddenException(ErrorCode.MANAGED_IMPORT_FORBIDDEN);
+        }
     }
 
     private void requirePermission(

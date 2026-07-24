@@ -1,8 +1,12 @@
 package kz.ask.business.branch.domain;
 
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
+import kz.ask.business.branch.domain.dto.SpecialOpeningIntervalDto;
+import kz.ask.business.branch.domain.dto.WeeklyOpeningIntervalDto;
 import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.branch.domain.entity.BusinessBranch;
+import kz.ask.business.branch.domain.entity.SpecialOpeningInterval;
+import kz.ask.business.branch.domain.entity.WeeklyOpeningInterval;
 import kz.ask.business.core.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.branch.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.core.infrastructure.repository.BusinessRepository;
@@ -47,17 +51,20 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     @Override
     @Transactional
     public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails,
-                                     Boolean onlineOnly,
-                                     BigDecimal latitude, BigDecimal longitude) {
+                                     BigDecimal latitude, BigDecimal longitude,
+                                     String timeZoneId,
+                                     List<WeeklyOpeningIntervalDto> weeklyHours,
+                                     List<SpecialOpeningIntervalDto> specialHours) {
         Business business = businessRepository.getReferenceById(businessId);
         City city = null;
         if (cityId != null) {
             cityService.findById(cityId);
             city = cityRepository.getReferenceById(cityId);
         }
-        BusinessBranch entity = businessBranchRepository.save(
-                businessMapper.toBranchEntity(business, city, name, address, addressDetails,
-                        onlineOnly != null ? onlineOnly : Boolean.FALSE, latitude, longitude));
+        BusinessBranch entity = businessMapper.toBranchEntity(business, city, name, address, addressDetails,
+                latitude, longitude, timeZoneId);
+        applySchedule(entity, weeklyHours, specialHours);
+        entity = businessBranchRepository.save(entity);
         return businessMapper.toBusinessBranchDto(entity);
     }
 
@@ -82,20 +89,60 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     @Override
     @Transactional
     public BusinessBranchDto update(UUID branchId, String name, String address, String addressDetails, UUID cityId,
-                                     Boolean onlineOnly,
-                                     BigDecimal latitude, BigDecimal longitude) {
+                                     BigDecimal latitude, BigDecimal longitude,
+                                     String timeZoneId,
+                                     List<WeeklyOpeningIntervalDto> weeklyHours,
+                                     List<SpecialOpeningIntervalDto> specialHours) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null) return null;
         if (name != null) branch.setName(name);
         if (address != null) branch.setAddress(address);
         if (addressDetails != null) branch.setAddressDetails(addressDetails);
-        if (onlineOnly != null) branch.setIsOnlineOnly(onlineOnly);
         if (cityId != null) {
             cityService.findById(cityId);
             branch.setCity(cityRepository.getReferenceById(cityId));
         }
         if (latitude != null) branch.setLatitude(latitude);
         if (longitude != null) branch.setLongitude(longitude);
+        if (timeZoneId != null) branch.setTimeZoneId(timeZoneId);
+        if (weeklyHours != null) {
+            branch.getWeeklyHours().clear();
+            branch.getWeeklyHours().addAll(
+                    weeklyHours.stream().map(this::toWeeklyEntity).toList());
+        }
+        if (specialHours != null) {
+            branch.getSpecialHours().clear();
+            branch.getSpecialHours().addAll(
+                    specialHours.stream().map(this::toSpecialEntity).toList());
+        }
         return businessMapper.toBusinessBranchDto(branch);
+    }
+
+    private void applySchedule(BusinessBranch entity,
+                                List<WeeklyOpeningIntervalDto> weeklyHours,
+                                List<SpecialOpeningIntervalDto> specialHours) {
+        if (weeklyHours != null) {
+            entity.setWeeklyHours(weeklyHours.stream().map(this::toWeeklyEntity).toList());
+        }
+        if (specialHours != null) {
+            entity.setSpecialHours(specialHours.stream().map(this::toSpecialEntity).toList());
+        }
+    }
+
+    private WeeklyOpeningInterval toWeeklyEntity(WeeklyOpeningIntervalDto dto) {
+        WeeklyOpeningInterval entity = new WeeklyOpeningInterval();
+        entity.setDayOfWeek(dto.getDayOfWeek());
+        entity.setOpensAt(dto.getOpensAt());
+        entity.setClosesAt(dto.getClosesAt());
+        return entity;
+    }
+
+    private SpecialOpeningInterval toSpecialEntity(SpecialOpeningIntervalDto dto) {
+        SpecialOpeningInterval entity = new SpecialOpeningInterval();
+        entity.setDate(dto.getDate());
+        entity.setClosed(dto.getClosed());
+        entity.setOpensAt(dto.getOpensAt());
+        entity.setClosesAt(dto.getClosesAt());
+        return entity;
     }
 }

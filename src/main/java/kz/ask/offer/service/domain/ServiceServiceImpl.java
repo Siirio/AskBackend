@@ -135,6 +135,7 @@ public class ServiceServiceImpl implements ServiceService {
                 .serviceMode(entity.getServiceMode())
                 .basePrice(entity.getBasePrice())
                 .scheduleText(entity.getScheduleText())
+                .attributes(entity.getAttributes())
                 .isActive(entity.getIsActive())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -1,25 +1,19 @@
 # Unique Offers — REST API Contracts
 
 ## Business Admin (Drops)
-Base: /api/v1/businesses/{businessId}/drops
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /drops | OWNER | List drops |
-| POST | /drops | OWNER | Create drop |
-| PATCH | /drops/{dropId} | OWNER | Update drop |
-| POST | /drops/{dropId}/cancel | OWNER | Cancel drop |
-| DELETE | /drops/{dropId} | OWNER | Delete drop |
-
-## Public
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | /api/v1/businesses/{businessId}/drops | No | List active and upcoming drops |
+| GET | /api/v1/businesses/{businessId}/drops | No (public) | List active and upcoming drops |
+| POST | /api/v1/businesses/{businessId}/drops | OWNER | Create drop |
+| PATCH | /api/v1/drops/{dropId} | OWNER | Update drop (derives businessId from entity) |
+| POST | /api/v1/drops/{dropId}/cancel | OWNER | Toggle isActive (derives businessId from entity) |
+| DELETE | /api/v1/drops/{dropId} | OWNER | Delete drop (derives businessId from entity) |
 
 ## UniqueOffer Model
 - id, business_id, name, description, type (UniqueOfferType enum), status (UniqueOfferStatus enum)
 - discount_percent (INTEGER), discount_amount (NUMERIC), currency (VARCHAR(3))
-- enabled (BOOLEAN), tags (JSONB), startDate, endDate, coverUrl
+- is_active (BOOLEAN), tags (JSONB), startDate, endDate, coverUrl
 - M2M: unique_offer_product, unique_offer_service, unique_offer_branch
 
 ## Search Integration

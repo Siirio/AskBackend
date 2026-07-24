@@ -41,3 +41,19 @@
 **Protected behavior:** API fields, DTOs, backend code, frontend state and documentation use entity terminology unchanged. `BusinessScope` accepts and returns only `ITEM`, `SERVICE`, or `BOTH`; `ManagedImportRequest.selectedSourceTypes` is exposed as `selectedSourceTypes`.
 
 **Scope:** Seller onboarding, managed import, platform access, persistence mappings and related contracts.
+
+## LOCKED: Managed-import activation is the catalog grant
+
+**Approved signal:** User clarification on 2026-07-23.
+
+**Rule:** Activation assigns the platform member immediate catalog access for the request Business and matching `ITEM`, `SERVICE`, or `BOTH` scope for seven days. A global edit permission is not part of this authorization decision.
+
+**Scope:** ManagedImportService, ManagedImportProcessor, Item/Service processors, Excel import access.
+
+## LOCKED: Platform support conversation access
+
+**Approved signal:** User clarification on 2026-07-23.
+
+**Rule:** `MANAGE_SUPPORT_CHATS` permits platform inspection of `GENERAL_SUPPORT` and `PLATFORM_SUPPORT`. `MANAGED_IMPORT` requires `MANAGE_MANAGED_IMPORTS` and the assigned active grant.
+
+**Scope:** PlatformChatProcessor and platform conversation listing.

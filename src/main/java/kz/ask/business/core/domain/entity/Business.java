@@ -42,5 +42,5 @@ public class Business extends BaseUuidV7Entity {
     private BusinessScope scope;
 
     @Column(nullable = false)
-    private Boolean isOnline;
+    private Boolean onlineOnly;
 }

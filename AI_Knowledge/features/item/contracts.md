@@ -7,14 +7,17 @@ separate public listing or detail API in the current backend contract.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | /api/v1/businesses/{businessId}/items?branchId={optional} | OWNER/MANAGER/WORKER | List business items, optionally narrowed to a branch |
-| POST | /api/v1/businesses/{businessId}/items | OWNER/MANAGER/WORKER | Create an Item with an optional `branchId` |
-| PATCH | /api/v1/businesses/{businessId}/items/{itemId} | OWNER/MANAGER/WORKER | Update an Item |
-| DELETE | /api/v1/businesses/{businessId}/items/{itemId} | OWNER/MANAGER/WORKER | Disable an Item |
+| GET | /api/v1/businesses/{businessId}/items?branchId={optional} | OWNER/STAFF | List business items, optionally narrowed to a branch |
+| POST | /api/v1/businesses/{businessId}/items | OWNER/STAFF | Create an Item with an optional `branchId` |
+| PATCH | /api/v1/items/{itemId} | OWNER/STAFF | Update an Item (derives businessId from entity) |
+| DELETE | /api/v1/items/{itemId} | OWNER/STAFF | Hard-delete an Item (derives businessId from entity) |
 
 ## Item data
 
 - An Item belongs to a Business.
-- It stores one `ITEM` category identity, description, tags, attributes, and status.
+- It stores one `ITEM` category identity, description, deepLink, tags, attributes, price, isActive, and moderationStatus.
 - A branch association is optional and contains only location-specific facts; creating an Item never creates a branch.
 - The client supplies a selected category or explicitly requests creation of a `USER` category. Free-form category labels are not canonical data.
+- `isActive` is business-controlled (owner/staff toggle via PATCH /items/{itemId}).
+- `moderationStatus` is platform-controlled (PENDING/APPROVED/REJECTED).
+- Search visibility requires BOTH `isActive == true` AND `moderationStatus == APPROVED`.

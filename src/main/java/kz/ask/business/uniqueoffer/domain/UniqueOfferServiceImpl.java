@@ -3,6 +3,7 @@ package kz.ask.business.uniqueoffer.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferDto;
 import kz.ask.business.uniqueoffer.domain.entity.UniqueOffer;
 import kz.ask.business.uniqueoffer.domain.enums.UniqueOfferStatus;
@@ -47,49 +48,50 @@ public class UniqueOfferServiceImpl implements UniqueOfferService {
     @Transactional
     public UniqueOfferDto create(UUID businessId, String name, String description, Instant startDate,
                                  Instant endDate, String type, String status, String coverUrl,
-                                 List<String> tags) {
+                                 Integer discountPercent, BigDecimal discountAmount,
+                                 Boolean isActive, String currency, List<String> tags) {
         UniqueOffer offer = businessMapper.toUniqueOfferEntity(
                 businessRepository.getReferenceById(businessId),
                 name, description, startDate, endDate,
                 UniqueOfferType.valueOf(type),
                 UniqueOfferStatus.valueOf(status),
-                coverUrl, tags);
+                coverUrl, discountPercent, discountAmount,
+                isActive, currency, tags);
         return businessMapper.toUniqueOfferDto(uniqueOfferRepository.save(offer));
     }
 
     @Override
     @Transactional
-    public UniqueOfferDto update(UUID businessId, UUID offerId, String name, String description,
+    public UniqueOfferDto update(UUID offerId, String name, String description,
                                  Instant startDate, Instant endDate, String type, String status,
-                                 String coverUrl, List<String> tags) {
-        UniqueOffer offer = requireOffer(businessId, offerId);
-        if (name != null) offer.setName(name);
-        if (description != null) offer.setDescription(description);
-        if (startDate != null) offer.setStartDate(startDate);
-        if (endDate != null) offer.setEndDate(endDate);
-        if (type != null) offer.setType(UniqueOfferType.valueOf(type));
-        if (status != null) offer.setStatus(UniqueOfferStatus.valueOf(status));
-        if (coverUrl != null) offer.setCoverUrl(coverUrl);
-        if (tags != null) offer.setTags(tags);
+                                 String coverUrl, Integer discountPercent, BigDecimal discountAmount,
+                                 Boolean isActive, String currency, List<String> tags) {
+        UniqueOffer offer = requireOffer(offerId);
+        businessMapper.updateUniqueOffer(offer, name, description, startDate, endDate,
+                type, status, coverUrl, discountPercent, discountAmount,
+                isActive, currency, tags);
         return businessMapper.toUniqueOfferDto(uniqueOfferRepository.save(offer));
     }
 
     @Override
     @Transactional
-    public void toggle(UUID businessId, UUID offerId) {
-        UniqueOffer offer = requireOffer(businessId, offerId);
-        offer.setIsEnabled(!offer.getIsEnabled());
-        uniqueOfferRepository.save(offer);
+    public UniqueOfferDto toggle(UUID offerId) {
+        UniqueOffer offer = requireOffer(offerId);
+        offer.setIsActive(!offer.getIsActive());
+        return businessMapper.toUniqueOfferDto(uniqueOfferRepository.save(offer));
     }
 
     @Override
     @Transactional
-    public void delete(UUID businessId, UUID offerId) {
-        uniqueOfferRepository.delete(requireOffer(businessId, offerId));
+    public UniqueOfferDto delete(UUID offerId) {
+        UniqueOffer offer = requireOffer(offerId);
+        UniqueOfferDto dto = businessMapper.toUniqueOfferDto(offer);
+        uniqueOfferRepository.delete(offer);
+        return dto;
     }
 
-    private UniqueOffer requireOffer(UUID businessId, UUID offerId) {
-        return uniqueOfferRepository.findByIdAndBusinessId(offerId, businessId)
+    private UniqueOffer requireOffer(UUID offerId) {
+        return uniqueOfferRepository.findById(offerId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.DROP_NOT_FOUND));
     }
 }

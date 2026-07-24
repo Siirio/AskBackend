@@ -3,6 +3,7 @@ package kz.ask.business.uniqueoffer.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferDto;
 
 public interface UniqueOfferService {
@@ -12,13 +13,15 @@ public interface UniqueOfferService {
 
     UniqueOfferDto create(UUID businessId, String name, String description, Instant startDate,
                           Instant endDate, String type, String status, String coverUrl,
-                          List<String> tags);
+                          Integer discountPercent, BigDecimal discountAmount,
+                          Boolean isActive, String currency, List<String> tags);
 
-    UniqueOfferDto update(UUID businessId, UUID offerId, String name, String description, Instant startDate,
+    UniqueOfferDto update(UUID offerId, String name, String description, Instant startDate,
                           Instant endDate, String type, String status, String coverUrl,
-                          List<String> tags);
+                          Integer discountPercent, BigDecimal discountAmount,
+                          Boolean isActive, String currency, List<String> tags);
 
-    void toggle(UUID businessId, UUID offerId);
+    UniqueOfferDto toggle(UUID offerId);
 
-    void delete(UUID businessId, UUID offerId);
+    UniqueOfferDto delete(UUID offerId);
 }

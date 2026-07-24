@@ -1043,8 +1043,6 @@ public class StructuredSearchProcessor {
                 .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
                 .branchCity(document.getBranch() != null && document.getBranch().getCity() != null
                         ? document.getBranch().getCity().getName() : null)
-                .workingHourStart(document.getBranch() != null ? document.getBranch().getWorkingHourStart() : null)
-                .workingHourEnd(document.getBranch() != null ? document.getBranch().getWorkingHourEnd() : null)
                 .build();
     }
 

@@ -31,8 +31,11 @@
 - WORKER: branch-limited access, cannot manage other staff
 
 ## Branch profile
-- Branch has: name, city, address, onlineOnly flag, coordinates (optional)
-- Online-only branches can skip physical address
+- Branch has: name, city, address, addressDetails, internal coordinates, timeZoneId (IANA), weeklyHours (DayOfWeek + opensAt/closesAt), and specialHours (LocalDate overrides)
+- Physical branch requires at minimum name and coordinates; schedule, address, and timezone are optional but required for open-now display
+- Business.onlineOnly=true means no physical branch exists; branch creation is rejected while onlineOnly is true
 - Contacts managed per-branch (registration contact = initial public contact)
 - Branch creation/editing has no manual city dropdown or address field: the map selection resolves both values. Only `addressDetails` is entered separately.
+- OWNER and MANAGER may create or edit branches and their opening hours. Numeric latitude and longitude are never exposed as form fields.
 - Staff creation endpoints create and return the actual member immediately; invitations are a separate workflow.
+- Chat is always available regardless of branch opening state. The frontend shows a neutral message when the branch is closed.
