@@ -31,5 +31,7 @@ public class MeilisearchIndexDocument {
     private String documentType;
     private Map<String, Object> verifiedAttributes;
     private Map<String, Object> aiAttributes;
+    private String availabilityStatus;
+    private Long projectionVersion;
     private Instant syncedAt;
 }

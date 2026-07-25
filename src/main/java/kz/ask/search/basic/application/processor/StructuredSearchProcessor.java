@@ -127,7 +127,7 @@ public class StructuredSearchProcessor {
             exactCandidates = searchViaPostgres(searchPlan, searchPlan, userLocation, candidateLimit);
         }
 
-        List<ScoredSearchDocument> unindexedOverlay = overlayUnindexed(searchPlan, userLocation,
+        List<ScoredSearchDocument> unindexedOverlay = overlayDirtyCandidates(searchPlan, userLocation,
                 exactCandidates.stream().map(scored -> scored.getDocument().getAggregateId()).collect(Collectors.toSet()));
 
         List<ScoredSearchDocument> exact = Stream.concat(exactCandidates.stream(), unindexedOverlay.stream())
@@ -270,50 +270,38 @@ public class StructuredSearchProcessor {
         return rank(ordered, scoringPlan, userLocation);
     }
 
-    private List<ScoredSearchDocument> overlayUnindexed(SearchPlan plan, SearchLocationRequest userLocation,
-                                                         Set<UUID> alreadyFoundAggregateIds) {
-        List<SearchDocumentType> types = resolvePlanDocumentTypes(plan);
-        List<SearchDocument> dirty = searchDocumentRepository.findDirtyProjectionsByType(types,
-                org.springframework.data.domain.PageRequest.of(0, 50));
-        if (dirty.isEmpty()) {
+    private List<ScoredSearchDocument> overlayDirtyCandidates(SearchPlan plan, SearchLocationRequest userLocation,
+                                                              Set<UUID> alreadyFoundAggregateIds) {
+        String query = postgresQuery(plan);
+        if (query.isBlank()) {
             return List.of();
         }
-        return dirty.stream()
+        List<SearchDocumentType> types = resolvePlanDocumentTypes(plan);
+        List<String> documentTypes = types.stream().map(Enum::name).toList();
+        List<UUID> dirtyIds = searchDocumentRepository.findDirtyCandidateIds(
+                documentTypes,
+                query,
+                normalize(plan.getUserSelectedCategory()),
+                plan.getMinPrice(),
+                plan.getMaxPrice(),
+                normalize(plan.getCity()),
+                50);
+        if (dirtyIds.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(dirtyIds).stream()
+                .collect(Collectors.toMap(SearchDocument::getId, document -> document));
+        return dirtyIds.stream()
+                .map(documents::get)
+                .filter(Objects::nonNull)
                 .filter(doc -> !alreadyFoundAggregateIds.contains(doc.getAggregateId()))
-                .map(doc -> {
-                    int score = HARD_MATCH_SCORE;
-                    List<String> warnings = new ArrayList<>();
-                    score = score - pricePenalty(doc, plan, warnings) - cityPenalty(doc, plan, warnings);
-                    Integer distanceMeters = null;
-                    String distanceText = null;
-                    if (userLocation != null && doc.getBranch() != null
-                            && doc.getBranch().getLatitude() != null && doc.getBranch().getLongitude() != null) {
-                        double km = DistanceCalculator.km(
-                                userLocation.getLat(), userLocation.getLng(),
-                                doc.getBranch().getLatitude().doubleValue(),
-                                doc.getBranch().getLongitude().doubleValue());
-                        distanceMeters = DistanceCalculator.meters(
-                                userLocation.getLat(), userLocation.getLng(),
-                                doc.getBranch().getLatitude().doubleValue(),
-                                doc.getBranch().getLongitude().doubleValue());
-                        distanceText = formatDistance(distanceMeters);
-                        score = (int) (score * Math.max(0.3, 1.0 / (1.0 + km * 0.5)));
-                    }
-                    return ScoredSearchDocument.builder()
-                            .document(doc)
-                            .score(Math.max(score, 0))
-                            .sectionType(resolveSectionType(warnings, score))
-                            .confidenceCode(resolveConfidenceCode(score, warnings))
-                            .warnings(warnings)
-                            .distanceMeters(distanceMeters)
-                            .distanceText(distanceText)
-                            .build();
-                })
+                .map(doc -> score(doc, plan, userLocation))
+                .filter(scored -> scored.getScore() >= MINIMUM_RESULT_SCORE)
                 .toList();
     }
 
     private String postgresQuery(SearchPlan plan) {
-        return Stream.of(plan.getExactTerms(), plan.getSemanticTerms(), plan.getHardMatchTerms())
+        return Stream.of(plan.getExactTerms(), plan.getExpandedTerms(), plan.getHardMatchTerms())
                 .flatMap(List::stream)
                 .map(this::normalize)
                 .filter(term -> !term.isBlank())
@@ -322,7 +310,8 @@ public class StructuredSearchProcessor {
     }
 
     private boolean hasRelaxableConstraints(SearchPlan plan) {
-        return !plan.getCity().isBlank() || plan.getMinPrice() != null || plan.getMaxPrice() != null;
+        return !plan.getCity().isBlank() || plan.getMinPrice() != null || plan.getMaxPrice() != null
+                || plan.getMinPackageGrams() != null || plan.getMaxPackageGrams() != null;
     }
 
     private List<ScoredSearchDocument> sort(List<ScoredSearchDocument> documents, String sort) {
@@ -490,18 +479,18 @@ public class StructuredSearchProcessor {
     }
 
     private String resolveMode(String scope) {
-        if ("product".equalsIgnoreCase(scope)) {
-            return "PRODUCT";
+        if ("item".equalsIgnoreCase(scope) || "product".equalsIgnoreCase(scope)) {
+            return "ITEM";
         }
         if ("service".equalsIgnoreCase(scope)) {
             return "SERVICE";
         }
-        return "AUTO";
+        return "ALL";
     }
 
     private String resolveScope(SearchPlan plan) {
         if (plan.getItemType() == SearchDocumentType.ITEM) {
-            return "PRODUCT";
+            return "ITEM";
         }
         if (plan.getItemType() == SearchDocumentType.SERVICE) {
             return "SERVICE";
@@ -512,16 +501,19 @@ public class StructuredSearchProcessor {
     SearchPlan buildSearchPlan(JsonNode intentStructure, SearchIntentStructureRequest request) {
         List<String> categoryAliases = collectCategoryInputs(intentStructure, request);
         List<String> exactTerms = resolveExactTerms(intentStructure, request);
-        List<String> semanticTerms = resolveSemanticTerms(intentStructure);
+        List<String> expandedTerms = resolveExpandedTerms(intentStructure);
         List<String> relatedTerms = combineTerms(resolveRelatedTerms(intentStructure), resolveAliasTargets(exactTerms),
-                resolveAliasTargets(categoryAliases), resolveAliasTargets(semanticTerms));
+                resolveAliasTargets(categoryAliases), resolveAliasTargets(expandedTerms));
         return SearchPlan.builder()
                 .itemType(resolveStructuredItemType(intentStructure))
                 .city(normalize(request.getCity()))
+                .possibleCity(normalize(intentStructure.path("city").asText("")))
                 .userSelectedCategory(normalize(request.getSelectedCategory()))
                 .sort(normalizeSort(request.getSort()))
-                .minPrice(resolveMinPrice(intentStructure, request))
-                .maxPrice(resolveMaxPrice(intentStructure, request))
+                .minPrice(request.getExplicitMinPrice())
+                .maxPrice(request.getExplicitMaxPrice())
+                .possibleMinPrice(parsePrice(request.getRawQuery(), MIN_PRICE_PATTERN, true))
+                .possibleMaxPrice(resolvePossibleMaxPrice(request))
                 .minPackageGrams(resolveMinPackageGrams(request))
                 .maxPackageGrams(resolveMaxPackageGrams(request))
                 .canonicalCategoryKeys(List.of())
@@ -529,8 +521,8 @@ public class StructuredSearchProcessor {
                 .hardMatchTerms(resolveHardMatchTerms(intentStructure, request))
                 .qualifierTerms(resolveQualifierTerms(intentStructure, request))
                 .exactTerms(exactTerms)
-                .semanticTerms(semanticTerms)
-                .synonyms(resolveArray(intentStructure.path("semantic").path("synonyms")))
+                .expandedTerms(expandedTerms)
+                .aiSynonyms(resolveArray(intentStructure.path("semantic").path("synonyms")))
                 .relatedTerms(relatedTerms)
                 .mustHave(resolveArray(intentStructure.path("constraints").path("must_have")))
                 .niceToHave(resolveArray(intentStructure.path("constraints").path("nice_to_have")))
@@ -562,8 +554,8 @@ public class StructuredSearchProcessor {
         score += scoreTerms(document, plan.getExactTerms(), TITLE_MATCH_SCORE, TOKEN_MATCH_SCORE, BODY_MATCH_SCORE);
         score += scoreTerms(document, plan.getMustHave(), MUST_HAVE_SCORE, MUST_HAVE_SCORE, MUST_HAVE_SCORE);
         score += scoreTerms(document, plan.getCategoryAliases(), CATEGORY_MATCH_SCORE, CATEGORY_MATCH_SCORE, CATEGORY_MATCH_SCORE);
-        score += scoreTerms(document, plan.getSemanticTerms(), TITLE_MATCH_SCORE, TOKEN_MATCH_SCORE, BODY_MATCH_SCORE);
-        score += scoreTerms(document, plan.getSynonyms(), CATEGORY_MATCH_SCORE, CATEGORY_MATCH_SCORE, NICE_TO_HAVE_SCORE);
+        score += scoreTerms(document, plan.getExpandedTerms(), TITLE_MATCH_SCORE, TOKEN_MATCH_SCORE, BODY_MATCH_SCORE);
+        score += scoreTerms(document, plan.getAiSynonyms(), CATEGORY_MATCH_SCORE, CATEGORY_MATCH_SCORE, NICE_TO_HAVE_SCORE);
         score += scoreTerms(document, plan.getNiceToHave(), NICE_TO_HAVE_SCORE, NICE_TO_HAVE_SCORE, NICE_TO_HAVE_SCORE);
         score += scoreStructuredAttributes(document, plan);
         score = score - pricePenalty(document, plan, warnings) - cityPenalty(document, plan, warnings);
@@ -681,9 +673,14 @@ public class StructuredSearchProcessor {
     }
 
     private Integer pricePenalty(SearchDocument document, SearchPlan plan, List<String> warnings) {
-        if (document.getPrice() == null && (plan.getMinPrice() != null || plan.getMaxPrice() != null)) {
-            warnings.add("PRICE_UNKNOWN");
-            return OVER_BUDGET_PENALTY;
+        boolean hasHardFilter = plan.getMinPrice() != null || plan.getMaxPrice() != null;
+        boolean hasSoftSignal = plan.getPossibleMinPrice() != null || plan.getPossibleMaxPrice() != null;
+        if (document.getPrice() == null && (hasHardFilter || hasSoftSignal)) {
+            if (hasHardFilter) {
+                warnings.add("PRICE_UNKNOWN");
+                return OVER_BUDGET_PENALTY;
+            }
+            return 0;
         }
         if (document.getPrice() == null) {
             return 0;
@@ -696,22 +693,41 @@ public class StructuredSearchProcessor {
             warnings.add("UNDER_BUDGET");
             return OVER_BUDGET_PENALTY;
         }
-        return 0;
+        int softAdjustment = 0;
+        if (plan.getPossibleMaxPrice() != null && document.getPrice().compareTo(plan.getPossibleMaxPrice()) > 0) {
+            softAdjustment += 10;
+        }
+        if (plan.getPossibleMinPrice() != null && document.getPrice().compareTo(plan.getPossibleMinPrice()) < 0) {
+            softAdjustment += 10;
+        }
+        return softAdjustment;
     }
 
     private Integer cityPenalty(SearchDocument document, SearchPlan plan, List<String> warnings) {
-        if (plan.getCity().isBlank()) {
+        boolean hasHardCity = !plan.getCity().isBlank();
+        boolean hasSoftCity = !plan.getPossibleCity().isBlank();
+        if (!hasHardCity && !hasSoftCity) {
             return 0;
         }
         if (document.getBranch() == null || document.getBranch().getCity() == null) {
-            warnings.add("CITY_UNKNOWN");
-            return WRONG_CITY_PENALTY;
-        }
-        if (contains(normalize(document.getBranch().getCity().getName()), plan.getCity())) {
+            if (hasHardCity) {
+                warnings.add("CITY_UNKNOWN");
+                return WRONG_CITY_PENALTY;
+            }
             return 0;
         }
-        warnings.add("WRONG_CITY");
-        return WRONG_CITY_PENALTY;
+        String docCity = normalize(document.getBranch().getCity().getName());
+        if (hasHardCity) {
+            if (contains(docCity, plan.getCity())) {
+                return 0;
+            }
+            warnings.add("WRONG_CITY");
+            return WRONG_CITY_PENALTY;
+        }
+        if (hasSoftCity && contains(docCity, plan.getPossibleCity())) {
+            return -5;
+        }
+        return 0;
     }
 
     private String resolveSectionType(List<String> warnings, Integer score) {
@@ -776,7 +792,7 @@ public class StructuredSearchProcessor {
 
     private SearchDocumentType resolveStructuredItemType(JsonNode intentStructure) {
         String requestType = intentStructure.path("request_type").asText("");
-        if ("PRODUCT_SEARCH".equalsIgnoreCase(requestType)) {
+        if ("ITEM_SEARCH".equalsIgnoreCase(requestType) || "PRODUCT_SEARCH".equalsIgnoreCase(requestType)) {
             return SearchDocumentType.ITEM;
         }
         if ("SERVICE_SEARCH".equalsIgnoreCase(requestType)) {
@@ -789,12 +805,15 @@ public class StructuredSearchProcessor {
         if (plan.getItemType() != null) {
             return List.of(plan.getItemType());
         }
-        return List.of(SearchDocumentType.ITEM, SearchDocumentType.SERVICE);
+        return List.of(SearchDocumentType.ITEM, SearchDocumentType.SERVICE,
+                SearchDocumentType.BUSINESS, SearchDocumentType.UNIQUE_OFFER);
     }
 
     private List<String> collectCategoryInputs(JsonNode intentStructure, SearchIntentStructureRequest request) {
         Set<String> terms = new LinkedHashSet<>();
         addTerm(terms, request.getSelectedCategory());
+        addTerm(terms, intentStructure.path("item").path("primary_category").asText(""));
+        addTerm(terms, intentStructure.path("item").path("product_type").asText(""));
         addTerm(terms, intentStructure.path("product").path("primary_category").asText(""));
         addTerm(terms, intentStructure.path("product").path("product_type").asText(""));
         addTerm(terms, intentStructure.path("service").path("primary_category").asText(""));
@@ -805,60 +824,15 @@ public class StructuredSearchProcessor {
     private List<String> resolveHardMatchTerms(JsonNode intentStructure, SearchIntentStructureRequest request) {
         Set<String> terms = new LinkedHashSet<>();
         String sourceText = normalize(request.getRawQuery());
-        addKnownIntentTerms(terms, sourceText);
         addFeaturePhrase(terms, request.getRawQuery());
         return terms.stream().toList();
     }
 
-    private void addKnownIntentTerms(Set<String> terms, String sourceText) {
-        if (containsAny(sourceText, List.of("смартфон", "smartphone", "iphone", "айфон", "galaxy"))) {
-            addTerms(terms, List.of("смартфон", "smartphone", "iphone", "galaxy"));
-        }
-        if (containsAny(sourceText, List.of("ноутбук", "laptop", "macbook"))) {
-            addTerms(terms, List.of("ноутбук", "laptop", "macbook"));
-        }
-        if (containsAny(sourceText, List.of("пылесос", "vacuum", "dyson"))) {
-            addTerms(terms, List.of("пылесос", "vacuum", "dyson"));
-        }
-        if (containsAny(sourceText, List.of("наушник", "headphone", "sony wh"))) {
-            addTerms(terms, List.of("наушник", "headphone"));
-        }
-        if (containsAny(sourceText, List.of("маникюр", "manicure", "ногти", "гель-лак"))) {
-            addTerms(terms, List.of("маникюр", "manicure", "ногти", "гель-лак"));
-        }
-        if (containsAny(sourceText, List.of("стрижка", "haircut", "подстричь"))) {
-            addTerms(terms, List.of("стрижка", "haircut"));
-        }
-        if (containsAny(sourceText, List.of("окрашивание", "coloring", "цвет волос"))) {
-            addTerms(terms, List.of("окрашивание", "coloring"));
-        }
-    }
-
-    private void addConcreteIntentTerm(Set<String> terms, String value) {
-        String normalized = normalize(value);
-        if (normalized.isBlank() || isBroadIntentTerm(normalized)) {
-            return;
-        }
-        addTerm(terms, normalized);
-    }
-
-    private Boolean isBroadIntentTerm(String value) {
-        return List.of("product", "service", "electronics", "beauty_services", "услуги красоты",
-                "бытовая техника", "товар", "услуга").contains(value);
-    }
-
     private void addFeaturePhrase(Set<String> terms, String rawQuery) {
         String normalized = normalize(rawQuery);
-        if (!containsKnownCommercialType(normalized) && normalized.split("\\s+").length > 1) {
+        if (!searchTermEnricher.isKnownCommercialType(normalized) && normalized.split("\\s+").length > 1) {
             addTerm(terms, removePriceWording(normalized));
         }
-    }
-
-    private Boolean containsKnownCommercialType(String value) {
-        return searchTermEnricher.isKnownCommercialType(value)
-                || containsAny(value, List.of("смартфон", "smartphone", "iphone", "айфон", "galaxy", "ноутбук",
-                "laptop", "macbook", "пылесос", "vacuum", "dyson", "наушник", "headphone",
-                "маникюр", "manicure", "стрижка", "haircut", "окрашивание"));
     }
 
     private List<String> resolveQualifierTerms(JsonNode intentStructure, SearchIntentStructureRequest request) {
@@ -880,6 +854,8 @@ public class StructuredSearchProcessor {
     private List<String> resolveExactTerms(JsonNode intentStructure, SearchIntentStructureRequest request) {
         Set<String> terms = new LinkedHashSet<>();
         addTerm(terms, removePriceWording(request.getRawQuery()));
+        addTerm(terms, intentStructure.path("item").path("normalized_product_name").asText(""));
+        addTerm(terms, intentStructure.path("item").path("product_type").asText(""));
         addTerm(terms, intentStructure.path("product").path("normalized_product_name").asText(""));
         addTerm(terms, intentStructure.path("product").path("product_type").asText(""));
         addTerm(terms, intentStructure.path("service").path("service_type").asText(""));
@@ -887,7 +863,7 @@ public class StructuredSearchProcessor {
         return terms.stream().toList();
     }
 
-    private List<String> resolveSemanticTerms(JsonNode intentStructure) {
+    private List<String> resolveExpandedTerms(JsonNode intentStructure) {
         Set<String> terms = new LinkedHashSet<>();
         addTerm(terms, intentStructure.path("semantic").path("semantic_query").asText(""));
         addTerm(terms, intentStructure.path("service").path("desired_result").asText(""));
@@ -902,16 +878,9 @@ public class StructuredSearchProcessor {
         return terms.stream().toList();
     }
 
-    private BigDecimal resolveMinPrice(JsonNode intentStructure, SearchIntentStructureRequest request) {
-        if (request.getExplicitMinPrice() != null) {
-            return request.getExplicitMinPrice();
-        }
-        return parsePrice(request.getRawQuery(), MIN_PRICE_PATTERN, true);
-    }
-
-    private BigDecimal resolveMaxPrice(JsonNode intentStructure, SearchIntentStructureRequest request) {
+    private BigDecimal resolvePossibleMaxPrice(SearchIntentStructureRequest request) {
         if (request.getExplicitMaxPrice() != null) {
-            return request.getExplicitMaxPrice();
+            return null;
         }
         BigDecimal rangeMax = parseRangeMaxPrice(request.getRawQuery());
         if (rangeMax != null) {
@@ -926,13 +895,6 @@ public class StructuredSearchProcessor {
 
     private BigDecimal resolveMaxPackageGrams(SearchIntentStructureRequest request) {
         return parsePackageConstraint(request.getRawQuery(), MAX_PACKAGE_PATTERN);
-    }
-
-    private BigDecimal resolveJsonPrice(JsonNode node) {
-        if (node == null || node.isMissingNode() || node.isNull() || !node.isNumber()) {
-            return null;
-        }
-        return node.decimalValue();
     }
 
     private BigDecimal parseRangeMaxPrice(String query) {
@@ -1166,7 +1128,7 @@ public class StructuredSearchProcessor {
         if ("SERVICE".equals(type)) {
             return "ServiceCard";
         }
-        return "ProductCard";
+        return "ItemCard";
     }
 
     private String formatDistance(Integer meters) {
@@ -1184,8 +1146,8 @@ public class StructuredSearchProcessor {
         Map<String, Object> attrs = new HashMap<>();
         String requestType = intentStructure.path("request_type").asText("");
         JsonNode attrNode;
-        if ("PRODUCT_SEARCH".equals(requestType)) {
-            attrNode = intentStructure.path("product").path("attributes");
+        if ("ITEM_SEARCH".equals(requestType) || "PRODUCT_SEARCH".equals(requestType)) {
+            attrNode = intentStructure.path("item").path("attributes");
         } else if ("SERVICE_SEARCH".equals(requestType)) {
             attrNode = intentStructure.path("service").path("attributes");
         } else {

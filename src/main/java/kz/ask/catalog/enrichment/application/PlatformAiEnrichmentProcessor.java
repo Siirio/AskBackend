@@ -79,7 +79,7 @@ public class PlatformAiEnrichmentProcessor {
                 return;
             }
             apply(item, result);
-            searchOutboxService.republish(SearchAggregateType.PRODUCT_OFFER, item.getId(),
+            searchOutboxService.republish(SearchAggregateType.ITEM, item.getId(),
                     SearchEventType.UPSERT, now.toEpochMilli());
         });
         return response(results.size());
@@ -103,7 +103,7 @@ public class PlatformAiEnrichmentProcessor {
                 return;
             }
             apply(service, result);
-            searchOutboxService.republish(SearchAggregateType.SERVICE_BRANCH_OFFER, service.getId(),
+            searchOutboxService.republish(SearchAggregateType.SERVICE, service.getId(),
                     SearchEventType.UPSERT, now.toEpochMilli());
         });
         return response(results.size());

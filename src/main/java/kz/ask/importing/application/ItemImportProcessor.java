@@ -221,7 +221,7 @@ public class ItemImportProcessor {
         item.setModerationStatus(ProductModerationStatus.PENDING);
         item.setAttributes(attributes(data));
         Item saved = productRepository.save(item);
-        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, saved.getId(),
+        searchOutboxService.publish(SearchAggregateType.ITEM, saved.getId(),
                 SearchEventType.UPSERT, Instant.now().toEpochMilli());
     }
 
@@ -239,7 +239,7 @@ public class ItemImportProcessor {
                 .isActive(Boolean.TRUE)
                 .attributes(attributes(data))
                 .build());
-        searchOutboxService.publish(SearchAggregateType.SERVICE_BRANCH_OFFER, saved.getId(),
+        searchOutboxService.publish(SearchAggregateType.SERVICE, saved.getId(),
                 SearchEventType.UPSERT, Instant.now().toEpochMilli());
     }
 

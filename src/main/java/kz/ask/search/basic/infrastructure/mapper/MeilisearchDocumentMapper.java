@@ -1,6 +1,5 @@
 package kz.ask.search.basic.infrastructure.mapper;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +37,9 @@ public class MeilisearchDocumentMapper {
                 document.getDocumentType().name(),
                 copy(document.getVerifiedAttributes()),
                 copy(document.getAiAttributes()),
-                Instant.now());
+                document.getAvailabilityStatus() != null ? document.getAvailabilityStatus().name() : "UNKNOWN",
+                document.getProjectionVersion(),
+                null);
     }
 
     private Map<String, Object> copy(Map<String, Object> attributes) {

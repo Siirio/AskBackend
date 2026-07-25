@@ -13,10 +13,13 @@ public class SearchPlan {
 
     private SearchDocumentType itemType;
     private String city;
+    private String possibleCity;
     private String userSelectedCategory;
     private String sort;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private BigDecimal possibleMinPrice;
+    private BigDecimal possibleMaxPrice;
     private BigDecimal minPackageGrams;
     private BigDecimal maxPackageGrams;
     private List<String> canonicalCategoryKeys;
@@ -24,8 +27,8 @@ public class SearchPlan {
     private List<String> hardMatchTerms;
     private List<String> qualifierTerms;
     private List<String> exactTerms;
-    private List<String> semanticTerms;
-    private List<String> synonyms;
+    private List<String> expandedTerms;
+    private List<String> aiSynonyms;
     private List<String> relatedTerms;
     private List<String> mustHave;
     private List<String> niceToHave;

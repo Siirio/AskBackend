@@ -1,7 +1,6 @@
 package kz.ask.search.basic.infrastructure.repository;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,14 +37,29 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
             """)
     List<SearchDocument> findAllByIdIn(@Param("ids") Collection<UUID> ids);
 
-    List<SearchDocument> findByDocumentTypeAndAggregateIdIn(SearchDocumentType documentType,
-                                                             Collection<UUID> aggregateIds);
+    @Query(value = """
+        select nextval('search_projection_version_seq')
+        """, nativeQuery = true)
+    Long nextVersion();
 
     @Query("""
         select distinct d from SearchDocument d
         left join fetch d.business
         left join fetch d.branch b
         left join fetch b.city
+        left join fetch d.tokens
+        where d.documentType in :types and d.aggregateId in :aggregateIds
+        """)
+    List<SearchDocument> findAllByDocumentTypeAndAggregateIdIn(
+            @Param("types") List<SearchDocumentType> types,
+            @Param("aggregateIds") Collection<UUID> aggregateIds);
+
+    @Query("""
+        select distinct d from SearchDocument d
+        left join fetch d.business
+        left join fetch d.branch b
+        left join fetch b.city
+        left join fetch d.tokens
         where (:afterId is null or d.id > :afterId)
         order by d.id
         """)
@@ -78,17 +92,33 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                                         @Param("city") String city,
                                         @Param("candidateLimit") Integer candidateLimit);
 
-    @Query("""
-        select distinct d from SearchDocument d
-        left join fetch d.business
-        left join fetch d.branch b
-        left join fetch b.city
-        left join fetch d.tokens
-        where d.documentType in :types
-        and d.indexedAt is null
-        order by d.updatedAt desc
-        """)
-    List<SearchDocument> findUnindexedByType(@Param("types") List<SearchDocumentType> types, Pageable pageable);
+    @Query(value = """
+        select d.id
+        from search_document d
+        left join business_branch branch on branch.id = d.branch_id
+        left join city on city.id = branch.city_id
+        where d.document_type in (:documentTypes)
+          and d.projection_version > coalesce(d.indexed_version, 0)
+          and (:query = ''
+               or d.search_vector @@ websearch_to_tsquery('simple', :query)
+               or d.normalized_title % :query)
+          and (:category = '' or lower(coalesce(d.category_path, d.category_label, '')) like concat('%', :category, '%'))
+          and (:minPrice is null or d.price >= :minPrice)
+          and (:maxPrice is null or d.price <= :maxPrice)
+          and (:city = '' or lower(coalesce(city.name, '')) = :city)
+        order by
+          ts_rank_cd(d.search_vector, websearch_to_tsquery('simple', :query)) desc,
+          similarity(d.normalized_title, :query) desc,
+          d.id
+        limit :candidateLimit
+        """, nativeQuery = true)
+    List<UUID> findDirtyCandidateIds(@Param("documentTypes") List<String> documentTypes,
+                                     @Param("query") String query,
+                                     @Param("category") String category,
+                                     @Param("minPrice") BigDecimal minPrice,
+                                     @Param("maxPrice") BigDecimal maxPrice,
+                                     @Param("city") String city,
+                                     @Param("candidateLimit") Integer candidateLimit);
 
     @Query("""
         select distinct d from SearchDocument d
@@ -96,22 +126,11 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         left join fetch d.branch b
         left join fetch b.city
         left join fetch d.tokens
-        where d.documentType in :types and d.aggregateId in :aggregateIds
+        where d.documentType = :documentType
+        and (:afterId is null or d.aggregateId > :afterId)
+        order by d.aggregateId
         """)
-    List<SearchDocument> findAllByDocumentTypeAndAggregateIdIn(
-            @Param("types") List<SearchDocumentType> types,
-            @Param("aggregateIds") Collection<UUID> aggregateIds);
-
-    @Query("""
-        select distinct d from SearchDocument d
-        left join fetch d.business
-        left join fetch d.branch b
-        left join fetch b.city
-        left join fetch d.tokens
-        where d.documentType in :types
-        and (d.indexedAt is null or (d.projectionVersion is not null and d.indexedAt is not null
-             and function('date_part', 'epoch', d.indexedAt) * 1000 < cast(d.projectionVersion as double precision)))
-        order by d.updatedAt desc
-        """)
-    List<SearchDocument> findDirtyProjectionsByType(@Param("types") List<SearchDocumentType> types, Pageable pageable);
+    List<SearchDocument> findReconciliationBatch(@Param("documentType") SearchDocumentType documentType,
+                                                  @Param("afterId") UUID afterId,
+                                                  Pageable pageable);
 }

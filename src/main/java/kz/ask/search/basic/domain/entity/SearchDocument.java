@@ -119,4 +119,7 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(name = "projection_version", nullable = false)
     private Long projectionVersion;
 
+    @Column(name = "indexed_version")
+    private Long indexedVersion;
+
 }

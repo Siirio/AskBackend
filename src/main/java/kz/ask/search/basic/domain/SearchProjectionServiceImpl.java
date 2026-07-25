@@ -69,8 +69,10 @@ public class SearchProjectionServiceImpl implements SearchProjectionService {
 
     private SearchDocumentType toDocumentType(kz.ask.search.basic.domain.enums.SearchAggregateType aggregateType) {
         return switch (aggregateType) {
-            case PRODUCT_OFFER -> SearchDocumentType.ITEM;
-            case SERVICE_BRANCH_OFFER -> SearchDocumentType.SERVICE;
+            case ITEM -> SearchDocumentType.ITEM;
+            case SERVICE -> SearchDocumentType.SERVICE;
+            case BUSINESS -> SearchDocumentType.BUSINESS;
+            case UNIQUE_OFFER -> SearchDocumentType.UNIQUE_OFFER;
         };
     }
 }

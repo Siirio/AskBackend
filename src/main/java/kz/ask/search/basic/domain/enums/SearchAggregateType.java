@@ -1,6 +1,8 @@
 package kz.ask.search.basic.domain.enums;
 
 public enum SearchAggregateType {
-    PRODUCT_OFFER,
-    SERVICE_BRANCH_OFFER
+    ITEM,
+    SERVICE,
+    BUSINESS,
+    UNIQUE_OFFER
 }

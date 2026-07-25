@@ -38,7 +38,7 @@ public class DeterministicSearchIntentStructurer {
         semantic.putArray("synonyms");
         semantic.putArray("related_terms");
 
-        root.putObject("product");
+        root.putObject("item");
         root.putObject("service");
         root.putObject("price");
         ObjectNode constraints = root.putObject("constraints");
@@ -52,8 +52,8 @@ public class DeterministicSearchIntentStructurer {
     }
 
     private String resolveRequestType(SearchIntentStructureRequest request) {
-        if ("PRODUCT".equalsIgnoreCase(request.getSelectedMode())) {
-            return "PRODUCT_SEARCH";
+        if ("ITEM".equalsIgnoreCase(request.getSelectedMode()) || "PRODUCT".equalsIgnoreCase(request.getSelectedMode())) {
+            return "ITEM_SEARCH";
         }
         if ("SERVICE".equalsIgnoreCase(request.getSelectedMode())) {
             return "SERVICE_SEARCH";
@@ -65,7 +65,7 @@ public class DeterministicSearchIntentStructurer {
             return "SERVICE_SEARCH";
         }
         if (product && !service) {
-            return "PRODUCT_SEARCH";
+            return "ITEM_SEARCH";
         }
         return "GENERAL_SEARCH";
     }

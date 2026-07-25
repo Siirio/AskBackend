@@ -1,15 +1,12 @@
 package kz.ask.moderation.application;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.offer.item.domain.entity.Item;
-
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
-
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
@@ -29,12 +26,13 @@ import kz.ask.platform.domain.enums.ModerationActionType;
 import kz.ask.platform.domain.enums.ModerationStatus;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
-import kz.ask.search.basic.domain.SearchableItemSource;
+import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
+import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
-
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.ConflictException;
@@ -56,6 +54,7 @@ public class ModerationProcessor {
     private final ProductRepository productRepository;
     private final SearchDocumentService searchDocumentService;
     private final SearchOutboxService searchOutboxService;
+    private final SearchProjectionComposer searchProjectionComposer;
     private final SignificantEventService significantEventService;
     private final ModerationMapper moderationMapper;
     private final ItemMapper itemMapper;
@@ -118,15 +117,7 @@ public class ModerationProcessor {
                 : ProductModerationStatus.APPROVED;
         item.setModerationStatus(newStatus);
         productRepository.save(item);
-        if (newStatus == ProductModerationStatus.APPROVED && Boolean.TRUE.equals(item.getIsActive())) {
-            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
-            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
-                    SearchEventType.UPSERT, version);
-        } else {
-            searchDocumentService.deleteItemProjection(productId);
-            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
-                    SearchEventType.DELETE, Instant.now().toEpochMilli());
-        }
+        syncSearchProjection(item, newStatus);
 
         ModerationAction action = new ModerationAction();
         moderationMapper.applyCreateFields(action, ModerationTargetType.PRODUCT, productId,
@@ -140,14 +131,6 @@ public class ModerationProcessor {
             significantEventService.record(principal.getUserId(),
                     SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
                     item.getBusiness().getId(), productId, Map.of());
-        }
-    }
-
-    private void requirePermission(AskPrincipal principal, Permission permission) {
-        PlatformMembershipDto membership =
-                platformMembershipService.findActiveByUser(principal.getUserId());
-        if (membership == null || !membership.getPermissions().contains(permission)) {
-            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }
 
@@ -170,11 +153,7 @@ public class ModerationProcessor {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
         item.setModerationStatus(ProductModerationStatus.APPROVED);
         productRepository.save(item);
-        if (Boolean.TRUE.equals(item.getIsActive())) {
-            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
-            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
-                    SearchEventType.UPSERT, version);
-        }
+        syncSearchProjection(item, ProductModerationStatus.APPROVED);
     }
 
     @Transactional
@@ -188,9 +167,9 @@ public class ModerationProcessor {
         item.setModerationStatus(ProductModerationStatus.REJECTED);
         item.setModerationNote(request.getReason());
         productRepository.save(item);
-        searchDocumentService.deleteItemProjection(productId);
-        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
-                SearchEventType.DELETE, Instant.now().toEpochMilli());
+        Long version = searchDocumentService.delete(SearchDocumentType.ITEM, productId);
+        searchOutboxService.publish(SearchAggregateType.ITEM, productId,
+                SearchEventType.DELETE, version);
         significantEventService.record(principal.getUserId(),
                 SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
                 item.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
@@ -208,6 +187,45 @@ public class ModerationProcessor {
         return moderationMapper.toModerationActionResponse(moderationActionRepository.save(action));
     }
 
+    private void syncSearchProjection(Item item, ProductModerationStatus newStatus) {
+        UUID aggregateId = item.getId();
+        boolean searchable = Boolean.TRUE.equals(item.getIsActive())
+                && newStatus == ProductModerationStatus.APPROVED;
+        if (searchable) {
+            SearchDocumentDto projection = searchProjectionComposer.composeItem(
+                    aggregateId,
+                    item.getBusiness().getId(),
+                    item.getBranch() != null ? item.getBranch().getId() : null,
+                    item.getName(),
+                    item.getDescription(),
+                    item.getCategoryLabel(),
+                    item.getBusiness().getName(),
+                    item.getBranch() != null ? item.getBranch().getName() : null,
+                    item.getPrice(),
+                    null,
+                    item.getTags(),
+                    item.getAttributes(),
+                    item.getBranch() != null ? item.getBranch().getLatitude() : null,
+                    item.getBranch() != null ? item.getBranch().getLongitude() : null,
+                    item.getIsActive());
+            Long version = searchDocumentService.upsert(projection);
+            searchOutboxService.publish(SearchAggregateType.ITEM, aggregateId,
+                    SearchEventType.UPSERT, version);
+        } else {
+            Long version = searchDocumentService.delete(SearchDocumentType.ITEM, aggregateId);
+            searchOutboxService.publish(SearchAggregateType.ITEM, aggregateId,
+                    SearchEventType.DELETE, version);
+        }
+    }
+
+    private void requirePermission(AskPrincipal principal, Permission permission) {
+        PlatformMembershipDto membership =
+                platformMembershipService.findActiveByUser(principal.getUserId());
+        if (membership == null || !membership.getPermissions().contains(permission)) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
     private Permission resolvePermission(ModerationTargetType targetType) {
         return switch (targetType) {
             case PRODUCT -> Permission.MODERATE_ITEMS;
@@ -218,25 +236,6 @@ public class ModerationProcessor {
         };
     }
 
-    private SearchableItemSource buildSearchableItemSource(Item item) {
-        return SearchableItemSource.builder()
-                .itemId(item.getId())
-                .businessId(item.getBusiness().getId())
-                .branchId(item.getBranch() != null ? item.getBranch().getId() : null)
-                .name(item.getName())
-                .description(item.getDescription())
-                .categoryLabel(item.getCategoryLabel())
-                .businessName(item.getBusiness().getName())
-                .branchName(item.getBranch() != null ? item.getBranch().getName() : null)
-                .price(item.getPrice())
-                .tags(item.getTags())
-                .attributes(item.getAttributes())
-                .latitude(item.getBranch() != null ? item.getBranch().getLatitude() : null)
-                .longitude(item.getBranch() != null ? item.getBranch().getLongitude() : null)
-                .active(Boolean.TRUE.equals(item.getIsActive()))
-                .build();
-    }
-
     private ModerationStatus toModerationStatus(ModerationActionType action) {
         return switch (action) {
             case BLOCK -> ModerationStatus.BANNED;
@@ -245,5 +244,4 @@ public class ModerationProcessor {
             case FLAG -> ModerationStatus.BEING_DISCUSSED;
         };
     }
-
 }

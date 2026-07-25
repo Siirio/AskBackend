@@ -175,9 +175,9 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         if (!exactTerm.isBlank()) {
             return exactTerm;
         }
-        String semanticTerm = firstTerm(plan.getSemanticTerms());
-        if (!semanticTerm.isBlank()) {
-            return semanticTerm;
+        String expandedTerm = firstTerm(plan.getExpandedTerms());
+        if (!expandedTerm.isBlank()) {
+            return expandedTerm;
         }
         return firstTerm(plan.getHardMatchTerms());
     }
@@ -282,7 +282,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put("businessName", nullToEmpty(doc.getBusinessName()));
         map.put("branchName", nullToEmpty(doc.getBranchName()));
         map.put("tokens", doc.getTokens() != null ? doc.getTokens() : List.of());
-        map.put(FIELD_PRICE, doc.getPrice() != null ? doc.getPrice().doubleValue() : 0);
+        map.put(FIELD_PRICE, doc.getPrice() != null ? doc.getPrice().doubleValue() : null);
         map.put("currency", nullToEmpty(doc.getCurrency()));
         map.put("latitude", doc.getLatitude());
         map.put("longitude", doc.getLongitude());
@@ -292,8 +292,9 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                 ? new HashMap<>(doc.getVerifiedAttributes()) : new HashMap<>());
         map.put(FIELD_AI_ATTRIBUTES, doc.getAiAttributes() != null
                 ? new HashMap<>(doc.getAiAttributes()) : new HashMap<>());
-        map.put("availabilityStatus", "UNKNOWN");
-        map.put(FIELD_SYNCED_AT, doc.getSyncedAt() != null ? doc.getSyncedAt().toString() : Instant.now().toString());
+        map.put("availabilityStatus", nullToEmpty(doc.getAvailabilityStatus()));
+        map.put(FIELD_SYNCED_AT, doc.getSyncedAt() != null ? doc.getSyncedAt().toString() : null);
+        map.put("projectionVersion", doc.getProjectionVersion());
         return map;
     }
 

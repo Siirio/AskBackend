@@ -1,10 +1,8 @@
 package kz.ask.offer.item.application;
 
-import java.time.Instant;
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
-import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.business.branch.infrastructure.repository.BusinessBranchRepository;
 import kz.ask.business.category.domain.CategoryService;
 import kz.ask.business.category.domain.entity.Category;
@@ -24,10 +22,12 @@ import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
+import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
-import kz.ask.search.basic.domain.SearchableItemSource;
+import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
+import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -55,6 +55,7 @@ public class BusinessProductProcessor {
     private final BusinessBranchRepository businessBranchRepository;
     private final SearchOutboxService searchOutboxService;
     private final SearchDocumentService searchDocumentService;
+    private final SearchProjectionComposer searchProjectionComposer;
     private final ItemMapper itemMapper;
 
     @Transactional(readOnly = true)
@@ -107,7 +108,7 @@ public class BusinessProductProcessor {
         applyAutoModeration(item);
         Item saved = productRepository.save(item);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
-        upsertSearchProjection(saved, dto);
+        syncSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
     }
 
@@ -125,15 +126,13 @@ public class BusinessProductProcessor {
         }
         Category category = (req.getCategoryId() != null || req.getCategoryName() != null)
                 ? resolveCategory(req.getCategoryId(), req.getCategoryName()) : null;
-        BusinessBranch branch = null;
         if (req.getBranchId() != null) {
             requireBranch(businessId, req.getBranchId());
-            branch = businessBranchRepository.getReferenceById(req.getBranchId());
         }
-        itemMapper.applyUpdateFields(item, req, branch, category);
+        itemMapper.applyUpdateFields(item, req, category);
         Item saved = productRepository.save(item);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
-        upsertSearchProjection(saved, dto);
+        syncSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
     }
 
@@ -145,10 +144,40 @@ public class BusinessProductProcessor {
         UUID branchId = item.getBranch() == null ? null : item.getBranch().getId();
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         UUID productId = item.getId();
-        searchDocumentService.deleteItemProjection(productId);
+        Long version = searchDocumentService.delete(SearchDocumentType.ITEM, productId);
         productRepository.delete(item);
-        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
-                SearchEventType.DELETE, Instant.now().toEpochMilli());
+        searchOutboxService.publish(SearchAggregateType.ITEM, productId,
+                SearchEventType.DELETE, version);
+    }
+
+    private void syncSearchProjection(Item item, ProductOfferDto dto) {
+        boolean searchable = Boolean.TRUE.equals(dto.getIsActive())
+                && dto.getModerationStatus() == ProductModerationStatus.APPROVED;
+        if (searchable) {
+            SearchDocumentDto projection = searchProjectionComposer.composeItem(
+                    item.getId(),
+                    item.getBusiness().getId(),
+                    item.getBranch() != null ? item.getBranch().getId() : null,
+                    item.getName(),
+                    item.getDescription(),
+                    item.getCategoryLabel(),
+                    item.getBusiness().getName(),
+                    item.getBranch() != null ? item.getBranch().getName() : null,
+                    item.getPrice(),
+                    null,
+                    item.getTags(),
+                    item.getAttributes(),
+                    item.getBranch() != null ? item.getBranch().getLatitude() : null,
+                    item.getBranch() != null ? item.getBranch().getLongitude() : null,
+                    dto.getIsActive());
+            Long version = searchDocumentService.upsert(projection);
+            searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(),
+                    SearchEventType.UPSERT, version);
+        } else {
+            Long version = searchDocumentService.delete(SearchDocumentType.ITEM, item.getId());
+            searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(),
+                    SearchEventType.DELETE, version);
+        }
     }
 
     private Category resolveCategory(UUID categoryId, String categoryName) {
@@ -187,38 +216,4 @@ public class BusinessProductProcessor {
         }
         item.setModerationStatus(ProductModerationStatus.APPROVED);
     }
-
-    private void upsertSearchProjection(Item item, ProductOfferDto dto) {
-        boolean searchable = Boolean.TRUE.equals(dto.getIsActive())
-                && dto.getModerationStatus() == ProductModerationStatus.APPROVED;
-        if (searchable) {
-            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
-            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
-                    SearchEventType.UPSERT, version);
-        } else {
-            searchDocumentService.deleteItemProjection(dto.getProductId());
-            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
-                    SearchEventType.DELETE, Instant.now().toEpochMilli());
-        }
-    }
-
-    private SearchableItemSource buildSearchableItemSource(Item item) {
-        return SearchableItemSource.builder()
-                .itemId(item.getId())
-                .businessId(item.getBusiness().getId())
-                .branchId(item.getBranch() != null ? item.getBranch().getId() : null)
-                .name(item.getName())
-                .description(item.getDescription())
-                .categoryLabel(item.getCategoryLabel())
-                .businessName(item.getBusiness().getName())
-                .branchName(item.getBranch() != null ? item.getBranch().getName() : null)
-                .price(item.getPrice())
-                .tags(item.getTags())
-                .attributes(item.getAttributes())
-                .latitude(item.getBranch() != null ? item.getBranch().getLatitude() : null)
-                .longitude(item.getBranch() != null ? item.getBranch().getLongitude() : null)
-                .active(Boolean.TRUE.equals(item.getIsActive()))
-                .build();
-    }
-
 }

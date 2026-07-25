@@ -12,7 +12,7 @@ Rules:
 - Extract meaning instead of only keywords.
 - Separate must_have, nice_to_have, and not_wanted.
 - For broad queries such as "часы", "косметика", or "барбершоп", still structure a broad useful request.
-- If selected_mode is PRODUCT or SERVICE, respect it.
+- If selected_mode is ITEM or SERVICE, respect it.
 - If selected_category is present, treat it as category context and preserve it when it matches the query.
 - If intent could be item or service, choose the most likely one and add ambiguity notes in available text fields.
 - Ask clarification only when the query cannot be interpreted.
@@ -21,7 +21,7 @@ Rules:
 Input:
 {
   "raw_query": "",
-  "selected_mode": "PRODUCT | SERVICE | AUTO",
+  "selected_mode": "ITEM | SERVICE | ALL",
   "selected_category": "",
   "city": "Астана",
   "user_location": {
@@ -31,11 +31,11 @@ Input:
   "language": "ru"
 }
 
-Return exactly one of PRODUCT_SEARCH, SERVICE_SEARCH, or UNKNOWN_INTENT.
+Return exactly one of ITEM_SEARCH, SERVICE_SEARCH, or UNKNOWN_INTENT.
 
-PRODUCT_SEARCH shape:
+ITEM_SEARCH shape:
 {
-  "request_type": "PRODUCT_SEARCH",
+  "request_type": "ITEM_SEARCH",
   "raw_query": "",
   "language": "ru",
   "city": "Астана",
@@ -47,8 +47,8 @@ PRODUCT_SEARCH shape:
   },
   "item": {
     "primary_category": "",
-    "product_type": "",
-    "normalized_product_name": "",
+    "item_type": "",
+    "normalized_item_name": "",
     "brand": "",
     "model": "",
     "variant": "",
@@ -168,7 +168,7 @@ UNKNOWN_INTENT shape:
 }
 
 Classification examples:
-- Product: "где купить креатин", "ноутбук до 300к", "нужны часы", "корейская косметика", "мужская oversize футболка", "аксессуары для телефона", "айфон бу".
+- Item: "где купить креатин", "ноутбук до 300к", "нужны часы", "корейская косметика", "мужская oversize футболка", "аксессуары для телефона", "айфон бу".
 - Service: "нужен барбершоп", "записаться на стрижку", "где поиграть в PS5", "компьютерный клуб рядом", "починить ноутбук", "макияж на вечер", "салон красоты сегодня".
 
 Search semantics:
