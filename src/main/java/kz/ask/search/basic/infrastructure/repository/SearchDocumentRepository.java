@@ -1,6 +1,7 @@
 package kz.ask.search.basic.infrastructure.repository;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -76,4 +77,41 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                                         @Param("maxPrice") BigDecimal maxPrice,
                                         @Param("city") String city,
                                         @Param("candidateLimit") Integer candidateLimit);
+
+    @Query("""
+        select distinct d from SearchDocument d
+        left join fetch d.business
+        left join fetch d.branch b
+        left join fetch b.city
+        left join fetch d.tokens
+        where d.documentType in :types
+        and d.indexedAt is null
+        order by d.updatedAt desc
+        """)
+    List<SearchDocument> findUnindexedByType(@Param("types") List<SearchDocumentType> types, Pageable pageable);
+
+    @Query("""
+        select distinct d from SearchDocument d
+        left join fetch d.business
+        left join fetch d.branch b
+        left join fetch b.city
+        left join fetch d.tokens
+        where d.documentType in :types and d.aggregateId in :aggregateIds
+        """)
+    List<SearchDocument> findAllByDocumentTypeAndAggregateIdIn(
+            @Param("types") List<SearchDocumentType> types,
+            @Param("aggregateIds") Collection<UUID> aggregateIds);
+
+    @Query("""
+        select distinct d from SearchDocument d
+        left join fetch d.business
+        left join fetch d.branch b
+        left join fetch b.city
+        left join fetch d.tokens
+        where d.documentType in :types
+        and (d.indexedAt is null or (d.projectionVersion is not null and d.indexedAt is not null
+             and function('date_part', 'epoch', d.indexedAt) * 1000 < cast(d.projectionVersion as double precision)))
+        order by d.updatedAt desc
+        """)
+    List<SearchDocument> findDirtyProjectionsByType(@Param("types") List<SearchDocumentType> types, Pageable pageable);
 }

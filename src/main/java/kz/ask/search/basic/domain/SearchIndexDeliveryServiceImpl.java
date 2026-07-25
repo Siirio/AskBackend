@@ -25,6 +25,10 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String deliver(SearchOutboxEventDto event, SearchProjectionResult projection) {
+        if (projection.getAction() == SearchProjectionAction.DELETE) {
+            meilisearchService.delete(event.getAggregateId());
+            return projection.getAction().name();
+        }
         lockRepository.lock(event.getAggregateId());
         SearchDocument document = searchDocumentRepository
                 .findProjectionByAggregate(projection.getDocumentType(), event.getAggregateId())
@@ -32,14 +36,11 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
         if (document == null) {
             return "Projection no longer exists";
         }
-        if (document.getUpdatedAt().toEpochMilli() > event.getAggregateVersion()) {
+        Long projectionVersion = document.getProjectionVersion();
+        if (projectionVersion != null && projectionVersion > event.getAggregateVersion()) {
             return "Projection advanced before index delivery";
         }
-        if (projection.getAction() == SearchProjectionAction.DELETE) {
-            meilisearchService.delete(document.getId());
-        } else {
-            meilisearchService.index(documentMapper.toIndexDocument(document));
-        }
+        meilisearchService.index(documentMapper.toIndexDocument(document));
         document.setIndexedAt(Instant.now());
         return projection.getAction().name();
     }

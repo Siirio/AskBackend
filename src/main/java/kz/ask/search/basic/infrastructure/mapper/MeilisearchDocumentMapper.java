@@ -17,7 +17,7 @@ public class MeilisearchDocumentMapper {
                 ? document.getBranch().getCity().getName()
                 : "";
         return new MeilisearchIndexDocument(
-                document.getId().toString(),
+                document.getAggregateId().toString(),
                 document.getAggregateId().toString(),
                 document.getTitle(),
                 document.getNormalizedTitle(),

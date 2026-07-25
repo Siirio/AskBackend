@@ -24,7 +24,9 @@ import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
+import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
+import kz.ask.search.basic.domain.SearchableItemSource;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
@@ -52,6 +54,7 @@ public class BusinessProductProcessor {
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
     private final SearchOutboxService searchOutboxService;
+    private final SearchDocumentService searchDocumentService;
     private final ItemMapper itemMapper;
 
     @Transactional(readOnly = true)
@@ -102,8 +105,9 @@ public class BusinessProductProcessor {
                 req);
         item.setModerationStatus(ProductModerationStatus.PENDING);
         applyAutoModeration(item);
-        ProductOfferDto dto = itemMapper.toProductOfferDto(productRepository.save(item));
-        publishSearchEvent(dto);
+        Item saved = productRepository.save(item);
+        ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
+        upsertSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
     }
 
@@ -127,8 +131,9 @@ public class BusinessProductProcessor {
             branch = businessBranchRepository.getReferenceById(req.getBranchId());
         }
         itemMapper.applyUpdateFields(item, req, branch, category);
-        ProductOfferDto dto = itemMapper.toProductOfferDto(productRepository.save(item));
-        publishSearchEvent(dto);
+        Item saved = productRepository.save(item);
+        ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
+        upsertSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
     }
 
@@ -140,6 +145,7 @@ public class BusinessProductProcessor {
         UUID branchId = item.getBranch() == null ? null : item.getBranch().getId();
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         UUID productId = item.getId();
+        searchDocumentService.deleteItemProjection(productId);
         productRepository.delete(item);
         searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
                 SearchEventType.DELETE, Instant.now().toEpochMilli());
@@ -179,15 +185,40 @@ public class BusinessProductProcessor {
             item.setModerationNote("Auto-rejected: prohibited category — " + prohibited);
             return;
         }
-        item.setModerationStatus(ProductModerationStatus.PENDING);
+        item.setModerationStatus(ProductModerationStatus.APPROVED);
     }
 
-    private void publishSearchEvent(ProductOfferDto dto) {
-        boolean visible = Boolean.TRUE.equals(dto.getIsActive())
+    private void upsertSearchProjection(Item item, ProductOfferDto dto) {
+        boolean searchable = Boolean.TRUE.equals(dto.getIsActive())
                 && dto.getModerationStatus() == ProductModerationStatus.APPROVED;
-        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
-                visible ? SearchEventType.UPSERT : SearchEventType.DELETE,
-                Instant.now().toEpochMilli());
+        if (searchable) {
+            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
+            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
+                    SearchEventType.UPSERT, version);
+        } else {
+            searchDocumentService.deleteItemProjection(dto.getProductId());
+            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, dto.getProductId(),
+                    SearchEventType.DELETE, Instant.now().toEpochMilli());
+        }
+    }
+
+    private SearchableItemSource buildSearchableItemSource(Item item) {
+        return SearchableItemSource.builder()
+                .itemId(item.getId())
+                .businessId(item.getBusiness().getId())
+                .branchId(item.getBranch() != null ? item.getBranch().getId() : null)
+                .name(item.getName())
+                .description(item.getDescription())
+                .categoryLabel(item.getCategoryLabel())
+                .businessName(item.getBusiness().getName())
+                .branchName(item.getBranch() != null ? item.getBranch().getName() : null)
+                .price(item.getPrice())
+                .tags(item.getTags())
+                .attributes(item.getAttributes())
+                .latitude(item.getBranch() != null ? item.getBranch().getLatitude() : null)
+                .longitude(item.getBranch() != null ? item.getBranch().getLongitude() : null)
+                .active(Boolean.TRUE.equals(item.getIsActive()))
+                .build();
     }
 
 }

@@ -125,4 +125,24 @@ public interface SearchOutboxEventRepository extends JpaRepository<SearchOutboxE
         where status = 'COMPLETED' and processed_at < :cutoff
         """, nativeQuery = true)
     int deleteCompletedBefore(@Param("cutoff") Instant cutoff);
+
+    @Query(value = """
+        select * from search_outbox_event
+        where status = :status
+        order by created_at
+        limit :batchSize
+        """, nativeQuery = true)
+    List<SearchOutboxEvent> findByStatus(@Param("status") String status,
+                                         @Param("batchSize") Integer batchSize);
+
+    @Modifying
+    @Query(value = """
+        update search_outbox_event
+        set status = 'COMPLETED', processed_at = :now, updated_at = :now,
+            last_error = :reason
+        where id = :id and status = 'DEAD'
+        """, nativeQuery = true)
+    int markDeadCompleted(@Param("id") UUID id,
+                          @Param("now") Instant now,
+                          @Param("reason") String reason);
 }

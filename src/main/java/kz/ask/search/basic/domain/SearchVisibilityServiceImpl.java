@@ -2,6 +2,7 @@ package kz.ask.search.basic.domain;
 
 import java.time.Instant;
 import java.util.UUID;
+import kz.ask.search.basic.domain.entity.SearchDocument;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SearchVisibilityServiceImpl implements SearchVisibilityService {
 
     private final SearchOutboxService searchOutboxService;
+    private final SearchDocumentService searchDocumentService;
 
     @Override
     @Transactional
@@ -26,8 +28,23 @@ public class SearchVisibilityServiceImpl implements SearchVisibilityService {
 
     @Override
     @Transactional
-    public void republishProductOffers(UUID productId) {
-        searchOutboxService.republish(SearchAggregateType.PRODUCT_OFFER, productId,
-                SearchEventType.UPSERT, Instant.now().toEpochMilli());
+    public void republishProductOffers(UUID productId, SearchEventType eventType) {
+        if (eventType == SearchEventType.UPSERT) {
+            SearchDocument projection = searchDocumentService.findByAggregate(
+                    kz.ask.search.basic.domain.enums.SearchDocumentType.ITEM, productId).orElse(null);
+            long version;
+            if (projection != null) {
+                projection.setProjectionVersion(Instant.now().toEpochMilli());
+                version = projection.getProjectionVersion();
+            } else {
+                version = Instant.now().toEpochMilli();
+            }
+            searchOutboxService.republish(SearchAggregateType.PRODUCT_OFFER, productId,
+                    SearchEventType.UPSERT, version);
+        } else {
+            searchDocumentService.deleteItemProjection(productId);
+            searchOutboxService.republish(SearchAggregateType.PRODUCT_OFFER, productId,
+                    SearchEventType.DELETE, Instant.now().toEpochMilli());
+        }
     }
 }

@@ -1,5 +1,6 @@
 package kz.ask.moderation.application;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,7 +29,11 @@ import kz.ask.platform.domain.enums.ModerationActionType;
 import kz.ask.platform.domain.enums.ModerationStatus;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.identity.authorization.domain.enums.Permission;
-import kz.ask.search.basic.domain.SearchVisibilityService;
+import kz.ask.search.basic.domain.SearchDocumentService;
+import kz.ask.search.basic.domain.SearchOutboxService;
+import kz.ask.search.basic.domain.SearchableItemSource;
+import kz.ask.search.basic.domain.enums.SearchAggregateType;
+import kz.ask.search.basic.domain.enums.SearchEventType;
 
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
@@ -49,7 +54,8 @@ public class ModerationProcessor {
     private final AppUserRepository appUserRepository;
     private final PlatformMembershipService platformMembershipService;
     private final ProductRepository productRepository;
-    private final SearchVisibilityService searchVisibilityService;
+    private final SearchDocumentService searchDocumentService;
+    private final SearchOutboxService searchOutboxService;
     private final SignificantEventService significantEventService;
     private final ModerationMapper moderationMapper;
     private final ItemMapper itemMapper;
@@ -107,10 +113,20 @@ public class ModerationProcessor {
         requirePermission(principal, Permission.MODERATE_ITEMS);
         Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
-        item.setModerationStatus(Boolean.TRUE.equals(hidden)
+        ProductModerationStatus newStatus = Boolean.TRUE.equals(hidden)
                 ? ProductModerationStatus.REJECTED
-                : ProductModerationStatus.APPROVED);
-        searchVisibilityService.republishProductOffers(productId);
+                : ProductModerationStatus.APPROVED;
+        item.setModerationStatus(newStatus);
+        productRepository.save(item);
+        if (newStatus == ProductModerationStatus.APPROVED && Boolean.TRUE.equals(item.getIsActive())) {
+            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
+            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
+                    SearchEventType.UPSERT, version);
+        } else {
+            searchDocumentService.deleteItemProjection(productId);
+            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
+                    SearchEventType.DELETE, Instant.now().toEpochMilli());
+        }
 
         ModerationAction action = new ModerationAction();
         moderationMapper.applyCreateFields(action, ModerationTargetType.PRODUCT, productId,
@@ -153,7 +169,12 @@ public class ModerationProcessor {
         Item item = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
         item.setModerationStatus(ProductModerationStatus.APPROVED);
-        searchVisibilityService.republishProductOffers(productId);
+        productRepository.save(item);
+        if (Boolean.TRUE.equals(item.getIsActive())) {
+            Long version = searchDocumentService.upsertItemProjection(buildSearchableItemSource(item));
+            searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
+                    SearchEventType.UPSERT, version);
+        }
     }
 
     @Transactional
@@ -166,7 +187,10 @@ public class ModerationProcessor {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND, productId));
         item.setModerationStatus(ProductModerationStatus.REJECTED);
         item.setModerationNote(request.getReason());
-        searchVisibilityService.republishProductOffers(productId);
+        productRepository.save(item);
+        searchDocumentService.deleteItemProjection(productId);
+        searchOutboxService.publish(SearchAggregateType.PRODUCT_OFFER, productId,
+                SearchEventType.DELETE, Instant.now().toEpochMilli());
         significantEventService.record(principal.getUserId(),
                 SignificantEventType.PRODUCT_HIDDEN_BY_MODERATOR,
                 item.getBusiness().getId(), productId, Map.of("reason", request.getReason()));
@@ -192,6 +216,25 @@ public class ModerationProcessor {
             case USER -> Permission.MODERATE_APP_USERS;
             case MESSAGE -> Permission.MODERATE_CHATS;
         };
+    }
+
+    private SearchableItemSource buildSearchableItemSource(Item item) {
+        return SearchableItemSource.builder()
+                .itemId(item.getId())
+                .businessId(item.getBusiness().getId())
+                .branchId(item.getBranch() != null ? item.getBranch().getId() : null)
+                .name(item.getName())
+                .description(item.getDescription())
+                .categoryLabel(item.getCategoryLabel())
+                .businessName(item.getBusiness().getName())
+                .branchName(item.getBranch() != null ? item.getBranch().getName() : null)
+                .price(item.getPrice())
+                .tags(item.getTags())
+                .attributes(item.getAttributes())
+                .latitude(item.getBranch() != null ? item.getBranch().getLatitude() : null)
+                .longitude(item.getBranch() != null ? item.getBranch().getLongitude() : null)
+                .active(Boolean.TRUE.equals(item.getIsActive()))
+                .build();
     }
 
     private ModerationStatus toModerationStatus(ModerationActionType action) {

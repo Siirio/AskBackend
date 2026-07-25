@@ -28,9 +28,17 @@ The JSON contract uses snake_case. `raw_query` is required and is returned uncha
 
 Cards include brand presentation, price when known, availability state, an honest `availability_warning`, human-readable `match_reasons`, branch/distance context, badges, and opaque contact actions. Availability is never invented.
 
+## Write path (synchronous projection)
+
+SearchDocument is created/updated/deleted synchronously in the same `@Transactional` as the canonical Item/Service/moderate mutation. A `SearchOutboxEvent` with matching `projectionVersion` is appended in the same transaction. The aggregate, projection, and outbox event commit atomically.
+
+An async `SKIP LOCKED` worker reads existing SearchDocuments, checks `projectionVersion` for staleness, and delivers to Meilisearch. The worker never creates SearchDocuments — it only reads and delivers.
+
 ## Retrieval behavior
 
-Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonical data and is the indexed fallback through full-text and trigram candidate SQL. A Meilisearch failure is visible in diagnostics and logs but does not fail search when PostgreSQL is available.
+Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonical data via `SearchDocument` and is the indexed fallback through full-text and trigram candidate SQL. A Meilisearch failure is visible in diagnostics and logs but does not fail search when PostgreSQL is available.
+
+A read-your-writes overlay merges dirty projections (`indexedAt IS NULL OR projectionVersion > indexedAt`) into results so newly created items appear immediately even before Meilisearch delivery.
 
 DeepSeek interpretation is optional. Deterministic interpretation always runs inside the frontend-selected scope, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
 

@@ -24,6 +24,23 @@ Moderator-hidden Items are non-live in both projection and reconciliation, so re
 
 Dead events are retained in `search_outbox_event`; never delete them as a retry mechanism. Confirm the canonical aggregate version and failure cause, restore the dependency or data invariant, then reset only the selected event to the retryable state with its availability time set to the current time. The worker still applies stale-version protection.
 
+### Pre-fix DEAD events (empty-shell constraint violations)
+
+Before 2026-07-25, `SearchProjectionServiceImpl.apply()` called `findOrCreate()` which created empty `SearchDocument` shells with only `documentType` and `aggregateId`. Six NOT NULL fields (`title`, `normalizedTitle`, `currency`, `verifiedAttributes`, `aiAttributes`, `aliases`) were never populated, causing INSERT constraint violations. After 8 retries, events went DEAD.
+
+**Repair procedure for DEAD UPSERT events:**
+
+1. Identify DEAD UPSERT events: `SELECT * FROM search_outbox_event WHERE status = 'DEAD' AND event_type = 'UPSERT'`
+2. For each event, check if the canonical aggregate still exists:
+   - `PRODUCT_OFFER` → query `Item` by `aggregate_id`
+   - `SERVICE_BRANCH_OFFER` → query `ServiceOffering` by `aggregate_id`
+3. If aggregate exists AND no valid SearchDocument exists for it → rebuild SearchDocument via `SearchDocumentService.upsertItemProjection()` or `upsertServiceProjection()` with canonical data
+4. If aggregate no longer exists → mark event as COMPLETED (aggregate was deleted)
+5. If valid SearchDocument already exists (e.g., from a subsequent edit) → mark event as COMPLETED (superseded)
+6. Requeue repaired events via `SearchOutboxService.republish()` with the current `projectionVersion`
+
+This repair is idempotent: running it multiple times is safe because `republish()` uses `on conflict ... do update` and the worker applies stale-version protection.
+
 ## Completed outbox retention
 
 `SearchOutboxRetentionScheduler` deletes `COMPLETED` events whose `processed_at` is older than `ASK_SEARCH_OUTBOX_RETENTION` (default `P3D`), running every `ASK_SEARCH_OUTBOX_RETENTION_INTERVAL` (default `PT1H`). Only `COMPLETED` rows are purged — `DEAD` rows stay for diagnosis, and idempotent dedup is unaffected because `completeSuperseded` plus stale-version protection guard against replays, not the presence of old completed rows.

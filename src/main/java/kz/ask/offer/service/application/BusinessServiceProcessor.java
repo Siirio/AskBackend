@@ -13,7 +13,9 @@ import kz.ask.offer.service.api.dto.BusinessServiceListResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.offer.service.domain.ServiceService;
+import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
+import kz.ask.search.basic.domain.SearchableServiceSource;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
@@ -36,6 +38,7 @@ public class BusinessServiceProcessor {
     private final BranchMemberService branchMemberService;
     private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
+    private final SearchDocumentService searchDocumentService;
     private final ManagedImportService managedImportService;
 
     @Transactional(readOnly = true)
@@ -61,7 +64,7 @@ public class BusinessServiceProcessor {
                                                      BusinessServiceCreateRequest req) {
         requireAnyAccess(principal.getUserId(), businessId, req.getBranchId());
         ServiceOfferingDto dto = serviceService.createService(businessId, req);
-        publishSearchEvent(dto);
+        upsertSearchProjection(dto);
         return toRowResponse(dto);
     }
 
@@ -72,14 +75,41 @@ public class BusinessServiceProcessor {
         requireAnyAccess(principal.getUserId(), businessId,
                 req.getBranchId() != null ? req.getBranchId() : current.getBranchId());
         ServiceOfferingDto updated = serviceService.updateService(businessId, serviceOfferingId, req);
-        publishSearchEvent(updated);
+        upsertSearchProjection(updated);
         return toRowResponse(updated);
     }
 
-    private void publishSearchEvent(ServiceOfferingDto dto) {
-        searchOutboxService.publish(SearchAggregateType.SERVICE_BRANCH_OFFER, dto.getId(),
-                Boolean.TRUE.equals(dto.getIsActive()) ? SearchEventType.UPSERT : SearchEventType.DELETE,
-                Instant.now().toEpochMilli());
+    private void upsertSearchProjection(ServiceOfferingDto dto) {
+        boolean searchable = Boolean.TRUE.equals(dto.getIsActive());
+        if (searchable) {
+            Long version = searchDocumentService.upsertServiceProjection(
+                    buildSearchableServiceSource(dto));
+            searchOutboxService.publish(SearchAggregateType.SERVICE_BRANCH_OFFER, dto.getId(),
+                    SearchEventType.UPSERT, version);
+        } else {
+            searchDocumentService.deleteServiceProjection(dto.getId());
+            searchOutboxService.publish(SearchAggregateType.SERVICE_BRANCH_OFFER, dto.getId(),
+                    SearchEventType.DELETE, Instant.now().toEpochMilli());
+        }
+    }
+
+    private SearchableServiceSource buildSearchableServiceSource(ServiceOfferingDto dto) {
+        return SearchableServiceSource.builder()
+                .serviceOfferingId(dto.getId())
+                .businessId(dto.getBusinessId())
+                .branchId(dto.getBranchId())
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .categoryLabel(dto.getCategoryLabel())
+                .businessName(null)
+                .branchName(null)
+                .basePrice(dto.getBasePrice())
+                .scheduleText(dto.getScheduleText())
+                .attributes(dto.getAttributes())
+                .latitude(null)
+                .longitude(null)
+                .active(Boolean.TRUE.equals(dto.getIsActive()))
+                .build();
     }
 
     private BusinessServiceRowResponse toRowResponse(ServiceOfferingDto dto) {

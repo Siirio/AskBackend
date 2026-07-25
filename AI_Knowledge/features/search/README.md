@@ -1,22 +1,52 @@
 # Unified Search
 
-Ask search is a versioned Item/Service projection pipeline with PostgreSQL as canonical storage, Meilisearch as the primary candidate engine, and PostgreSQL full-text/trigram retrieval as the fallback.
+ASK search is a synchronous PostgreSQL projection pipeline with Meilisearch as the primary retrieval engine and PostgreSQL lexical search as the fallback.
 
 ## Write path
 
-Canonical Business, Item, Service, and supported import transactions increment the aggregate search version and append a `search_outbox_event` in the same transaction. They never call Meilisearch or AI.
+Canonical Item, Service, and moderation transactions create/update/delete the PostgreSQL `SearchDocument` projection synchronously in the same `@Transactional` boundary. A `SearchOutboxEvent` is appended in the same transaction with the matching `projectionVersion`. The aggregate mutation, projection, and outbox event commit atomically — there is no window where an item exists but has no search projection.
 
-A bounded `SKIP LOCKED` worker builds the PostgreSQL lexical projection first, rejects stale versions, then updates Meilisearch and waits for task completion. Retryable failures remain visible with backoff; terminal failures are retained as dead events.
+A bounded `SKIP LOCKED` worker reads existing SearchDocuments (created synchronously), checks `projectionVersion` for staleness, and delivers to Meilisearch in a separate transaction. The worker never creates SearchDocuments — it only reads and delivers. Retryable failures remain visible with exponential backoff; terminal failures are retained as DEAD events.
+
+### Synchronous projection call sites
+
+| Call site | Trigger | Projection action |
+|-----------|---------|-------------------|
+| `BusinessProductProcessor.createProduct()` | New item | UPSERT (if active) or skip |
+| `BusinessProductProcessor.updateProduct()` | Item edit | UPSERT (if active+approved) or DELETE |
+| `BusinessProductProcessor.deleteProduct()` | Item delete | DELETE |
+| `BusinessServiceProcessor.createService()` | New service | UPSERT (if active) or DELETE |
+| `BusinessServiceProcessor.updateService()` | Service edit | UPSERT (if active) or DELETE |
+| `ModerationProcessor.approveProduct()` | Moderation approve | UPSERT (if active) |
+| `ModerationProcessor.rejectProduct()` | Moderation reject | DELETE |
+| `ModerationProcessor.moderateProduct()` | Moderation hide/show | UPSERT or DELETE |
+
+### Visibility policy
+
+- **Items**: `isActive=true AND moderationStatus=APPROVED` → searchable. All other states → not searchable (DELETE from projection).
+- **Services**: `isActive=true` → searchable. Inactive → not searchable.
+- Moderation rejection sends DELETE. Moderation approval sends UPSERT.
 
 ## Read path
 
-The frontend selects ITEM or SERVICE and sends the complete raw query unchanged. DeepSeek can add validated interpretation inside that selected scope when configured, but it is never required. Meilisearch returns bounded candidate IDs, PostgreSQL performs bounded hydration and version revalidation, and centralized ranking produces exact and explicitly relaxed alternative sections.
+The frontend selects ITEM or SERVICE scope. Meilisearch returns bounded candidate aggregate IDs, PostgreSQL hydrates `SearchDocument` entities, and centralized in-memory ranking produces exact and alternative sections.
 
-If Meilisearch is unavailable, indexed PostgreSQL retrieval is used and the response records the fallback reason. Search has no dependency on request, chat, broadcast, recipient, or notification services and creates none of them.
+A read-your-writes overlay runs after Meilisearch retrieval: dirty projections (`indexedAt IS NULL OR projectionVersion > indexedAt epoch millis`) are merged into results so newly created items appear immediately even before the async worker delivers them to Meilisearch.
+
+If Meilisearch is unavailable, PostgreSQL full-text/trigram retrieval is used and the response records the fallback reason.
+
+## Version and staleness
+
+- `projectionVersion` (Long epoch millis) is set when the SearchDocument is created/updated synchronously. The same value is written to `search_outbox_event.aggregate_version`.
+- The outbox worker re-reads the SearchDocument in its own transaction. If `projectionVersion > event.aggregateVersion`, the event is stale (a newer write already happened) and is skipped.
+- `indexedAt` is set when Meilisearch delivery completes. Dirty projections have `indexedAt IS NULL OR projectionVersion > indexedAt epoch millis`.
+- DELETE events carry the `aggregateId` directly. Meilisearch document ID is the aggregate UUID, so DELETEs work without the SearchDocument.
 
 ## Rebuild and repair
 
-Reindex uses bounded keyset batches, writes a replacement versioned index, validates it, and swaps it into service. Reconciliation detects missing, orphaned, and stale-version documents and can enqueue repairs. See `operations.md` for commands and rollback guidance.
+Reindex reads canonical `SearchDocument` rows with keyset pagination, writes a replacement Meilisearch index, validates it, and swaps it into service. Reconciliation detects missing, orphaned, and stale-version documents.
+
+DEAD UPSERT events from the pre-fix era (empty-shell constraint violations) require repair: rebuild the SearchDocument from canonical entity data, then requeue the event. See `operations.md` for the repair procedure.
 
 ## AI enrichment
 

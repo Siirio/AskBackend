@@ -127,7 +127,10 @@ public class StructuredSearchProcessor {
             exactCandidates = searchViaPostgres(searchPlan, searchPlan, userLocation, candidateLimit);
         }
 
-        List<ScoredSearchDocument> exact = exactCandidates.stream()
+        List<ScoredSearchDocument> unindexedOverlay = overlayUnindexed(searchPlan, userLocation,
+                exactCandidates.stream().map(scored -> scored.getDocument().getAggregateId()).collect(Collectors.toSet()));
+
+        List<ScoredSearchDocument> exact = Stream.concat(exactCandidates.stream(), unindexedOverlay.stream())
                 .filter(scored -> scored.getWarnings().isEmpty())
                 .toList();
         List<ScoredSearchDocument> alternatives = List.of();
@@ -199,8 +202,10 @@ public class StructuredSearchProcessor {
             return List.of();
         }
 
-        Map<UUID, SearchDocument> docsById = searchDocumentRepository.findAllByIdIn(rankedIds).stream()
-                .collect(LinkedHashMap::new, (m, d) -> m.put(d.getId(), d), LinkedHashMap::putAll);
+        List<SearchDocumentType> retrievalTypes = resolvePlanDocumentTypes(retrievalPlan);
+        Map<UUID, SearchDocument> docsById = searchDocumentRepository
+                .findAllByDocumentTypeAndAggregateIdIn(retrievalTypes, rankedIds).stream()
+                .collect(LinkedHashMap::new, (m, d) -> m.put(d.getAggregateId(), d), LinkedHashMap::putAll);
 
         List<ScoredSearchDocument> scored = new ArrayList<>();
         for (int i = 0; i < rankedIds.size(); i++) {
@@ -263,6 +268,48 @@ public class StructuredSearchProcessor {
                 .collect(Collectors.toMap(SearchDocument::getId, document -> document));
         List<SearchDocument> ordered = candidateIds.stream().map(documents::get).filter(Objects::nonNull).toList();
         return rank(ordered, scoringPlan, userLocation);
+    }
+
+    private List<ScoredSearchDocument> overlayUnindexed(SearchPlan plan, SearchLocationRequest userLocation,
+                                                         Set<UUID> alreadyFoundAggregateIds) {
+        List<SearchDocumentType> types = resolvePlanDocumentTypes(plan);
+        List<SearchDocument> dirty = searchDocumentRepository.findDirtyProjectionsByType(types,
+                org.springframework.data.domain.PageRequest.of(0, 50));
+        if (dirty.isEmpty()) {
+            return List.of();
+        }
+        return dirty.stream()
+                .filter(doc -> !alreadyFoundAggregateIds.contains(doc.getAggregateId()))
+                .map(doc -> {
+                    int score = HARD_MATCH_SCORE;
+                    List<String> warnings = new ArrayList<>();
+                    score = score - pricePenalty(doc, plan, warnings) - cityPenalty(doc, plan, warnings);
+                    Integer distanceMeters = null;
+                    String distanceText = null;
+                    if (userLocation != null && doc.getBranch() != null
+                            && doc.getBranch().getLatitude() != null && doc.getBranch().getLongitude() != null) {
+                        double km = DistanceCalculator.km(
+                                userLocation.getLat(), userLocation.getLng(),
+                                doc.getBranch().getLatitude().doubleValue(),
+                                doc.getBranch().getLongitude().doubleValue());
+                        distanceMeters = DistanceCalculator.meters(
+                                userLocation.getLat(), userLocation.getLng(),
+                                doc.getBranch().getLatitude().doubleValue(),
+                                doc.getBranch().getLongitude().doubleValue());
+                        distanceText = formatDistance(distanceMeters);
+                        score = (int) (score * Math.max(0.3, 1.0 / (1.0 + km * 0.5)));
+                    }
+                    return ScoredSearchDocument.builder()
+                            .document(doc)
+                            .score(Math.max(score, 0))
+                            .sectionType(resolveSectionType(warnings, score))
+                            .confidenceCode(resolveConfidenceCode(score, warnings))
+                            .warnings(warnings)
+                            .distanceMeters(distanceMeters)
+                            .distanceText(distanceText)
+                            .build();
+                })
+                .toList();
     }
 
     private String postgresQuery(SearchPlan plan) {
@@ -453,7 +500,7 @@ public class StructuredSearchProcessor {
     }
 
     private String resolveScope(SearchPlan plan) {
-        if (plan.getItemType() == SearchDocumentType.PRODUCT) {
+        if (plan.getItemType() == SearchDocumentType.ITEM) {
             return "PRODUCT";
         }
         if (plan.getItemType() == SearchDocumentType.SERVICE) {
@@ -730,7 +777,7 @@ public class StructuredSearchProcessor {
     private SearchDocumentType resolveStructuredItemType(JsonNode intentStructure) {
         String requestType = intentStructure.path("request_type").asText("");
         if ("PRODUCT_SEARCH".equalsIgnoreCase(requestType)) {
-            return SearchDocumentType.PRODUCT;
+            return SearchDocumentType.ITEM;
         }
         if ("SERVICE_SEARCH".equalsIgnoreCase(requestType)) {
             return SearchDocumentType.SERVICE;
@@ -742,7 +789,7 @@ public class StructuredSearchProcessor {
         if (plan.getItemType() != null) {
             return List.of(plan.getItemType());
         }
-        return List.of(SearchDocumentType.PRODUCT, SearchDocumentType.SERVICE);
+        return List.of(SearchDocumentType.ITEM, SearchDocumentType.SERVICE);
     }
 
     private List<String> collectCategoryInputs(JsonNode intentStructure, SearchIntentStructureRequest request) {
