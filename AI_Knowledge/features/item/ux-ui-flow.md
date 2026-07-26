@@ -11,9 +11,6 @@
 - Disabled Items are hidden from search and remain visible in the business cabinet
 
 ## Item result cards (customer-facing)
-- Item image or category placeholder
-- Item name + short characteristics
-- Price (when known)
-- Business name + branch
-- City or distance
-- Actions: open, clarify, write, create request
+- Compact row: Business logo, Item name and short relevant information, price when known, and chat action
+- Clicking the row opens full Item description plus the public Business profile and optional branch context
+- Chat opens/resumes the durable Business conversation; search never creates a request

@@ -37,7 +37,7 @@ public class LayeredSearchIntentStructurer implements SearchIntentStructurer {
         if (!(enhanced instanceof ObjectNode objectNode)) {
             return;
         }
-        if ("ITEM".equalsIgnoreCase(request.getSelectedMode()) || "PRODUCT".equalsIgnoreCase(request.getSelectedMode())) {
+        if ("ITEM".equalsIgnoreCase(request.getSelectedMode())) {
             objectNode.put("request_type", "ITEM_SEARCH");
         } else if ("SERVICE".equalsIgnoreCase(request.getSelectedMode())) {
             objectNode.put("request_type", "SERVICE_SEARCH");

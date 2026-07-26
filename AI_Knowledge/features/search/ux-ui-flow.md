@@ -1,27 +1,13 @@
 # Search — Frontend UX Expectations
 
-## Search flow
-1. Customer selects Items or Services and types a natural-language query (any language, slang, typos)
-2. Backend AI structures the selected scope internally — raw query preserved
-3. Results returned sorted by intent_match score
-4. The frontend-selected scope remains fixed; AI cannot switch it
+1. Customer selects `ITEM` or `SERVICE` and enters a natural-language query.
+2. Results render as compact rows, never standalone Business or UniqueOffer cards.
+3. The left side shows the Business logo and the most relevant short Item/Service information.
+4. The right side shows price when known; the far-right chat button opens/resumes the Business conversation.
+5. Clicking the row outside the chat action opens a modal with the full Item/Service description and public Business profile.
 
-## Result cards (anti-marketplace)
-Each card has two layers:
-- Brand layer: brandId, businessName, brandLogoUrl, brandCoverUrl, brandColor, brandDescriptor, badges
-- Decision layer: matchReasons, availabilityStatus, pickupOptions, branchContext, distanceText, availableActions
+The Business profile area may show business name, logo, cover, public description, phone, email, website, Instagram, and Telegram. It never shows legal identifiers, private account credentials, two-factor-authentication state, moderation facts, or other private account data.
 
-Badges (visible signals, not ratings): data freshness, confirmation speed, card quality, business activity
-Internal score NEVER rendered as customer-facing trust.
+The personal login account and Business profile are distinct. Email/password/2FA belong to the person’s account; brand and public contact links belong to the Business profile.
 
-## Search result sections
-Frontend groups results:
-- FOUND: exact/similar Item or Service results
-- Customer contact opens or resumes the business conversation from an offer card; it is not created by search itself
-- OVER_BUDGET / WRONG_CITY: clearly labeled fallback sections
-
-## Distance
-- distanceMeters returned only when calculated from real coordinates (customer lat/lon + branch lat/lon)
-- Nullable — missing coordinates → null
-- Never calculated from city name or address text
-- AI enrichment controls are platform-only and support one item from edit mode or a bulk item selection.
+Branch address, city, and distance appear only when canonical branch/location data exists. Distance changes ranking only when the user explicitly selects distance sorting.

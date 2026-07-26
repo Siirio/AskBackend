@@ -7,9 +7,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SearchFilterRequest {
-    private String scope;
     private String category;
     private String city;
+    private String country;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private Boolean openNow;
+    private Integer radiusMeters;
 }

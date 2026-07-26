@@ -17,4 +17,6 @@ public interface ServiceService {
     ServiceOfferingDto createService(UUID businessId, BusinessServiceCreateRequest request);
 
     ServiceOfferingDto updateService(UUID businessId, UUID serviceOfferingId, BusinessServiceUpdateRequest request);
+
+    void deleteService(UUID businessId, UUID serviceOfferingId);
 }

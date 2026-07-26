@@ -7,11 +7,11 @@ Breaking requires: (1) explicit user approval, (2) proof surrounding extension i
 ## Search Locks
 LOCKED | Default search sort is intent_match, never price_asc | ASK is an intent layer, not a marketplace. Price ascending commoditizes brands | StructuredSearchProcessor, SearchV2Response
 LOCKED | No buy-box logic collapsing different brands into one SKU comparison | Each brand owns its presentation. SKU comparison = marketplace behavior | All search result rendering
-LOCKED | Search mode (ALL / ITEM / SERVICE) is selected by the user; AI can expand result types within mode | Customer controls scope; ALL mode returns any matching entity type | search request DTOs, StructuredSearchProcessor
+LOCKED | Search mode is exactly ITEM or SERVICE and is selected by the user | Customer controls the result domain; AI cannot change it | SearchRequest, StructuredSearchProcessor
 LOCKED | AI may structure queries and perform platform-only text catalog enrichment, but never selects businesses or invents availability | Catalog enrichment may only fill missing descriptions and add text-supported tags/attributes; AI cannot know operational facts | StructuredSearchProcessor, PlatformAiEnrichmentProcessor, catalog entities
-LOCKED | Search retrieves Businesses, Items, Services, and UniqueOffers | Search never creates requests, supplier outreach, notifications, or chats | search domain, request/chat integrations
+LOCKED | Search returns only Item or Service rows enriched with public Business profile and optional branch context | Business is presentation/context, not a standalone result; search never creates requests, outreach, notifications, or chats | search domain, SearchCardResponse
 LOCKED | Meilisearch is retrieval engine, PostgreSQL is source of truth + hydration | Replaces in-memory scoring with typo-tolerant, synonym-aware search. Fallback to PG if Meilisearch unavailable | StructuredSearchProcessor, MeilisearchService
-LOCKED | UniqueOffers boost linked items and appear as standalone results when relevant to query | DISCOUNT computes effective price. Non-DISCOUNT shows offer name as label | UniqueOffer, unique_offer_product/service/branch tables
+LOCKED | UniqueOffers only boost or decorate linked Item/Service results and never appear as standalone search results | Offers are brand signals, not another search corpus | UniqueOffer, unique_offer_product/service/branch tables
 
 ## Data Locks
 LOCKED | One customer and business share one durable conversation | Branches and catalog cards are entry points, not conversation identity | ChatConversation, ChatServiceImpl, business inbox

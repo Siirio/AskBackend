@@ -8,7 +8,7 @@ import lombok.Getter;
 @Builder
 public class SearchResponse {
     private String rawQuery;
-    private String scope;
+    private String mode;
     private String understoodQuery;
     private List<SearchSectionResponse> sections;
     private List<SearchConstraintResponse> interpretedConstraints;

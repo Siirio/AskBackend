@@ -1,54 +1,39 @@
 # Search Operations
 
-## Required configuration
+## Configuration
 
-- `MEILISEARCH_HOST_URL`, `MEILISEARCH_API_KEY`, and `MEILISEARCH_INDEX_NAME` configure primary retrieval.
-- `ASK_SEARCH_AI_ENRICHMENT_ENABLED` defaults to `true`; enrichment requires `DEEPSEEK_API_KEY` to perform external calls.
-- Worker batch sizes, intervals, timeouts, attempts, and backoff are configurable under `ASK_SEARCH_*` environment variables in `application.yml`.
+`MEILISEARCH_HOST_URL`, `MEILISEARCH_API_KEY`, and `MEILISEARCH_INDEX_NAME` configure primary retrieval. Worker batch sizes, leases, attempts, and backoff remain configurable under `ASK_SEARCH_*`.
 
-Production and stage use separate pinned Meilisearch services and persistent volumes in `deploy/vps/compose.yml`.
+## Version migration
 
-## Reindex
+V4 introduced `search_projection_version_seq`. Because the applied Flyway history of shared dev/stage databases is not confirmed, V4 is preserved. Forward migration V5 adds durable `projection_action`, retires unsupported Business/UniqueOffer search events while preserving their outbox history, removes their obsolete PostgreSQL projections, makes tombstone-only fields nullable, and advances the sequence above the maximum existing `search_document.projection_version` and `search_outbox_event.aggregate_version`. Run a full Meilisearch rebuild after the upgrade so any legacy external-only documents are removed.
 
-Set `ASK_SEARCH_REINDEX_ON_STARTUP=true` for one controlled instance. The job reads PostgreSQL with keyset pagination, writes a replacement index, validates the replacement, and swaps it into service. Return the flag to `false` after completion. Do not run concurrent startup rebuilds.
+Before deployment, inspect `flyway_schema_history` on each environment. Never edit or remove an already applied migration. Validate both a clean migration and an upgrade from the actual environment history.
 
-Rollback keeps PostgreSQL canonical. Point `MEILISEARCH_INDEX_NAME` at the last validated index or run a fresh rebuild. Search continues through PostgreSQL while Meilisearch is unavailable.
+## Delivery recovery
 
-## Reconciliation
+Each SearchDocument is the durable desired state:
 
-Set `ASK_SEARCH_RECONCILIATION_ENABLED=true` to schedule bounded comparison. `ASK_SEARCH_RECONCILIATION_REPAIR=true` enqueues repairs for missing or stale documents and removes confirmed orphans. Review counts and sampled IDs before enabling repair in a new environment.
+- `INDEX`: Meilisearch should contain this exact `projectionVersion`.
+- `DELETE`: Meilisearch should not contain the aggregate ID.
 
-Moderator-hidden Items are non-live in both projection and reconciliation, so repair cannot reintroduce them.
+If state changes during a network call, confirmation requeues the current desired action/version. DEAD events remain auditable. Repair requeues the current durable desired state; absence of a SearchDocument is an invariant failure and is never silently marked complete.
 
-## Dead outbox events
+## Rebuild and reconciliation
 
-Dead events are retained in `search_outbox_event`; never delete them as a retry mechanism. Confirm the canonical aggregate version and failure cause, restore the dependency or data invariant, then reset only the selected event to the retryable state with its availability time set to the current time. The worker still applies stale-version protection.
+Rebuild indexes only `INDEX` projection rows with keyset pagination, validates the replacement index, and swaps it. Reconciliation scans both `INDEX` and `DELETE` desired states, compares `projectionVersion` with `indexedVersion`, and requeues dirty desired state.
 
-### Pre-fix DEAD events (empty-shell constraint violations)
+Current reconciliation does not yet prove canonical Item/Service field equality or inspect Meilisearch documents directly. Do not claim missing-canonical/orphan-index detection until those bounded comparisons are implemented and verified.
 
-Before 2026-07-25, `SearchProjectionServiceImpl.apply()` called `findOrCreate()` which created empty `SearchDocument` shells with only `documentType` and `aggregateId`. Six NOT NULL fields (`title`, `normalizedTitle`, `currency`, `verifiedAttributes`, `aiAttributes`, `aliases`) were never populated, causing INSERT constraint violations. After 8 retries, events went DEAD.
+## Required release verification
 
-**Repair procedure for DEAD UPSERT events:**
+Requires separate authorization:
 
-1. Identify DEAD UPSERT events: `SELECT * FROM search_outbox_event WHERE status = 'DEAD' AND event_type = 'UPSERT'`
-2. For each event, check if the canonical aggregate still exists:
-   - `PRODUCT_OFFER` → query `Item` by `aggregate_id`
-   - `SERVICE_BRANCH_OFFER` → query `ServiceOffering` by `aggregate_id`
-3. If aggregate exists AND no valid SearchDocument exists for it → rebuild SearchDocument via `SearchDocumentService.upsertItemProjection()` or `upsertServiceProjection()` with canonical data
-4. If aggregate no longer exists → mark event as COMPLETED (aggregate was deleted)
-5. If valid SearchDocument already exists (e.g., from a subsequent edit) → mark event as COMPLETED (superseded)
-6. Requeue repaired events via `SearchOutboxService.republish()` with the current `projectionVersion`
-
-This repair is idempotent: running it multiple times is safe because `republish()` uses `on conflict ... do update` and the worker applies stale-version protection.
-
-## Completed outbox retention
-
-`SearchOutboxRetentionScheduler` deletes `COMPLETED` events whose `processed_at` is older than `ASK_SEARCH_OUTBOX_RETENTION` (default `P3D`), running every `ASK_SEARCH_OUTBOX_RETENTION_INTERVAL` (default `PT1H`). Only `COMPLETED` rows are purged — `DEAD` rows stay for diagnosis, and idempotent dedup is unaffected because `completeSuperseded` plus stale-version protection guard against replays, not the presence of old completed rows.
-
-## AI enrichment failures
-
-AI metadata is derived and can be rebuilt. Inspect attempt count, error, worker claim, and dead state on the search document plus evidence rows in `search_ai_metadata`. Missing API keys require no repair. After provider or schema recovery, reset only selected dead enrichment claims; canonical item/service data is unaffected.
-
-## Verification
-
-Run the backend package, frontend build, Flyway V1 baseline on an isolated database, migration hash, `git diff --check`, architecture scans, the evaluation runner, PostgreSQL query plans, and the parameterized k6 profile. An outage drill must prove the fallback response and the visible separator log before release.
+- Maven clean verification;
+- clean PostgreSQL startup and Flyway migration;
+- upgrade from actual dev/stage Flyway history;
+- Item/Service create, update, deactivate, delete, import, moderation, and enrichment scenarios;
+- Meilisearch outage/recovery;
+- concurrent stale UPSERT/DELETE scenarios;
+- reconciliation repair;
+- relevance, latency, and load evaluation.

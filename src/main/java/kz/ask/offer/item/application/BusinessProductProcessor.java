@@ -126,10 +126,12 @@ public class BusinessProductProcessor {
         }
         Category category = (req.getCategoryId() != null || req.getCategoryName() != null)
                 ? resolveCategory(req.getCategoryId(), req.getCategoryName()) : null;
+        kz.ask.business.branch.domain.entity.BusinessBranch branch = item.getBranch();
         if (req.getBranchId() != null) {
             requireBranch(businessId, req.getBranchId());
+            branch = businessBranchRepository.getReferenceById(req.getBranchId());
         }
-        itemMapper.applyUpdateFields(item, req, category);
+        itemMapper.applyUpdateFields(item, req, branch, category);
         Item saved = productRepository.save(item);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
         syncSearchProjection(saved, dto);
@@ -164,12 +166,11 @@ public class BusinessProductProcessor {
                     item.getBusiness().getName(),
                     item.getBranch() != null ? item.getBranch().getName() : null,
                     item.getPrice(),
-                    null,
+                    item.getBusiness().getCurrency(),
                     item.getTags(),
                     item.getAttributes(),
                     item.getBranch() != null ? item.getBranch().getLatitude() : null,
-                    item.getBranch() != null ? item.getBranch().getLongitude() : null,
-                    dto.getIsActive());
+                    item.getBranch() != null ? item.getBranch().getLongitude() : null);
             Long version = searchDocumentService.upsert(projection);
             searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(),
                     SearchEventType.UPSERT, version);

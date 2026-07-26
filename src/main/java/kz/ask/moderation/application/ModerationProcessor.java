@@ -202,12 +202,11 @@ public class ModerationProcessor {
                     item.getBusiness().getName(),
                     item.getBranch() != null ? item.getBranch().getName() : null,
                     item.getPrice(),
-                    null,
+                    item.getBusiness().getCurrency(),
                     item.getTags(),
                     item.getAttributes(),
                     item.getBranch() != null ? item.getBranch().getLatitude() : null,
-                    item.getBranch() != null ? item.getBranch().getLongitude() : null,
-                    item.getIsActive());
+                    item.getBranch() != null ? item.getBranch().getLongitude() : null);
             Long version = searchDocumentService.upsert(projection);
             searchOutboxService.publish(SearchAggregateType.ITEM, aggregateId,
                     SearchEventType.UPSERT, version);

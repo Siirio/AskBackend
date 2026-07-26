@@ -14,7 +14,8 @@ REST API backend for the ASK platform — local item/service search with an anti
 
 ## Tech Stack
 - Java 17+, Spring Boot 3.x, Spring Data JPA
-- PostgreSQL (source of truth + search engine via `SearchDocument` in-memory scoring)
+- PostgreSQL (source of truth, projection hydration, and lexical fallback)
+- Meilisearch (primary bounded lexical candidate retrieval)
 - Redis (sessions/cache)
 - DeepSeek AI (query structuring, NOT result selection)
 - REST APIs consumed by ASK Frontend (Next.js App Router, Vertical Slice Architecture)

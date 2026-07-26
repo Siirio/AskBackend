@@ -14,10 +14,15 @@ public class SearchCardResponse {
     private UUID resultId;
     private UUID businessId;
     private String businessName;
+    private String resultType;
     private String brandColor;
     private String brandLogoUrl;
     private String title;
+    private String summary;
+    private String categoryLabel;
     private BigDecimal price;
+    private String currency;
+    private SearchBusinessProfileResponse businessProfile;
     private String availability;
     private String availabilityWarning;
     private List<String> matchReasons;

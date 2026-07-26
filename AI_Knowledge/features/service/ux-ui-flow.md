@@ -1,13 +1,9 @@
 # Service — Frontend UX Expectations
 
 ## Service result cards (customer-facing)
-- Service image or business image
-- Service name + business name + branch
-- Approximate price or "price from"
-- Schedule or service terms when known
-- District or distance
-- Desired-time request action
-- Actions: request booking, write
+- Compact row: Business logo, Service name and short relevant information, price when known, and chat action
+- Clicking the row opens full Service description plus the public Business profile and optional branch context
+- Chat opens/resumes the durable Business conversation; search creates no booking or request
 
 ## Service contact flow
 1. Customer finds a service offer and explicitly opens the business conversation.

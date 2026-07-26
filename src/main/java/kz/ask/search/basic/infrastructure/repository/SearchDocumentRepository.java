@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import kz.ask.search.basic.domain.entity.SearchDocument;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
+import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SearchDocumentRepository extends JpaRepository<SearchDocument, UUID> {
+
+    Long countByProjectionAction(SearchProjectionAction projectionAction);
 
     @Query("""
         select distinct d from SearchDocument d
@@ -33,7 +36,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
             LEFT JOIN FETCH d.branch b
             LEFT JOIN FETCH b.city
             LEFT JOIN FETCH d.tokens
-            WHERE d.id IN :ids
+            WHERE d.id IN :ids AND d.projectionAction = kz.ask.search.basic.domain.enums.SearchProjectionAction.INDEX
             """)
     List<SearchDocument> findAllByIdIn(@Param("ids") Collection<UUID> ids);
 
@@ -49,6 +52,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         left join fetch b.city
         left join fetch d.tokens
         where d.documentType in :types and d.aggregateId in :aggregateIds
+          and d.projectionAction = kz.ask.search.basic.domain.enums.SearchProjectionAction.INDEX
         """)
     List<SearchDocument> findAllByDocumentTypeAndAggregateIdIn(
             @Param("types") List<SearchDocumentType> types,
@@ -60,7 +64,8 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         left join fetch d.branch b
         left join fetch b.city
         left join fetch d.tokens
-        where (:afterId is null or d.id > :afterId)
+        where d.projectionAction = kz.ask.search.basic.domain.enums.SearchProjectionAction.INDEX
+          and (:afterId is null or d.id > :afterId)
         order by d.id
         """)
     List<SearchDocument> findReindexBatch(@Param("afterId") UUID afterId, Pageable pageable);
@@ -71,6 +76,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         left join business_branch branch on branch.id = d.branch_id
         left join city on city.id = branch.city_id
         where d.document_type in (:documentTypes)
+          and d.projection_action = 'INDEX'
           and (:query = ''
                or d.search_vector @@ websearch_to_tsquery('simple', :query)
                or d.normalized_title % :query)
@@ -98,6 +104,7 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         left join business_branch branch on branch.id = d.branch_id
         left join city on city.id = branch.city_id
         where d.document_type in (:documentTypes)
+          and d.projection_action = 'INDEX'
           and d.projection_version > coalesce(d.indexed_version, 0)
           and (:query = ''
                or d.search_vector @@ websearch_to_tsquery('simple', :query)

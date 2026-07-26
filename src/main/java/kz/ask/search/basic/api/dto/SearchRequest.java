@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import kz.ask.search.basic.domain.enums.SearchScope;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,15 +16,15 @@ public class SearchRequest {
     @NotBlank
     private String rawQuery;
 
-    private String scope;
-    private String selectedCategory;
-    private String city;
+    @NotNull
+    private SearchScope mode;
+
     private String sort;
 
     @Valid
     private SearchLocationRequest userLocation;
 
-    private String language;
+    private String locale;
 
     @Min(0)
     @Max(20)
@@ -33,8 +35,5 @@ public class SearchRequest {
     private Integer pageSize;
 
     @Valid
-    private SearchFilterRequest filters;
-
-    @Valid
-    private SearchOverrideRequest overrides;
+    private SearchFilterRequest explicitFilters;
 }

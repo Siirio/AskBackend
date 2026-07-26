@@ -1,45 +1,54 @@
 # Search REST API Contract
 
-## Public search
+`POST /api/v1/search` is anonymous and creates no request, chat, notification, recipient, or supplier outreach.
 
-`POST /api/v1/search` is anonymous and does not create requests, chats, recipients, notifications, or supplier outreach.
+## Request
 
-The JSON contract uses snake_case. `raw_query` is required and is returned unchanged.
+```json
+{
+  "raw_query": "complete visible query",
+  "mode": "ITEM",
+  "explicit_filters": {
+    "category": "optional",
+    "city": "optional",
+    "country": "optional",
+    "min_price": 0,
+    "max_price": 100000,
+    "open_now": false,
+    "radius_meters": 5000
+  },
+  "user_location": {
+    "lat": 43.2389,
+    "lng": 76.8897
+  },
+  "locale": "ru",
+  "sort": "relevance",
+  "page": 0,
+  "page_size": 20
+}
+```
 
-### Request
+- `raw_query` is required and returned unchanged.
+- `mode` is required and accepts only `ITEM` or `SERVICE`.
+- `sort` accepts `relevance`, `distance`, or `price_asc`.
+- `page` is 0 through 20; `page_size` is 1 through 50.
+- Only `explicit_filters` are hard filters. Unsupported filter behavior must not be claimed by clients.
 
-- `raw_query`: complete visible customer query.
-- `scope`: `item` or `service`, selected by the frontend and never changed by AI.
-- `selected_category`, `city`, `sort`, `language`, and `user_location`: optional search inputs.
-- `sort`: `intent_match`, `distance`, or `price_asc`.
-- `page`: zero-based page, from 0 through 20.
-- `page_size`: from 1 through 50.
-- `filters`: optional `scope`, `category`, `city`, `min_price`, and `max_price` constraints.
-- `overrides`: optional values for the same constraint keys. Explicit overrides take precedence over interpreted values.
+Removed fields: `scope`, `selected_category`, top-level `city`, `filters.scope`, `overrides`, and `language`. `PRODUCT` is not a compatibility value.
 
-### Response
+## Response
 
-- `raw_query`, `scope`, and `understood_query` preserve the request context.
-- `interpreted_constraints` reports each effective constraint with its source.
-- `sections` keeps `EXACT` matches separate from `ALTERNATIVE` results.
-- Alternative sections include `relaxed_constraints` and a human-readable `reason`.
-- `page`, `page_size`, `total`, and `has_next` describe bounded pagination.
-- `diagnostics` reports engine, fallback reason, candidate count, and server latency for operations; clients must not render diagnostics.
+- `raw_query`, `mode`, and `understood_query` preserve request context.
+- `sections` contains exact and explicitly relaxed Item/Service results.
+- `result_id` is the canonical Item/Service ID.
+- `result_type` is `ITEM` or `SERVICE`.
+- `component` is exactly `ItemCard` or `ServiceCard`.
+- Each card includes short and full Item/Service text, price/currency, Business identity, public Business profile, optional branch context, availability truth, match reasons, and badges.
+- `business_profile` contains public logo, cover, description, number, email, Instagram, Telegram, and website values.
+- `diagnostics` is operational and must not be rendered.
 
-Cards include brand presentation, price when known, availability state, an honest `availability_warning`, human-readable `match_reasons`, branch/distance context, badges, and opaque contact actions. Availability is never invented.
+The chat button uses `business_id` to open/resume the durable business conversation with the selected Item/Service as entry context. Search itself never creates the conversation.
 
-## Write path (synchronous projection)
+## Frontend migration
 
-SearchDocument is created/updated/deleted synchronously in the same `@Transactional` as the canonical Item/Service/moderate mutation. A `SearchOutboxEvent` with matching `projectionVersion` is appended in the same transaction. The aggregate, projection, and outbox event commit atomically.
-
-An async `SKIP LOCKED` worker reads existing SearchDocuments, checks `projectionVersion` for staleness, and delivers to Meilisearch. The worker never creates SearchDocuments — it only reads and delivers.
-
-## Retrieval behavior
-
-Meilisearch is the primary bounded candidate engine. PostgreSQL hydrates canonical data via `SearchDocument` and is the indexed fallback through full-text and trigram candidate SQL. A Meilisearch failure is visible in diagnostics and logs but does not fail search when PostgreSQL is available.
-
-A read-your-writes overlay merges dirty projections (`indexedAt IS NULL OR projectionVersion > indexedAt`) into results so newly created items appear immediately even before Meilisearch delivery.
-
-DeepSeek interpretation is optional. Deterministic interpretation always runs inside the frontend-selected scope, explicit request values win, and a missing key, timeout, malformed response, or provider error falls back to deterministic interpretation.
-
-AI enrichment runs only after `POST /api/v1/platform/ai-enrichment` with `targetType` (`PRODUCT`, `SERVICE`, or `UNIQUE_OFFER`) and `aggregateIds`. It requires `USE_AI_ITEMS_SERVICES_TOOLS` and an unexpired managed-import grant assigned to that platform user for the target business and scope. Records are never enriched automatically on creation.
+Rename request `scope` to `mode`; send only `ITEM` or `SERVICE`; move category/city/price values under `explicit_filters`; rename `language` to `locale`; delete overrides and all `PRODUCT`/`ALL` compatibility handling. Treat the card as compact-row data plus modal data. Use `result_id` for Item/Service identity and `business_id` for chat identity.

@@ -10,6 +10,7 @@ import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.search.basic.domain.enums.SearchOutboxStatus;
+import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import kz.ask.search.basic.infrastructure.repository.SearchDocumentRepository;
 import kz.ask.search.basic.infrastructure.repository.SearchOutboxEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public SearchReconciliationBatch reconcileProducts(UUID cursor, Integer batchSize, Boolean repair) {
+    public SearchReconciliationBatch reconcileItems(UUID cursor, Integer batchSize, Boolean repair) {
         return reconcileType(SearchDocumentType.ITEM, SearchAggregateType.ITEM, cursor, batchSize, repair);
     }
 
@@ -51,48 +52,29 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
         int wouldSupersede = 0;
         int skipped = 0;
         int requeued = 0;
-        int completed = 0;
 
         for (SearchOutboxEvent event : deadEvents) {
-            SearchDocument doc = searchDocumentRepository
+            SearchDocument document = searchDocumentRepository
                     .findProjectionByAggregate(toDocumentType(event.getAggregateType()), event.getAggregateId())
                     .orElse(null);
-
-            if (event.getEventType() == SearchEventType.UPSERT) {
-                if (doc != null) {
-                    if (doc.getProjectionVersion() > event.getAggregateVersion()) {
-                        wouldSupersede++;
-                        skipped++;
-                        continue;
-                    }
-                    wouldRebuild++;
-                    if (Boolean.TRUE.equals(repair)) {
-                        outboxService.republish(event.getAggregateType(), event.getAggregateId(),
-                                SearchEventType.UPSERT, doc.getProjectionVersion());
-                        requeued++;
-                    }
-                } else {
-                    wouldDelete++;
-                    skipped++;
-                }
-            } else if (event.getEventType() == SearchEventType.DELETE) {
-                if (doc == null) {
-                    wouldDelete++;
-                    if (Boolean.TRUE.equals(repair)) {
-                        outboxEventRepository.markDeadCompleted(event.getId(), java.time.Instant.now(),
-                                "Aggregate deleted — SearchDocument no longer exists");
-                        completed++;
-                    }
-                } else {
-                    wouldRebuild++;
-                    if (Boolean.TRUE.equals(repair)) {
-                        outboxService.republish(event.getAggregateType(), event.getAggregateId(),
-                                SearchEventType.DELETE, doc.getProjectionVersion());
-                        requeued++;
-                    }
-                }
-            } else {
+            if (document == null) {
                 skipped++;
+                continue;
+            }
+            if (document.getProjectionVersion() > event.getAggregateVersion()) {
+                wouldSupersede++;
+            }
+            SearchEventType desiredEvent = document.getProjectionAction() == SearchProjectionAction.INDEX
+                    ? SearchEventType.UPSERT : SearchEventType.DELETE;
+            if (desiredEvent == SearchEventType.UPSERT) {
+                wouldRebuild++;
+            } else {
+                wouldDelete++;
+            }
+            if (Boolean.TRUE.equals(repair)) {
+                outboxService.republish(event.getAggregateType(), event.getAggregateId(),
+                        desiredEvent, document.getProjectionVersion());
+                requeued++;
             }
         }
 
@@ -103,35 +85,37 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
                 .wouldSupersede(wouldSupersede)
                 .skipped(skipped)
                 .requeued(requeued)
-                .completed(completed)
+                .completed(0)
                 .build();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Long activeProjectionCount() {
-        return searchDocumentRepository.count();
+        return searchDocumentRepository.countByProjectionAction(SearchProjectionAction.INDEX);
     }
 
     private SearchReconciliationBatch reconcileType(SearchDocumentType type, SearchAggregateType aggregateType,
                                                      UUID cursor, Integer batchSize, Boolean repair) {
         int safeSize = Math.min(Math.max(batchSize == null ? DEFAULT_BATCH_SIZE : batchSize, 1), 200);
-        List<SearchDocument> batch = searchDocumentRepository.findReconciliationBatch(type, cursor,
-                PageRequest.of(0, safeSize));
+        List<SearchDocument> batch = searchDocumentRepository.findReconciliationBatch(
+                type, cursor, PageRequest.of(0, safeSize));
         int mismatches = 0;
         int repairs = 0;
         UUID lastAggregateId = null;
 
-        for (SearchDocument doc : batch) {
-            lastAggregateId = doc.getAggregateId();
-            long indexedVersion = doc.getIndexedVersion() == null ? 0L : doc.getIndexedVersion();
-            if (doc.getProjectionVersion() <= indexedVersion) {
+        for (SearchDocument document : batch) {
+            lastAggregateId = document.getAggregateId();
+            long indexedVersion = document.getIndexedVersion() == null ? 0L : document.getIndexedVersion();
+            if (document.getProjectionVersion() <= indexedVersion) {
                 continue;
             }
             mismatches++;
             if (Boolean.TRUE.equals(repair)) {
-                outboxService.republish(aggregateType, doc.getAggregateId(),
-                        SearchEventType.UPSERT, doc.getProjectionVersion());
+                SearchEventType eventType = document.getProjectionAction() == SearchProjectionAction.INDEX
+                        ? SearchEventType.UPSERT : SearchEventType.DELETE;
+                outboxService.republish(aggregateType, document.getAggregateId(),
+                        eventType, document.getProjectionVersion());
                 repairs++;
             }
         }
@@ -147,11 +131,7 @@ public class SearchReconciliationServiceImpl implements SearchReconciliationServ
     }
 
     private SearchDocumentType toDocumentType(SearchAggregateType aggregateType) {
-        return switch (aggregateType) {
-            case ITEM -> SearchDocumentType.ITEM;
-            case SERVICE -> SearchDocumentType.SERVICE;
-            case BUSINESS -> SearchDocumentType.BUSINESS;
-            case UNIQUE_OFFER -> SearchDocumentType.UNIQUE_OFFER;
-        };
+        return aggregateType == SearchAggregateType.ITEM
+                ? SearchDocumentType.ITEM : SearchDocumentType.SERVICE;
     }
 }

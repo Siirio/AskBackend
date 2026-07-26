@@ -2,6 +2,7 @@ package kz.ask.offer.service.application;
 
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
+import kz.ask.business.branch.domain.dto.BusinessBranchDto;
 import kz.ask.business.core.domain.BusinessService;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.member.domain.BranchMemberService;
@@ -81,9 +82,22 @@ public class BusinessServiceProcessor {
         return toRowResponse(updated);
     }
 
+    @Transactional
+    public void deleteService(AskPrincipal principal, UUID businessId, UUID serviceOfferingId) {
+        ServiceOfferingDto current = serviceService.findById(businessId, serviceOfferingId);
+        requireAnyAccess(principal.getUserId(), businessId, current.getBranchId());
+        Long version = searchDocumentService.delete(SearchDocumentType.SERVICE, serviceOfferingId);
+        serviceService.deleteService(businessId, serviceOfferingId);
+        searchOutboxService.publish(SearchAggregateType.SERVICE, serviceOfferingId,
+                SearchEventType.DELETE, version);
+    }
+
     private void syncSearchProjection(ServiceOfferingDto dto) {
         boolean searchable = Boolean.TRUE.equals(dto.getIsActive());
         if (searchable) {
+            kz.ask.business.core.domain.dto.BusinessDto business = businessService.findById(dto.getBusinessId());
+            BusinessBranchDto branch = dto.getBranchId() == null
+                    ? null : businessBranchService.findByBusinessAndId(dto.getBusinessId(), dto.getBranchId());
             SearchDocumentDto projection = searchProjectionComposer.composeService(
                     dto.getId(),
                     dto.getBusinessId(),
@@ -91,14 +105,13 @@ public class BusinessServiceProcessor {
                     dto.getName(),
                     dto.getDescription(),
                     dto.getCategoryLabel(),
-                    null,
-                    null,
+                    business.getName(),
+                    branch == null ? null : branch.getName(),
                     dto.getBasePrice(),
-                    null,
+                    business.getCurrency(),
                     dto.getAttributes(),
-                    null,
-                    null,
-                    dto.getIsActive());
+                    branch == null ? null : branch.getLatitude(),
+                    branch == null ? null : branch.getLongitude());
             Long version = searchDocumentService.upsert(projection);
             searchOutboxService.publish(SearchAggregateType.SERVICE, dto.getId(),
                     SearchEventType.UPSERT, version);

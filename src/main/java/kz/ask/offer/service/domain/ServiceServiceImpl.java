@@ -90,6 +90,17 @@ public class ServiceServiceImpl implements ServiceService {
         return toDto(serviceOfferingRepository.save(offering));
     }
 
+    @Override
+    @Transactional
+    public void deleteService(UUID businessId, UUID serviceOfferingId) {
+        Service offering = serviceOfferingRepository.findById(serviceOfferingId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        if (!businessId.equals(offering.getBusiness().getId())) {
+            throw new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        serviceOfferingRepository.delete(offering);
+    }
+
     private void validateName(String name) {
         if (name == null || name.isBlank()) throw new ValidationException(ErrorCode.PRODUCT_NAME_BLANK);
     }

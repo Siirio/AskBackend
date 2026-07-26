@@ -1,19 +1,18 @@
 # Search — Feature Locks
 
-LOCKED | Default sort is intent_match, never price_asc | ASK is intent layer, not marketplace | StructuredSearchProcessor scoring
-LOCKED | AI structures queries only — never selects businesses or invents availability | AI cannot know real-time stock | DeepSeek integration
-LOCKED | Meilisearch is retrieval engine, PostgreSQL is source of truth + hydration | Typo-tolerant search with PG fallback | SearchDocument, StructuredSearchProcessor, MeilisearchService
-LOCKED | Search creates no outreach or chat state | Search is retrieval only; customer contact is an explicit separate action | search domain, chat domain
-LOCKED | Canonical aggregate mutation, PostgreSQL SearchDocument projection, and SearchOutboxEvent are committed atomically in a single @Transactional | Out-of-sync projection causes invisible items; async SearchDocument creation with empty shells caused DEAD events | BusinessProductProcessor, BusinessServiceProcessor, ModerationProcessor, SearchDocumentServiceImpl, SearchOutboxServiceImpl
-LOCKED | New items publish to search immediately on manual creation via synchronous SearchDocument projection | Owner must see their item in search right after creating it; moderation rejection removes it; projection version tracks staleness | BusinessProductProcessor.upsertSearchProjection, SearchDocumentService
-LOCKED | Search visibility requires isActive=true AND moderationStatus=APPROVED for items, isActive=true for services | Moderated/rejected items must not appear in public search; inactive items hidden | BusinessProductProcessor.upsertSearchProjection, BusinessServiceProcessor.upsertSearchProjection
-LOCKED | City is a soft signal unless user explicitly selects it | Hard city filter without user choice hides valid results | SearchRequest.city, StructuredSearchProcessor
-LOCKED | DELETE operations use aggregateId, not SearchDocument UUID, for Meilisearch document identity | SearchDocument may be deleted before outbox event processes; aggregateId survives deletion | MeilisearchDocumentMapper, SearchIndexDeliveryServiceImpl
-LOCKED | SearchDocument is never created by the async outbox worker; workers only read existing documents created synchronously by processors | Empty-shell findOrCreate() caused constraint violations and DEAD events | SearchProjectionServiceImpl, SearchOutboxScheduler
-LOCKED | No hardcoded vertical vocabulary (brands, product types, categories) in search ranking | Hardcoded terms create invisible bias and can't be updated without redeploy | StructuredSearchProcessor (deleted addKnownIntentTerms, containsKnownCommercialType)
-LOCKED | AI-derived terms (expandedTerms, aiSynonyms) are scored lexically, not via vector search | Vector/semantic search is disabled until separate decision; all matching is string-based | StructuredSearchProcessor scoring
-LOCKED | Price from query text is a soft signal (ranking adjustment only), never a hard filter | Query-parsed prices can be wrong; only explicit filter prices eliminate results | SearchPlan.possibleMinPrice/possibleMaxPrice, StructuredSearchProcessor.pricePenalty
-LOCKED | Worker never holds a database transaction during Meilisearch calls | External calls inside transactions cause connection exhaustion and long-running locks | SearchIndexDeliveryServiceImpl (split into build → call → confirm)
-LOCKED | DELETE in worker is stale-protected: verifies no newer live projection exists before executing Meilisearch delete | Concurrent create+delete could delete a newer projection | SearchIndexDeliveryServiceImpl.verifyDeleteNotStale
-LOCKED | Dirty candidate overlay requires a non-blank query to activate; empty query returns no overlay | Global overlayUnindexed() assigned HARD_MATCH to every dirty doc regardless of relevance | StructuredSearchProcessor.overlayDirtyCandidates
-LOCKED | Canonical terminology uses ITEM not PRODUCT across all layers (enums, DTOs, API responses, AI prompts) | Parallel synonyms cause contract drift between frontend and backend | SearchScope, SearchDocumentType, SearchAggregateType, StructuredSearchProcessor
+LOCKED | Search mode is exactly ITEM or SERVICE and is explicit user input | AI cannot change the customer-selected result domain | SearchRequest, StructuredSearchProcessor
+LOCKED | Search returns only ItemCard or ServiceCard rows | Business profile and UniqueOffer are context, never standalone search results | SearchCardResponse, StructuredSearchProcessor
+LOCKED | Default sort is relevance/intent match, never price ascending | ASK is an intent layer, not a marketplace | StructuredSearchProcessor
+LOCKED | Search creates no outreach or chat state | Chat is a separate explicit action using business identity | search and messaging domains
+LOCKED | Meilisearch is primary bounded lexical retrieval; PostgreSQL is canonical, hydration, and fallback | External index loss must not lose canonical search state | SearchDocument, MeilisearchService
+LOCKED | Canonical aggregate mutation, complete SearchDocument desired state, and outbox append commit atomically | Prevents invisible or partially published Items/Services | Item, Service, moderation, import, enrichment write paths
+LOCKED | Only search_projection_version_seq creates projection/outbox aggregate versions | Mixed timestamp and sequence versions permanently supersede valid events | SearchDocumentService
+LOCKED | SearchDocument stores scalar businessId and nullable branchId | Item/Service cards must retain Business profile and optional location context | SearchDocument, SearchDocumentMapper
+LOCKED | Worker never holds a database transaction during Meilisearch calls | External latency must not hold database connections or locks | SearchIndexDeliveryServiceImpl
+LOCKED | Delivery confirmation requeues the newest desired action/version after any interleaving mutation | Old UPSERT/DELETE may not remain final in Meilisearch | SearchDeliveryConfirmationProcessor
+LOCKED | Dirty overlay is query-relevant and activates only for a nonblank query | Read-your-writes must not inject unrelated projections | StructuredSearchProcessor
+LOCKED | Explicit filters are hard; interpreted query signals are soft | AI/text inference may be wrong | SearchPlan, StructuredSearchProcessor, MeilisearchServiceImpl
+LOCKED | Distance affects rank only for explicit distance sorting | Coordinates alone are not location intent | StructuredSearchProcessor
+LOCKED | Public resultId equals aggregateId | SearchDocument UUID is internal projection identity | SearchCardResponse
+LOCKED | At most two Meilisearch lexical requests execute per public query and use deterministic rank fusion | Recall expansion remains bounded | MeilisearchServiceImpl
+LOCKED | Canonical search terminology is ITEM and SERVICE | PRODUCT/ALL compatibility values create contract drift | search enums, request/response, AI prompts

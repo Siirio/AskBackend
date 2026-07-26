@@ -158,6 +158,7 @@ public class BusinessMapper {
                 .name(entity.getName())
                 .categoryId(entity.getCategory().getId())
                 .categoryName(entity.getCategory().getName())
+                .currency(entity.getCurrency())
                 .scope(entity.getScope())
                 .onlineOnly(entity.getOnlineOnly())
                 .build();

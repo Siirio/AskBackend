@@ -1,7 +1,7 @@
 # ASK Backend — Product Vision
 
 ## What we're building
-ASK is a local search platform for Items and Services across businesses. It is an **intent layer** that routes qualified demand to brands without commoditizing them. Customers select Item or Service scope, search in natural language, and receive known results ranked by intent match rather than price or rating. A customer may explicitly start a conversation with a matching business.
+ASK is a local search platform for Items and Services across businesses. It is an **intent layer** that routes qualified demand to brands without commoditizing them. Customers select `ITEM` or `SERVICE`, search in natural language, and receive Item or Service rows ranked by intent match rather than price or rating. Each row carries public Business profile context and may explicitly open the shared customer-to-business conversation.
 
 ## Core users
 - **Customers** — search products/services, contact businesses, manage profile with optional preferences (sizes, style, budget, city, favorite brands)
@@ -14,7 +14,8 @@ ASK is a local search platform for Items and Services across businesses. It is a
 - No public rating scores. Visible signals are badges (data freshness, confirmation speed, card quality). Internal ranking signals are separate.
 - All actions must be traceable to an authenticated user.
 - AI (DeepSeek) structures queries — it never selects businesses or invents availability.
-- The frontend selects goods or services; AI cannot override that scope.
+- The frontend selects `ITEM` or `SERVICE`; AI cannot override that mode.
+- Business and UniqueOffer are context for Item/Service results, never standalone search modes or cards.
 - Search is Item/Service retrieval only and never creates requests, supplier outreach, notifications, or chats.
 - Meilisearch is the retrieval engine with typo tolerance, Russian stemming, and synonyms. PostgreSQL is source of truth and hydration layer.
 - Never invent stock, delivery, logistics, schedules, or availability without supplier input or trusted integration data.

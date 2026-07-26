@@ -8,6 +8,10 @@ import org.springframework.stereotype.Component;
 public class SearchDocumentMapper {
 
     public void populateEntity(SearchDocument entity, SearchDocumentDto dto) {
+        entity.setDocumentType(dto.getDocumentType());
+        entity.setAggregateId(dto.getAggregateId());
+        entity.setBusinessId(dto.getBusinessId());
+        entity.setBranchId(dto.getBranchId());
         entity.setTitle(dto.getTitle());
         entity.setNormalizedTitle(dto.getNormalizedTitle());
         entity.setSummary(dto.getSummary());
@@ -25,14 +29,15 @@ public class SearchDocumentMapper {
         entity.setSource(dto.getSource());
         entity.setAvailabilityStatus(dto.getAvailabilityStatus());
         entity.setAvailabilitySource(dto.getAvailabilitySource());
+        entity.setProjectionAction(dto.getProjectionAction());
     }
 
     public SearchDocumentDto toDto(SearchDocument entity) {
         return SearchDocumentDto.builder()
                 .documentType(entity.getDocumentType())
                 .aggregateId(entity.getAggregateId())
-                .businessId(entity.getBusiness() != null ? entity.getBusiness().getId() : null)
-                .branchId(entity.getBranch() != null ? entity.getBranch().getId() : null)
+                .businessId(entity.getBusinessId())
+                .branchId(entity.getBranchId())
                 .title(entity.getTitle())
                 .normalizedTitle(entity.getNormalizedTitle())
                 .summary(entity.getSummary())
@@ -43,6 +48,8 @@ public class SearchDocumentMapper {
                 .currency(entity.getCurrency())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
+                .city(entity.getBranch() != null && entity.getBranch().getCity() != null
+                        ? entity.getBranch().getCity().getName() : null)
                 .tokens(entity.getTokens())
                 .aliases(entity.getAliases())
                 .verifiedAttributes(entity.getVerifiedAttributes())
@@ -50,6 +57,9 @@ public class SearchDocumentMapper {
                 .source(entity.getSource())
                 .availabilityStatus(entity.getAvailabilityStatus())
                 .availabilitySource(entity.getAvailabilitySource())
+                .projectionVersion(entity.getProjectionVersion())
+                .indexedVersion(entity.getIndexedVersion())
+                .projectionAction(entity.getProjectionAction())
                 .build();
     }
 }

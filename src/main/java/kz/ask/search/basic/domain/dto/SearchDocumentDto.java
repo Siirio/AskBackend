@@ -7,6 +7,7 @@ import java.util.UUID;
 import kz.ask.search.basic.domain.enums.SearchAvailabilitySource;
 import kz.ask.search.basic.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
+import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -28,6 +29,7 @@ public class SearchDocumentDto {
     private String currency;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private String city;
     private List<String> tokens;
     private String aliases;
     private Map<String, Object> verifiedAttributes;
@@ -35,4 +37,7 @@ public class SearchDocumentDto {
     private String source;
     private SearchAvailabilityStatus availabilityStatus;
     private SearchAvailabilitySource availabilitySource;
+    private Long projectionVersion;
+    private Long indexedVersion;
+    private SearchProjectionAction projectionAction;
 }

@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,5 +55,13 @@ public class BusinessServiceController {
                                                                      @PathVariable UUID serviceOfferingId,
                                                                      @Valid @RequestBody BusinessServiceUpdateRequest req) {
         return ResponseEntity.ok(processor.updateService(principal, businessId, serviceOfferingId, req));
+    }
+
+    @DeleteMapping("/{serviceOfferingId}")
+    public ResponseEntity<Void> deleteService(@AuthenticationPrincipal AskPrincipal principal,
+                                              @PathVariable UUID businessId,
+                                              @PathVariable UUID serviceOfferingId) {
+        processor.deleteService(principal, businessId, serviceOfferingId);
+        return ResponseEntity.noContent().build();
     }
 }

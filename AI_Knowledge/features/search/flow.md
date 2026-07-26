@@ -1,37 +1,36 @@
 # Search flow
 
-## Write path
+## Mutation and delivery
 
 ```mermaid
 flowchart LR
-    P[Processor creates/updates/deletes Item or Service] --> SD[SearchDocumentService upsert/delete SearchDocument in same Tx]
-    P --> OE[SearchOutboxService publish event in same Tx]
-    SD --> C[COMMIT — aggregate + projection + outbox event atomically]
-    OE --> C
-    C --> W[Async SKIP LOCKED worker picks up PENDING event]
-    W --> PS[SearchProjectionService reads existing SearchDocument, checks projectionVersion]
-    PS --> ID[SearchIndexDeliveryService delivers to Meilisearch in REQUIRES_NEW Tx]
-    ID --> M[Meilisearch indexed]
+    A[Item or Service mutation] --> P[Complete PostgreSQL projection]
+    P --> V[Sequence version]
+    V --> O[Matching outbox event]
+    O --> C[Atomic commit]
+    C --> R[Prepare exact desired state]
+    R --> M[Meilisearch call outside transaction]
+    M --> F[Confirm current desired state]
+    F -->|unchanged| I[Set indexedVersion]
+    F -->|changed| Q[Requeue newest action and version]
 ```
 
-Key invariant: the SearchDocument is created/updated/deleted synchronously with the canonical aggregate. The worker only reads and delivers — it never creates SearchDocuments.
-
-## Read path
+## Retrieval and presentation
 
 ```mermaid
 flowchart LR
-    U[Customer] --> F[Frontend selects item or service scope]
-    F --> Q[POST search with raw query]
-    Q --> I[Query interpretation within fixed scope]
-    I --> M[Meilisearch bounded candidates by aggregateId]
-    M --> H[PostgreSQL hydration via SearchDocument]
-    H --> O[Overlay dirty projections — read-your-writes]
-    O --> R[Deterministic ranking and sections]
-    R --> C[Exact and explicitly relaxed cards]
-    M -. unavailable .-> P[PostgreSQL indexed fallback]
-    P --> H
+    U[Customer selects ITEM or SERVICE] --> Q[Raw query plus explicit filters]
+    Q --> D[Deterministic interpretation]
+    D --> A[Optional AI hints]
+    A --> E[Exact full-query lane]
+    A --> X[Combined expanded lane]
+    E --> R[Reciprocal Rank Fusion]
+    X --> R
+    R --> H[PostgreSQL hydration and dirty overlay]
+    H --> B[Public Business profile hydration]
+    B --> C[Compact Item or Service row]
+    C -->|open row| M[Full Item or Service and Business-profile modal]
+    C -->|chat| T[Explicit business conversation action]
 ```
 
-The customer sees the raw query context, fixed scope, Item/Service cards, and clearly labelled relaxed alternatives. Diagnostics are operational data, not UI content.
-
-Do not let AI switch scope, select a business, invent availability, create requests, chats, notifications, or supplier outreach. Search only returns Item/Service retrieval results.
+Meilisearch failure switches to bounded PostgreSQL lexical retrieval. AI cannot change mode, apply hard inferred constraints, select businesses, or invent availability.

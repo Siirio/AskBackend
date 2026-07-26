@@ -24,7 +24,7 @@ public class SearchReconciliationScheduler {
     @Value("${ask.search.reconciliation.repair:true}")
     private Boolean repair;
 
-    private UUID productCursor;
+    private UUID itemCursor;
     private UUID serviceCursor;
     private long scanned;
     private long mismatches;
@@ -32,10 +32,10 @@ public class SearchReconciliationScheduler {
 
     @Scheduled(fixedDelayString = "${ask.search.reconciliation.interval:PT30S}")
     public void reconcile() {
-        if (productCursor != null || serviceCursor == null) {
-            SearchReconciliationBatch batch = reconciliationService.reconcileProducts(productCursor, batchSize, repair);
+        if (itemCursor != null || serviceCursor == null) {
+            SearchReconciliationBatch batch = reconciliationService.reconcileItems(itemCursor, batchSize, repair);
             record(batch);
-            productCursor = batch.getHasMore() ? batch.getNextCursor() : null;
+            itemCursor = batch.getHasMore() ? batch.getNextCursor() : null;
             if (batch.getHasMore()) {
                 return;
             }

@@ -12,16 +12,16 @@ Rules:
 - Extract meaning instead of only keywords.
 - Separate must_have, nice_to_have, and not_wanted.
 - For broad queries such as "часы", "косметика", or "барбершоп", still structure a broad useful request.
-- If selected_mode is ITEM or SERVICE, respect it.
+- selected_mode is always ITEM or SERVICE and must be preserved unchanged.
 - If selected_category is present, treat it as category context and preserve it when it matches the query.
-- If intent could be item or service, choose the most likely one and add ambiguity notes in available text fields.
+- Never infer or switch the selected mode.
 - Ask clarification only when the query cannot be interpreted.
 - Return valid JSON only.
 
 Input:
 {
   "raw_query": "",
-  "selected_mode": "ITEM | SERVICE | ALL",
+  "selected_mode": "ITEM | SERVICE",
   "selected_category": "",
   "city": "Астана",
   "user_location": {
@@ -175,7 +175,7 @@ Search semantics:
 - Put explicit requirements into must_have.
 - Put preferences into nice_to_have.
 - Put exclusions into not_wanted.
-- Treat concrete item/service type as a hard semantic requirement. "смартфон" must not match laptop, headphones, or vacuum cleaner. "маникюр" must not match haircut or coloring. "женская стрижка" must not match manicure, beard, or male haircut.
+- Treat concrete item/service type as a strong retrieval and ranking signal. The backend validates relevance deterministically.
 - Extract budget constraints precisely. "до 200к" means price.max = 200000 KZT. "до 2000тг" means price.max = 2000 KZT. "от 5000" means price.min = 5000 KZT. "5000-10000" means price.min = 5000 and price.max = 10000.
 - Price cannot make a wrong entity relevant. A cheap headphone is not a smartphone result for a smartphone request.
 - If a feature phrase is the query, such as "лазерная подсветка", put the whole phrase into must_have and search_keywords so primary results must contain that phrase, tag, or attribute.
@@ -185,7 +185,7 @@ Search semantics:
 - Use canonical category keys where possible: beauty_services, haircut, barbershop, hair_salon, gaming_club, computer_club, sports_nutrition, creatine, bike_rental, bicycle_rental, cosmetics, laptop, electronics, watches.
 - AI-inferred category is a semantic signal, not a database filter. Prefer canonical keys plus display terms and aliases over one raw category phrase.
 - For service/item type, include concrete direct terms the backend can match and rank, such as "стрижка", "барбершоп", "салон красоты", "креатин", "батончик", "ноутбук", "ps5", "велики", "велосипед", "прокат велосипедов".
-- Preserve physical package constraints in must_have and item.attributes when present. Example: "батончик > 900 грамм" means product_type "батончик", must_have includes "батончик" and package constraint "> 900 грамм"; the backend can match indexed products with "2 кг".
+- Preserve physical package constraints in must_have and item.attributes when present. Use item_type for the concrete Item term. Package interpretation is a ranking signal unless the customer supplied an explicit filter.
 - Preserve service duration and rental period in service.attributes or time fields when present. Example: "велики на прокат 1 час" means service_type "прокат велосипедов" and service.attributes.duration "1 час".
 
 Attribute keys (shared with index-time extraction — use these exact keys):
@@ -197,4 +197,4 @@ Attribute keys (shared with index-time extraction — use these exact keys):
 - occasion: array from ["birthday", "gift", "everyday"]. Infer from context like "подарок", "на день рождения".
 - condition: "new" or "used". Infer from "бу", "б/у", "used", "подержанный".
 - Omit keys you can't confidently infer. Never write null or empty string placeholders.
-- These keys are matched against the same attributes stored on products/services at index time.
+- These keys are matched against the same attributes stored on Items/Services at index time.

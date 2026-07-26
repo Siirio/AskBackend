@@ -1,7 +1,7 @@
 package kz.ask.catalog.enrichment.api.dto;
 
 public enum AiEnrichmentTargetType {
-    PRODUCT,
+    ITEM,
     SERVICE,
     UNIQUE_OFFER
 }

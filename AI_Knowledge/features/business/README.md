@@ -4,6 +4,7 @@ Business is the legal root for a company, its profile, memberships, optional bra
 
 ## Key decisions
 - Business is the legal and lifecycle root. BusinessProfile stores brand color, logo, description, contact info (number, email, social URLs).
+- Public BusinessProfile data hydrates Item/Service search rows and their detail modal; personal login email/password/2FA data is never Business profile data.
 - Business owns optional branches. A branch is a concrete store/establishment or an additional fulfilment location; it is never required to create an Item or Service.
 - A branch stores the business-selected latitude and longitude. Address search and map selection are provider-independent; 2GIS is not a persistence or runtime dependency.
 - A business membership has a default OWNER, MANAGER, or WORKER role for every present and future branch.

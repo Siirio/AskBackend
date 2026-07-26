@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Search AI helps ASK understand a user query and enrich the search projection. It is not a second Item/Service store, a moderation engine, or a result selector. PostgreSQL remains canonical, Meilisearch remains the candidate engine, and the selected `ITEM` or `SERVICE` scope remains immutable.
+Search AI helps ASK understand a user query and enrich the search projection. It is not a second Item/Service store, a moderation engine, or a result selector. PostgreSQL remains canonical, Meilisearch remains the candidate engine, and the selected `ITEM` or `SERVICE` mode remains immutable.
 
 ## Target package map
 
@@ -25,7 +25,7 @@ kz.ask
 | --- | --- | --- | --- |
 | Catalog enrichment | Existing Item, Service, or UniqueOffer text fields | Missing factual description, additive tags, and additive structured attributes | Replace manual data, invent operational facts, use web search, read images, or decide moderation |
 | Search enricher | Canonical search projection plus accepted metadata | Index-only aliases, normalized terms, and evidence-bearing attributes | Change canonical Item/Service data or choose a business/result |
-| RASE search consultant | Raw query, immutable scope, and explicit filters | Validated query interpretation or retrieval hints | Change scope/filters, query businesses directly, rank cards, or invent stock, delivery, schedules, or availability |
+| RASE search consultant | Raw query, immutable mode, and explicit filters | Validated query interpretation or retrieval hints | Change mode/filters, query businesses directly, rank cards, or invent stock, delivery, schedules, or availability |
 
 `RASE` is the advisory search-AI boundary: it may consult an AI provider, but all provider output is validated before retrieval. It is optional; deterministic interpretation is the fallback.
 
@@ -33,7 +33,7 @@ kz.ask
 
 ```text
 Business, Item, or Service DTO -> accepted metadata -> search projection -> Meilisearch
-raw customer query + immutable scope -> RASE consultant -> validated interpretation -> candidate retrieval -> deterministic ranking -> response
+raw customer query + immutable mode -> RASE consultant -> validated interpretation -> candidate retrieval -> deterministic ranking -> response
 ```
 
 Catalog enrichment may fill only missing descriptions and add text-supported tags or attributes to Item, Service, and UniqueOffer records. It must not replace manual data, change moderation, select a business, create requests/chats/notifications, or claim availability.

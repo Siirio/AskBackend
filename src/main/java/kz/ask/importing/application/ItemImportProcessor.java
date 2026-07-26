@@ -2,7 +2,6 @@ package kz.ask.importing.application;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,12 +30,16 @@ import kz.ask.importing.api.dto.ItemImportUploadResponse;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
+import kz.ask.moderation.domain.ModerationKeywords;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
 import kz.ask.offer.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.offer.service.application.ServiceOfferingDto;
 import kz.ask.offer.service.domain.ServiceService;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import kz.ask.search.basic.domain.SearchOutboxService;
+import kz.ask.search.basic.domain.SearchDocumentService;
+import kz.ask.search.basic.application.SearchProjectionComposer;
+import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
@@ -74,6 +77,8 @@ public class ItemImportProcessor {
     private final CategoryService categoryService;
     private final ServiceService serviceService;
     private final SearchOutboxService searchOutboxService;
+    private final SearchDocumentService searchDocumentService;
+    private final SearchProjectionComposer searchProjectionComposer;
 
     @Value("${business.item-import.default-category-name:Общее}")
     private String defaultCategoryName;
@@ -218,11 +223,34 @@ public class ItemImportProcessor {
         item.setTags(csv(data.get(ItemImportTargetField.TAGS.name())));
         item.setPrice(price(data.get(ItemImportTargetField.PRICE.name())));
         item.setIsActive(Boolean.TRUE);
-        item.setModerationStatus(ProductModerationStatus.PENDING);
+        item.setModerationStatus(ProductModerationStatus.APPROVED);
+        String prohibited = ModerationKeywords.prohibitedMatch(item.getName());
+        if (prohibited != null) {
+            item.setModerationStatus(ProductModerationStatus.REJECTED);
+            item.setModerationNote("Auto-rejected: prohibited category вЂ” " + prohibited);
+        }
         item.setAttributes(attributes(data));
         Item saved = productRepository.save(item);
-        searchOutboxService.publish(SearchAggregateType.ITEM, saved.getId(),
-                SearchEventType.UPSERT, Instant.now().toEpochMilli());
+        if (saved.getModerationStatus() == ProductModerationStatus.APPROVED) {
+            SearchDocumentDto projection = searchProjectionComposer.composeItem(
+                    saved.getId(),
+                    saved.getBusiness().getId(),
+                    saved.getBranch() == null ? null : saved.getBranch().getId(),
+                    saved.getName(),
+                    saved.getDescription(),
+                    saved.getCategoryLabel(),
+                    saved.getBusiness().getName(),
+                    saved.getBranch() == null ? null : saved.getBranch().getName(),
+                    saved.getPrice(),
+                    saved.getBusiness().getCurrency(),
+                    saved.getTags(),
+                    saved.getAttributes(),
+                    saved.getBranch() == null ? null : saved.getBranch().getLatitude(),
+                    saved.getBranch() == null ? null : saved.getBranch().getLongitude());
+            Long version = searchDocumentService.upsert(projection);
+            searchOutboxService.publish(SearchAggregateType.ITEM, saved.getId(),
+                    SearchEventType.UPSERT, version);
+        }
     }
 
     private void createService(ItemImportSession session, ItemImportRow row) {
@@ -239,8 +267,27 @@ public class ItemImportProcessor {
                 .isActive(Boolean.TRUE)
                 .attributes(attributes(data))
                 .build());
+        kz.ask.business.core.domain.entity.Business business =
+                businessRepository.getReferenceById(session.getBusinessId());
+        kz.ask.business.branch.domain.entity.BusinessBranch branch = session.getBranchId() == null
+                ? null : businessBranchRepository.getReferenceById(session.getBranchId());
+        SearchDocumentDto projection = searchProjectionComposer.composeService(
+                saved.getId(),
+                saved.getBusinessId(),
+                saved.getBranchId(),
+                saved.getName(),
+                saved.getDescription(),
+                saved.getCategoryLabel(),
+                business.getName(),
+                branch == null ? null : branch.getName(),
+                saved.getBasePrice(),
+                business.getCurrency(),
+                saved.getAttributes(),
+                branch == null ? null : branch.getLatitude(),
+                branch == null ? null : branch.getLongitude());
+        Long version = searchDocumentService.upsert(projection);
         searchOutboxService.publish(SearchAggregateType.SERVICE, saved.getId(),
-                SearchEventType.UPSERT, Instant.now().toEpochMilli());
+                SearchEventType.UPSERT, version);
     }
 
     private void normalize(ItemImportRow row, List<ItemImportMappingEntry> mappings) {

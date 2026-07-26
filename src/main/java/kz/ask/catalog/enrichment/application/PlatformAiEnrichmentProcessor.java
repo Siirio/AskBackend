@@ -1,7 +1,6 @@
 package kz.ask.catalog.enrichment.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,18 +17,21 @@ import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.platform.domain.PlatformMembershipService;
-import kz.ask.catalog.enrichment.api.dto.AiEnrichmentTargetType;
 import kz.ask.catalog.enrichment.api.dto.RequestAiEnrichmentRequest;
 import kz.ask.catalog.enrichment.api.dto.RequestAiEnrichmentResponse;
 import kz.ask.ai.infrastructure.client.DeepSeekAttributeExtractor;
 import kz.ask.search.basic.domain.SearchOutboxService;
+import kz.ask.search.basic.domain.SearchDocumentService;
+import kz.ask.search.basic.application.SearchProjectionComposer;
+import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
+import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 @Component
@@ -42,10 +44,12 @@ public class PlatformAiEnrichmentProcessor {
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final UniqueOfferRepository uniqueOfferRepository;
     private final SearchOutboxService searchOutboxService;
+    private final SearchDocumentService searchDocumentService;
+    private final SearchProjectionComposer searchProjectionComposer;
     private final DeepSeekAttributeExtractor extractor;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public RequestAiEnrichmentResponse request(
             AskPrincipal principal,
             RequestAiEnrichmentRequest request) {
@@ -55,78 +59,138 @@ public class PlatformAiEnrichmentProcessor {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
         return switch (request.getTargetType()) {
-            case PRODUCT -> enrichProducts(principal.getUserId(), request.getAggregateIds());
+            case ITEM -> enrichProducts(principal.getUserId(), request.getAggregateIds());
             case SERVICE -> enrichServices(principal.getUserId(), request.getAggregateIds());
             case UNIQUE_OFFER -> enrichUniqueOffers(principal.getUserId(), request.getAggregateIds());
         };
     }
 
     private RequestAiEnrichmentResponse enrichProducts(UUID platformUserId, Iterable<UUID> ids) {
-        List<Item> items = productRepository.findByIdIn(toList(ids));
-        items.forEach(item -> requireActiveGrant(
-                platformUserId, item.getBusiness().getId(), BusinessScope.ITEM));
+        List<UUID> targetIds = toList(ids);
+        List<DeepSeekAttributeExtractor.ExtractionItem> inputs = transactionTemplate.execute(status -> {
+            List<Item> items = productRepository.findByIdIn(targetIds);
+            items.forEach(item -> requireActiveGrant(
+                    platformUserId, item.getBusiness().getId(), BusinessScope.ITEM));
+            return items.stream()
+                    .map(item -> toExtractionItem(item.getId(), item.getName(), item.getDescription(),
+                            item.getCategoryLabel(), item.getTags()))
+                    .toList();
+        });
         if (!extractor.isAvailable()) {
             return response(0);
         }
-        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(items.stream()
-                .map(item -> toExtractionItem(item.getId(), item.getName(), item.getDescription(),
-                        item.getCategoryLabel(), item.getTags()))
-                .toList());
-        Instant now = Instant.now();
-        items.forEach(item -> {
-            DeepSeekAttributeExtractor.ExtractionResult result = results.get(item.getId());
-            if (result == null) {
-                return;
-            }
-            apply(item, result);
-            searchOutboxService.republish(SearchAggregateType.ITEM, item.getId(),
-                    SearchEventType.UPSERT, now.toEpochMilli());
+        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(inputs);
+        transactionTemplate.executeWithoutResult(status -> {
+            List<Item> currentItems = productRepository.findByIdIn(targetIds);
+            currentItems.forEach(item -> {
+                requireActiveGrant(platformUserId, item.getBusiness().getId(), BusinessScope.ITEM);
+                DeepSeekAttributeExtractor.ExtractionResult result = results.get(item.getId());
+                if (result == null) {
+                    return;
+                }
+                apply(item, result);
+                syncItemProjection(item);
+            });
         });
         return response(results.size());
     }
 
     private RequestAiEnrichmentResponse enrichServices(UUID platformUserId, Iterable<UUID> ids) {
-        List<kz.ask.offer.service.domain.entity.Service> services = serviceOfferingRepository.findByIdIn(toList(ids));
-        services.forEach(service -> requireActiveGrant(
-                platformUserId, service.getBusiness().getId(), BusinessScope.SERVICE));
+        List<UUID> targetIds = toList(ids);
+        List<DeepSeekAttributeExtractor.ExtractionItem> inputs = transactionTemplate.execute(status -> {
+            List<kz.ask.offer.service.domain.entity.Service> services =
+                    serviceOfferingRepository.findByIdIn(targetIds);
+            services.forEach(service -> requireActiveGrant(
+                    platformUserId, service.getBusiness().getId(), BusinessScope.SERVICE));
+            return services.stream()
+                    .map(service -> toExtractionItem(service.getId(), service.getName(), service.getDescription(),
+                            service.getCategoryLabel(), List.of()))
+                    .toList();
+        });
         if (!extractor.isAvailable()) {
             return response(0);
         }
-        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(services.stream()
-                .map(service -> toExtractionItem(service.getId(), service.getName(), service.getDescription(),
-                        service.getCategoryLabel(), List.of()))
-                .toList());
-        Instant now = Instant.now();
-        services.forEach(service -> {
-            DeepSeekAttributeExtractor.ExtractionResult result = results.get(service.getId());
-            if (result == null) {
-                return;
-            }
-            apply(service, result);
-            searchOutboxService.republish(SearchAggregateType.SERVICE, service.getId(),
-                    SearchEventType.UPSERT, now.toEpochMilli());
+        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(inputs);
+        transactionTemplate.executeWithoutResult(status -> {
+            List<kz.ask.offer.service.domain.entity.Service> currentServices =
+                    serviceOfferingRepository.findByIdIn(targetIds);
+            currentServices.forEach(service -> {
+                requireActiveGrant(platformUserId, service.getBusiness().getId(), BusinessScope.SERVICE);
+                DeepSeekAttributeExtractor.ExtractionResult result = results.get(service.getId());
+                if (result == null) {
+                    return;
+                }
+                apply(service, result);
+                syncServiceProjection(service);
+            });
         });
         return response(results.size());
     }
 
     private RequestAiEnrichmentResponse enrichUniqueOffers(UUID platformUserId, Iterable<UUID> ids) {
-        List<UniqueOffer> offers = uniqueOfferRepository.findByIdIn(toList(ids));
-        offers.forEach(offer -> requireActiveGrant(platformUserId, offer.getBusiness().getId(), null));
+        List<UUID> targetIds = toList(ids);
+        List<DeepSeekAttributeExtractor.ExtractionItem> inputs = transactionTemplate.execute(status -> {
+            List<UniqueOffer> offers = uniqueOfferRepository.findByIdIn(targetIds);
+            offers.forEach(offer -> requireActiveGrant(platformUserId, offer.getBusiness().getId(), null));
+            return offers.stream()
+                    .map(offer -> toExtractionItem(offer.getId(), offer.getName(), offer.getDescription(),
+                            offer.getType().name(), offer.getTags()))
+                    .toList();
+        });
         if (!extractor.isAvailable()) {
             return response(0);
         }
-        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(offers.stream()
-                .map(offer -> toExtractionItem(offer.getId(), offer.getName(), offer.getDescription(),
-                        offer.getType().name(), offer.getTags()))
-                .toList());
-        offers.forEach(offer -> {
-            DeepSeekAttributeExtractor.ExtractionResult result = results.get(offer.getId());
-            if (result == null) {
-                return;
-            }
-            apply(offer, result);
+        Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> results = extract(inputs);
+        transactionTemplate.executeWithoutResult(status -> {
+            List<UniqueOffer> currentOffers = uniqueOfferRepository.findByIdIn(targetIds);
+            currentOffers.forEach(offer -> {
+                requireActiveGrant(platformUserId, offer.getBusiness().getId(), null);
+                DeepSeekAttributeExtractor.ExtractionResult result = results.get(offer.getId());
+                if (result != null) {
+                    apply(offer, result);
+                }
+            });
         });
         return response(results.size());
+    }
+
+    private void syncItemProjection(Item item) {
+        boolean searchable = Boolean.TRUE.equals(item.getIsActive())
+                && item.getModerationStatus() == kz.ask.offer.item.domain.enums.ProductModerationStatus.APPROVED;
+        if (!searchable) {
+            Long version = searchDocumentService.delete(SearchDocumentType.ITEM, item.getId());
+            searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(), SearchEventType.DELETE, version);
+            return;
+        }
+        SearchDocumentDto projection = searchProjectionComposer.composeItem(
+                item.getId(), item.getBusiness().getId(),
+                item.getBranch() == null ? null : item.getBranch().getId(),
+                item.getName(), item.getDescription(), item.getCategoryLabel(),
+                item.getBusiness().getName(), item.getBranch() == null ? null : item.getBranch().getName(),
+                item.getPrice(), item.getBusiness().getCurrency(), item.getTags(), item.getAttributes(),
+                item.getBranch() == null ? null : item.getBranch().getLatitude(),
+                item.getBranch() == null ? null : item.getBranch().getLongitude());
+        Long version = searchDocumentService.upsert(projection);
+        searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(), SearchEventType.UPSERT, version);
+    }
+
+    private void syncServiceProjection(kz.ask.offer.service.domain.entity.Service service) {
+        if (!Boolean.TRUE.equals(service.getIsActive())) {
+            Long version = searchDocumentService.delete(SearchDocumentType.SERVICE, service.getId());
+            searchOutboxService.publish(SearchAggregateType.SERVICE, service.getId(), SearchEventType.DELETE, version);
+            return;
+        }
+        SearchDocumentDto projection = searchProjectionComposer.composeService(
+                service.getId(), service.getBusiness().getId(),
+                service.getBranch() == null ? null : service.getBranch().getId(),
+                service.getName(), service.getDescription(), service.getCategoryLabel(),
+                service.getBusiness().getName(),
+                service.getBranch() == null ? null : service.getBranch().getName(),
+                service.getBasePrice(), service.getBusiness().getCurrency(), service.getAttributes(),
+                service.getBranch() == null ? null : service.getBranch().getLatitude(),
+                service.getBranch() == null ? null : service.getBranch().getLongitude());
+        Long version = searchDocumentService.upsert(projection);
+        searchOutboxService.publish(SearchAggregateType.SERVICE, service.getId(), SearchEventType.UPSERT, version);
     }
 
     private Map<UUID, DeepSeekAttributeExtractor.ExtractionResult> extract(

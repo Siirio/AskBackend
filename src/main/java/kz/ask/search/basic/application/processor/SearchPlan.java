@@ -11,6 +11,7 @@ import lombok.Getter;
 @Builder(toBuilder = true)
 public class SearchPlan {
 
+    private String rawQuery;
     private SearchDocumentType itemType;
     private String city;
     private String possibleCity;

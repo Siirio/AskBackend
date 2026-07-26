@@ -10,11 +10,11 @@
 
 **Allowed changes:** Synchronize documentation and locks after the user resolves the conflict or approves changed behavior.
 
-## LOCKED: Search is catalog-only and user-scoped
+## LOCKED: Search is Item/Service-only and user-scoped
 
 **Approved signal:** User clarification on 2026-07-21.
 
-**Rule:** The frontend selects `PRODUCT` or `SERVICE`. Search preserves the raw query, reads only published branch offers, and does not create requests, supplier outreach, notifications, or chats. AI may structure the selected-scope query but may not change its scope, select businesses, or invent facts.
+**Rule:** The frontend selects exactly `ITEM` or `SERVICE`. Search preserves the raw query and returns only matching Item or Service rows. Each row is hydrated with its public Business profile and optional branch context; opening the row shows the full Item/Service description and Business profile, while chat is an explicit business-conversation action. Business and UniqueOffer are never standalone search scopes or result cards. UniqueOffers may only decorate or boost linked Item/Service results. Search creates no requests, supplier outreach, notifications, or chats. AI may structure the selected-mode query but may not change its mode, select businesses, or invent facts.
 
 **Scope:** search domain, search API contracts, request integrations, search projection.
 

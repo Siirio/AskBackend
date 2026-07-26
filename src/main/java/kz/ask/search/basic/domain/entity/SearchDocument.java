@@ -22,6 +22,7 @@ import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.search.basic.domain.enums.SearchAvailabilitySource;
 import kz.ask.search.basic.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
+import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -39,10 +40,10 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(name = "aggregate_id", nullable = false)
     private java.util.UUID aggregateId;
 
-    @Column(nullable = false)
+    @Column
     private String title;
 
-    @Column(name = "normalized_title", nullable = false)
+    @Column(name = "normalized_title")
     private String normalizedTitle;
 
     private String summary;
@@ -61,17 +62,23 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(name = "branch_name")
     private String branchName;
 
+    @Column(name = "business_id")
+    private java.util.UUID businessId;
+
+    @Column(name = "branch_id")
+    private java.util.UUID branchId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "business_id")
+    @JoinColumn(name = "business_id", insertable = false, updatable = false)
     private Business business;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "branch_id")
+    @JoinColumn(name = "branch_id", insertable = false, updatable = false)
     private BusinessBranch branch;
 
     private BigDecimal price;
 
-    @Column(nullable = false, length = 3)
+    @Column(length = 3)
     private String currency;
 
     private BigDecimal latitude;
@@ -89,25 +96,25 @@ public class SearchDocument extends BaseUuidV7Entity {
     private String publicNote;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "verified_attributes", nullable = false, columnDefinition = "JSONB")
+    @Column(name = "verified_attributes", columnDefinition = "JSONB")
     private Map<String, Object> verifiedAttributes;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ai_attributes", nullable = false, columnDefinition = "JSONB")
+    @Column(name = "ai_attributes", columnDefinition = "JSONB")
     private Map<String, Object> aiAttributes;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String aliases;
 
     @Column(name = "ai_search_summary")
     private String aiSearchSummary;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "availability_status", nullable = false)
+    @Column(name = "availability_status")
     private SearchAvailabilityStatus availabilityStatus;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "availability_source", nullable = false)
+    @Column(name = "availability_source")
     private SearchAvailabilitySource availabilitySource;
 
     @Column(name = "last_business_updated_at")
@@ -121,5 +128,9 @@ public class SearchDocument extends BaseUuidV7Entity {
 
     @Column(name = "indexed_version")
     private Long indexedVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "projection_action", nullable = false)
+    private SearchProjectionAction projectionAction;
 
 }

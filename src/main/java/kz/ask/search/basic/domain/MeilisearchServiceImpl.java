@@ -12,6 +12,7 @@ import com.meilisearch.sdk.model.SwapIndexesParams;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
+import kz.ask.shared.error.ErrorCode;
+import kz.ask.shared.error.ExternalServiceException;
+import kz.ask.shared.error.InternalServerException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -35,7 +39,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private static final String FIELD_CITY = "city";
     private static final String FIELD_VERIFIED_ATTRIBUTES = "verifiedAttributes";
     private static final String FIELD_AI_ATTRIBUTES = "aiAttributes";
-    private static final String FIELD_SYNCED_AT = "syncedAt";
+    private static final Integer RECIPROCAL_RANK_FUSION_CONSTANT = 60;
 
     private final Client client;
     private final ObjectMapper objectMapper;
@@ -56,7 +60,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             Map<String, Object> doc = toMeiliDocument(document);
             waitForTask(index, index.addDocuments(objectMapper.writeValueAsString(List.of(doc)), "id"));
         } catch (MeilisearchException | JsonProcessingException e) {
-            throw new IllegalStateException("Failed to index document " + document.getId(), e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_INDEX_FAILED);
         }
     }
 
@@ -66,7 +70,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             Index index = ensureIndex();
             waitForTask(index, index.deleteDocument(documentId.toString()));
         } catch (MeilisearchException e) {
-            throw new IllegalStateException("Failed to delete document " + documentId, e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_DELETE_FAILED);
         }
     }
 
@@ -84,7 +88,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             configureSettings(client.getIndex(rebuildIndex));
             return rebuildIndex;
         } catch (MeilisearchException e) {
-            throw new IllegalStateException("Failed to create rebuild index " + rebuildIndex, e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_INDEX_FAILED);
         }
     }
 
@@ -101,7 +105,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             waitForTask(index, index.addDocuments(objectMapper.writeValueAsString(docs), "id"));
             log.info("Indexed {} documents into Meilisearch", documents.size());
         } catch (MeilisearchException | JsonProcessingException e) {
-            throw new IllegalStateException("Failed to batch index " + documents.size() + " documents", e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_INDEX_FAILED);
         }
     }
 
@@ -115,7 +119,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             client.waitForTask(swapTask.getTaskUid());
             discardIndex(rebuildIndex);
         } catch (MeilisearchException e) {
-            throw new IllegalStateException("Failed to activate rebuild index " + rebuildIndex, e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_INDEX_FAILED);
         }
     }
 
@@ -126,7 +130,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             client.waitForTask(task.getTaskUid());
             configuredIndexes.remove(targetIndex);
         } catch (MeilisearchException e) {
-            throw new IllegalStateException("Failed to discard index " + targetIndex, e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_DELETE_FAILED);
         }
     }
 
@@ -134,26 +138,34 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     public List<UUID> search(SearchPlan plan, int limit) {
         try {
             Index index = ensureIndex();
-            SearchRequest request = buildSearchRequest(plan, limit);
-            Searchable result = index.search(request);
-            return result.getHits().stream()
-                    .map(hit -> {
-                        Object idValue = hit.get("id");
-                        if (idValue == null) {
-                            return null;
-                        }
-                        return UUID.fromString(idValue.toString().replace("\"", ""));
-                    })
-                    .filter(id -> id != null)
-                    .toList();
-        } catch (Exception e) {
+            String exactQuery = normalize(plan.getRawQuery());
+            String expandedQuery = expandedQuery(plan);
+            List<UUID> exactLane = executeSearch(index, exactQuery, plan, limit);
+            if (expandedQuery.isBlank() || expandedQuery.equals(exactQuery)) {
+                return exactLane;
+            }
+            List<UUID> expandedLane = executeSearch(index, expandedQuery, plan, limit);
+            return fuse(exactLane, expandedLane, limit);
+        } catch (MeilisearchException | IllegalArgumentException e) {
             log.error("Meilisearch search failed: {}", e.getMessage());
-            throw new RuntimeException("Meilisearch search failed", e);
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_SEARCH_FAILED);
         }
     }
 
-    private SearchRequest buildSearchRequest(SearchPlan plan, int limit) {
-        String query = buildQueryString(plan);
+    private List<UUID> executeSearch(Index index, String query, SearchPlan plan, int limit)
+            throws MeilisearchException {
+        if (query.isBlank()) {
+            return List.of();
+        }
+        Searchable result = index.search(buildSearchRequest(query, plan, limit));
+        return result.getHits().stream()
+                .map(hit -> hit.get("id"))
+                .filter(java.util.Objects::nonNull)
+                .map(value -> UUID.fromString(value.toString().replace("\"", "")))
+                .toList();
+    }
+
+    private SearchRequest buildSearchRequest(String query, SearchPlan plan, int limit) {
         String filter = buildFilterString(plan);
 
         SearchRequest request = new SearchRequest(query)
@@ -170,23 +182,35 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         return request;
     }
 
-    private String buildQueryString(SearchPlan plan) {
-        String exactTerm = firstTerm(plan.getExactTerms());
-        if (!exactTerm.isBlank()) {
-            return exactTerm;
-        }
-        String expandedTerm = firstTerm(plan.getExpandedTerms());
-        if (!expandedTerm.isBlank()) {
-            return expandedTerm;
-        }
-        return firstTerm(plan.getHardMatchTerms());
+    private String expandedQuery(SearchPlan plan) {
+        return java.util.stream.Stream.of(
+                        plan.getExactTerms(), plan.getExpandedTerms(), plan.getAiSynonyms(),
+                        plan.getRelatedTerms(), plan.getCategoryAliases())
+                .flatMap(List::stream)
+                .filter(term -> term != null && !term.isBlank())
+                .map(String::trim)
+                .distinct()
+                .limit(20)
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
-    private String firstTerm(List<String> terms) {
-        return terms.stream()
-                .filter(term -> term != null && !term.isBlank())
-                .findFirst()
-                .orElse("");
+    private List<UUID> fuse(List<UUID> exactLane, List<UUID> expandedLane, int limit) {
+        Map<UUID, Double> scores = new LinkedHashMap<>();
+        addLaneScores(scores, exactLane);
+        addLaneScores(scores, expandedLane);
+        return scores.entrySet().stream()
+                .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed()
+                        .thenComparing(entry -> entry.getKey().toString()))
+                .limit(limit)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    private void addLaneScores(Map<UUID, Double> scores, List<UUID> lane) {
+        for (int index = 0; index < lane.size(); index++) {
+            double score = 1.0 / (RECIPROCAL_RANK_FUSION_CONSTANT + index + 1);
+            scores.merge(lane.get(index), score, Double::sum);
+        }
     }
 
     private String buildFilterString(SearchPlan plan) {
@@ -208,23 +232,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             filters.add(FIELD_CITY + " = " + escapeValue(plan.getCity()));
         }
 
-        if (plan.getNotWanted() != null && !plan.getNotWanted().isEmpty()) {
-            appendNotWantedFilters(filters, plan);
-        }
-
         return String.join(" AND ", filters);
-    }
-
-    private void appendNotWantedFilters(List<String> filters, SearchPlan plan) {
-        for (String term : plan.getNotWanted()) {
-            String normalized = normalize(term);
-            if (normalized.isBlank()) {
-                continue;
-            }
-            for (String key : AttributeKeys.ALL_KEYS) {
-                filters.add(FIELD_VERIFIED_ATTRIBUTES + "." + key + " != " + escapeValue(normalized));
-            }
-        }
     }
 
     private Index ensureIndex() throws MeilisearchException {
@@ -261,7 +269,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                 "aggregateId", "currency", "availabilityStatus"
         }));
         waitForTask(index, index.updateSortableAttributesSettings(new String[]{
-                FIELD_PRICE, FIELD_SYNCED_AT
+                FIELD_PRICE
         }));
         configuredIndexes.add(index.getUid());
         log.info("Meilisearch index '{}' settings configured", index.getUid());
@@ -287,13 +295,15 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put("latitude", doc.getLatitude());
         map.put("longitude", doc.getLongitude());
         map.put(FIELD_CITY, nullToEmpty(doc.getCity()));
-        map.put(FIELD_DOCUMENT_TYPE, doc.getDocumentType() != null ? doc.getDocumentType() : "UNKNOWN");
+        if (doc.getDocumentType() == null) {
+            throw new InternalServerException(ErrorCode.SEARCH_PROJECTION_INVALID);
+        }
+        map.put(FIELD_DOCUMENT_TYPE, doc.getDocumentType());
         map.put(FIELD_VERIFIED_ATTRIBUTES, doc.getVerifiedAttributes() != null
                 ? new HashMap<>(doc.getVerifiedAttributes()) : new HashMap<>());
         map.put(FIELD_AI_ATTRIBUTES, doc.getAiAttributes() != null
                 ? new HashMap<>(doc.getAiAttributes()) : new HashMap<>());
         map.put("availabilityStatus", nullToEmpty(doc.getAvailabilityStatus()));
-        map.put(FIELD_SYNCED_AT, doc.getSyncedAt() != null ? doc.getSyncedAt().toString() : null);
         map.put("projectionVersion", doc.getProjectionVersion());
         return map;
     }
