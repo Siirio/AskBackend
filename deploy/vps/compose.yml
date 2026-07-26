@@ -93,6 +93,7 @@ services:
       - ask
 
   app-prod:
+    image: ask-backend:${BUILD_SHA:?BUILD_SHA must be set}
     build:
       context: ../..
       dockerfile: Dockerfile
@@ -105,6 +106,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      BUILD_SHA: ${BUILD_SHA:?BUILD_SHA must be set}
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       ASK_DB_URL: jdbc:postgresql://db-prod:5432/ask_prod
       ASK_DB_USERNAME: ask_prod
@@ -135,10 +137,14 @@ services:
       MEILISEARCH_HOST_URL: http://meili-prod:7700
       MEILISEARCH_API_KEY: ${MEILI_PROD_MASTER_KEY:?MEILI_PROD_MASTER_KEY must be set}
       MEILISEARCH_INDEX_NAME: ${MEILISEARCH_PROD_INDEX_NAME:-search_documents_v1}
+      ASK_BUSINESS_MEDIA_UPLOAD_DIR: /var/lib/ask/business-media
+    volumes:
+      - business_media_prod:/var/lib/ask/business-media
     networks:
       - ask
 
   app-stage:
+    image: ask-backend:${BUILD_SHA:?BUILD_SHA must be set}
     build:
       context: ../..
       dockerfile: Dockerfile
@@ -151,6 +157,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      BUILD_SHA: ${BUILD_SHA:?BUILD_SHA must be set}
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       ASK_DB_URL: jdbc:postgresql://db-stage:5432/ask_stage
       ASK_DB_USERNAME: ask_stage
@@ -181,6 +188,9 @@ services:
       MEILISEARCH_HOST_URL: http://meili-stage:7700
       MEILISEARCH_API_KEY: ${MEILI_STAGE_MASTER_KEY:?MEILI_STAGE_MASTER_KEY must be set}
       MEILISEARCH_INDEX_NAME: ${MEILISEARCH_STAGE_INDEX_NAME:-search_documents_v1}
+      ASK_BUSINESS_MEDIA_UPLOAD_DIR: /var/lib/ask/business-media
+    volumes:
+      - business_media_stage:/var/lib/ask/business-media
     networks:
       - ask
 
@@ -191,6 +201,8 @@ volumes:
   pg_stage:
   meili_prod:
   meili_stage:
+  business_media_prod:
+  business_media_stage:
 
 networks:
   ask:

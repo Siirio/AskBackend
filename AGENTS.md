@@ -9,6 +9,8 @@
 ## Entity Authority
 - Runtime entity definitions are the source of truth for persisted domain fields. Do not add, restore, or rename entity fields merely to satisfy stale callers, DTOs, migrations, or compilation errors; trace and remove or update the stale behavior instead.
 - Use entity names and enum values unchanged across DTOs, endpoints, frontend state, and documentation because synonym mappings create contract drift; `BusinessScope` is always `ITEM`, `SERVICE`, or `BOTH`.
+- Business-profile logos and covers and Unique Offer covers are uploaded image files managed by ASK; clients never submit media URLs.
+- URL inputs are reserved for external destinations such as websites, Instagram, Telegram, WhatsApp, and similar links.
 
 REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
@@ -23,6 +25,7 @@ REST API backend for the ASK platform — local item/service search with an anti
 ## Runtime Constraints
 - Never commit or push. User controls all version control.
 - Never run Maven, Gradle, or any build tool unless user explicitly says "run" or "build."
+- Flyway has exactly two migrations: `V1__init.sql` contains all DDL and `V2__reference_data.sql` contains only reference-data inserts.
 - AI_Knowledge/ must be committed — it IS the shared truth. Never add to .gitignore.
 
 ## Session Start — MANDATORY

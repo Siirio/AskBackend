@@ -1,13 +1,15 @@
 package kz.ask.business.uniqueoffer.domain;
 
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.math.BigDecimal;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferDto;
+import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
 import kz.ask.business.uniqueoffer.domain.entity.UniqueOffer;
 import kz.ask.business.uniqueoffer.domain.enums.UniqueOfferStatus;
-import kz.ask.business.uniqueoffer.domain.enums.UniqueOfferType;
 import kz.ask.business.core.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.core.infrastructure.repository.BusinessRepository;
 import kz.ask.business.uniqueoffer.infrastructure.repository.UniqueOfferRepository;
@@ -45,31 +47,25 @@ public class UniqueOfferServiceImpl implements UniqueOfferService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public UniqueOfferDto findById(UUID offerId) {
+        return businessMapper.toUniqueOfferDto(requireOffer(offerId));
+    }
+
+    @Override
     @Transactional
-    public UniqueOfferDto create(UUID businessId, String name, String description, Instant startDate,
-                                 Instant endDate, String type, String status, String coverUrl,
-                                 Integer discountPercent, BigDecimal discountAmount,
-                                 Boolean isActive, String currency, List<String> tags) {
+    public UniqueOfferDto create(UUID businessId, UniqueOfferDto dto) {
         UniqueOffer offer = businessMapper.toUniqueOfferEntity(
                 businessRepository.getReferenceById(businessId),
-                name, description, startDate, endDate,
-                UniqueOfferType.valueOf(type),
-                UniqueOfferStatus.valueOf(status),
-                coverUrl, discountPercent, discountAmount,
-                isActive, currency, tags);
+                dto);
         return businessMapper.toUniqueOfferDto(uniqueOfferRepository.save(offer));
     }
 
     @Override
     @Transactional
-    public UniqueOfferDto update(UUID offerId, String name, String description,
-                                 Instant startDate, Instant endDate, String type, String status,
-                                 String coverUrl, Integer discountPercent, BigDecimal discountAmount,
-                                 Boolean isActive, String currency, List<String> tags) {
+    public UniqueOfferDto update(UUID offerId, UniqueOfferDto dto) {
         UniqueOffer offer = requireOffer(offerId);
-        businessMapper.updateUniqueOffer(offer, name, description, startDate, endDate,
-                type, status, coverUrl, discountPercent, discountAmount,
-                isActive, currency, tags);
+        businessMapper.updateUniqueOffer(offer, dto);
         return businessMapper.toUniqueOfferDto(uniqueOfferRepository.save(offer));
     }
 
@@ -88,6 +84,61 @@ public class UniqueOfferServiceImpl implements UniqueOfferService {
         UniqueOfferDto dto = businessMapper.toUniqueOfferDto(offer);
         uniqueOfferRepository.delete(offer);
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, UniqueOfferBoostDto> findActiveItemBoosts(List<UUID> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UniqueOffer> offers = uniqueOfferRepository.findActiveLinkedItems(
+                itemIds, UniqueOfferStatus.ACTIVE, Instant.now());
+        return toBoosts(offers, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, UniqueOfferBoostDto> findActiveServiceBoosts(List<UUID> serviceIds) {
+        if (serviceIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UniqueOffer> offers = uniqueOfferRepository.findActiveLinkedServices(
+                serviceIds, UniqueOfferStatus.ACTIVE, Instant.now());
+        return toBoosts(offers, false);
+    }
+
+    private Map<UUID, UniqueOfferBoostDto> toBoosts(List<UniqueOffer> offers, Boolean items) {
+        Map<UUID, UniqueOfferBoostDto> boosts = new LinkedHashMap<>();
+        offers.stream()
+                .sorted(Comparator.comparing(
+                        UniqueOffer::getStartDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .forEach(offer -> {
+                    List<UUID> aggregateIds = Boolean.TRUE.equals(items)
+                            ? offer.getItemIds()
+                            : offer.getServiceIds();
+                    List<UUID> branchIds = List.copyOf(offer.getBranchIds());
+                    aggregateIds.forEach(aggregateId -> boosts.putIfAbsent(
+                            aggregateId,
+                            UniqueOfferBoostDto.builder()
+                                    .aggregateId(aggregateId)
+                                    .branchIds(branchIds)
+                                    .label(offerLabel(offer))
+                                    .build()));
+                });
+        return boosts;
+    }
+
+    private String offerLabel(UniqueOffer offer) {
+        if (offer.getDiscountPercent() != null) {
+            return "-" + offer.getDiscountPercent() + "%";
+        }
+        if (offer.getDiscountAmount() != null) {
+            String currency = offer.getCurrency() == null ? "" : " " + offer.getCurrency();
+            return "-" + offer.getDiscountAmount().stripTrailingZeros().toPlainString() + currency;
+        }
+        return offer.getName();
     }
 
     private UniqueOffer requireOffer(UUID offerId) {

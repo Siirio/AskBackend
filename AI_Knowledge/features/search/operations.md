@@ -4,11 +4,14 @@
 
 `MEILISEARCH_HOST_URL`, `MEILISEARCH_API_KEY`, and `MEILISEARCH_INDEX_NAME` configure primary retrieval. Worker batch sizes, leases, attempts, and backoff remain configurable under `ASK_SEARCH_*`.
 
-## Version migration
+## Migration baseline
 
-V4 introduced `search_projection_version_seq`. Because the applied Flyway history of shared dev/stage databases is not confirmed, V4 is preserved. Forward migration V5 adds durable `projection_action`, retires unsupported Business/UniqueOffer search events while preserving their outbox history, removes their obsolete PostgreSQL projections, makes tombstone-only fields nullable, and advances the sequence above the maximum existing `search_document.projection_version` and `search_outbox_event.aggregate_version`. Run a full Meilisearch rebuild after the upgrade so any legacy external-only documents are removed.
+The project intentionally has exactly two fresh-deploy migrations:
 
-Before deployment, inspect `flyway_schema_history` on each environment. Never edit or remove an already applied migration. Validate both a clean migration and an upgrade from the actual environment history.
+- `V1__init.sql` contains the complete final DDL: extensions, sequence, tables, indexes, and constraints.
+- `V2__reference_data.sql` contains reference-data inserts for cities and typed categories.
+
+There is no supported in-place upgrade from a database whose Flyway history contains the former `V4` or `V5`. Recreate those databases before deploying this baseline, then run a full Meilisearch rebuild.
 
 ## Delivery recovery
 

@@ -51,6 +51,13 @@ public class ServiceServiceImpl implements ServiceService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Boolean allBelongToBusiness(UUID businessId, java.util.List<UUID> serviceIds) {
+        return serviceIds.isEmpty()
+                || serviceOfferingRepository.countByIdInAndBusinessId(serviceIds, businessId) == serviceIds.size();
+    }
+
+    @Override
     @Transactional
     public ServiceOfferingDto createService(UUID businessId, BusinessServiceCreateRequest req) {
         validateName(req.getName());

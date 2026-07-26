@@ -11,5 +11,7 @@ public interface BusinessBranchRepository extends JpaRepository<BusinessBranch, 
 
     List<BusinessBranch> findByBusinessId(UUID businessId);
 
+    Long countByIdInAndBusinessId(List<UUID> ids, UUID businessId);
+
     List<BusinessBranch> findByCityId(UUID cityId);
 }

@@ -23,6 +23,8 @@ public interface ProductRepository extends JpaRepository<Item, UUID> {
 
     Long countByBusinessId(UUID businessId);
 
+    Long countByIdInAndBusinessId(List<UUID> ids, UUID businessId);
+
     Long countByModerationStatus(ProductModerationStatus moderationStatus);
 
     @Query("SELECT p FROM Item p WHERE p.branch.id = :branchId AND LOWER(p.name) LIKE LOWER(:query)")

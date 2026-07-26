@@ -7,6 +7,17 @@
 | POST | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | Create branch |
 | PATCH | /api/v1/branches/{branchId} | OWNER/MANAGER | Update branch |
 
+## Business Profile
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/businesses/{businessId}/business-profile | No | Read the public profile |
+| PATCH | /api/v1/businesses/{businessId}/business-profile | OWNER/MANAGER | Update text, contact, social, and website fields |
+| POST | /api/v1/businesses/{businessId}/business-profile/logo | OWNER/MANAGER | Upload or replace the logo file |
+| POST | /api/v1/businesses/{businessId}/business-profile/cover | OWNER/MANAGER | Upload or replace the cover file |
+| GET | /api/v1/business-media/files/{storedName} | No | Render ASK-managed business media |
+
+Profile JSON never accepts `logoUrl` or `coverUrl`. Logo and cover use multipart field `file` and accept validated PNG, JPEG, or WebP images up to the configured limit. Responses expose server-generated media locations. `instagramUrl`, `telegramUrl`, and `websiteUrl` remain external URL fields.
+
 ## Registration
 `POST /api/v1/auth/business/register` accepts a business name, `businessScope`, and either
 `businessCategoryId` or `businessCategoryName`. Branch fields are optional. Registration creates

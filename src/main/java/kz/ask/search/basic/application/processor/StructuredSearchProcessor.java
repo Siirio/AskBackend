@@ -19,11 +19,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import kz.ask.business.profile.domain.BusinessProfileService;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
+import kz.ask.business.uniqueoffer.domain.UniqueOfferService;
+import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
 import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.search_query_enrichment.domain.SearchIntentStructurer;
 import kz.ask.search.search_query_enrichment.domain.SearchTermEnricher;
 import kz.ask.search.basic.api.dto.SearchConstraintResponse;
-import kz.ask.search.basic.api.dto.SearchDiagnosticsResponse;
 import kz.ask.search.basic.api.dto.SearchLocationRequest;
 
 import kz.ask.search.basic.api.dto.SearchCardResponse;
@@ -74,6 +75,7 @@ public class StructuredSearchProcessor {
     private static final String CONFIDENCE_LOW = "LOW";
     private static final String DEFAULT_BRAND_COLOR = "#0d9b7c";
     private static final Integer MAX_CANDIDATES = 200;
+    private static final Integer ACTIVE_OFFER_SCORE = 25;
     private static final Pattern MAX_PRICE_PATTERN = Pattern.compile(
             "(?:до|не\\s+дороже|максимум|under|below|up\\s+to|max(?:imum)?|no\\s+more\\s+than)\\s*(\\d+[\\d\\s]*)(к|k|тыс|тысяч|тг)?");
     private static final Pattern MIN_PRICE_PATTERN = Pattern.compile(
@@ -90,10 +92,10 @@ public class StructuredSearchProcessor {
     private final SearchQueryAliasRepository searchQueryAliasRepository;
     private final SearchTermEnricher searchTermEnricher;
     private final BusinessProfileService businessProfileService;
+    private final UniqueOfferService uniqueOfferService;
     private final MeilisearchService meilisearchService;
 
     public SearchResponse search(SearchRequest request) {
-        long startedAt = System.nanoTime();
         int page = request.getPage() == null ? 0 : request.getPage();
         int pageSize = request.getPageSize() == null ? DEFAULT_PAGE_SIZE : request.getPageSize();
         int requestedWindow = Math.min(MAX_CANDIDATES, (page + 1) * pageSize);
@@ -105,22 +107,11 @@ public class StructuredSearchProcessor {
 
         List<ScoredSearchDocument> exactCandidates;
         boolean fallbackUsed = false;
-        String fallbackReason = null;
-        String engine = "MEILISEARCH";
         try {
             exactCandidates = searchViaMeilisearch(searchPlan, searchPlan, userLocation, candidateLimit);
         } catch (Exception e) {
-            fallbackReason = rootCauseMessage(e);
-            log.warn("""
-
-                --------------------------------------------------------------------
-
-                Meilisearch is not available {}, falling back to PostgreSql
-
-                ----------------------------------------------------------------------
-                """, fallbackReason);
+            log.warn("Meilisearch search is unavailable; falling back to PostgreSQL", e);
             fallbackUsed = true;
-            engine = "POSTGRESQL";
             exactCandidates = searchViaPostgres(searchPlan, searchPlan, userLocation, candidateLimit);
         }
 
@@ -147,8 +138,8 @@ public class StructuredSearchProcessor {
                     .toList();
         }
 
-        List<ScoredSearchDocument> ordered = new ArrayList<>(exact);
-        ordered.addAll(alternatives);
+        List<ScoredSearchDocument> ordered = applyOfferBoosts(
+                Stream.concat(exact.stream(), alternatives.stream()).toList());
         ordered = sort(ordered, searchPlan.getSort());
         int fromIndex = Math.min(page * pageSize, ordered.size());
         int toIndex = Math.min(fromIndex + pageSize, ordered.size());
@@ -171,25 +162,7 @@ public class StructuredSearchProcessor {
                 .pageSize(pageSize)
                 .total(ordered.size())
                 .hasNext(hasNext)
-                .diagnostics(SearchDiagnosticsResponse.builder()
-                        .engine(engine)
-                        .fallbackUsed(fallbackUsed)
-                        .fallbackReason(fallbackReason)
-                        .candidateCount(exactCandidates.size())
-                        .latencyMs((System.nanoTime() - startedAt) / 1_000_000L)
-                        .build())
                 .build();
-    }
-
-    private String rootCauseMessage(Throwable failure) {
-        Throwable rootCause = failure;
-        while (rootCause.getCause() != null) {
-            rootCause = rootCause.getCause();
-        }
-        String message = rootCause.getMessage();
-        return message == null || message.isBlank()
-                ? rootCause.getClass().getSimpleName()
-                : message;
     }
 
     private List<ScoredSearchDocument> searchViaMeilisearch(SearchPlan retrievalPlan, SearchPlan scoringPlan,
@@ -838,6 +811,55 @@ public class StructuredSearchProcessor {
         return terms.stream().toList();
     }
 
+    private List<ScoredSearchDocument> applyOfferBoosts(List<ScoredSearchDocument> candidates) {
+        List<UUID> itemIds = candidates.stream()
+                .map(ScoredSearchDocument::getDocument)
+                .filter(document -> document.getDocumentType() == SearchDocumentType.ITEM)
+                .map(SearchDocument::getAggregateId)
+                .distinct()
+                .toList();
+        List<UUID> serviceIds = candidates.stream()
+                .map(ScoredSearchDocument::getDocument)
+                .filter(document -> document.getDocumentType() == SearchDocumentType.SERVICE)
+                .map(SearchDocument::getAggregateId)
+                .distinct()
+                .toList();
+        Map<UUID, UniqueOfferBoostDto> boosts = new HashMap<>();
+        boosts.putAll(uniqueOfferService.findActiveItemBoosts(itemIds));
+        boosts.putAll(uniqueOfferService.findActiveServiceBoosts(serviceIds));
+        return candidates.stream()
+                .map(candidate -> applyOfferBoost(
+                        candidate,
+                        boosts.get(candidate.getDocument().getAggregateId())))
+                .toList();
+    }
+
+    private ScoredSearchDocument applyOfferBoost(
+            ScoredSearchDocument candidate,
+            UniqueOfferBoostDto boost) {
+        if (boost == null || !appliesToBranch(candidate.getDocument(), boost)) {
+            return candidate;
+        }
+        return ScoredSearchDocument.builder()
+                .document(candidate.getDocument())
+                .score(candidate.getScore() + ACTIVE_OFFER_SCORE)
+                .sectionType(candidate.getSectionType())
+                .confidenceCode(candidate.getConfidenceCode())
+                .warnings(candidate.getWarnings())
+                .distanceMeters(candidate.getDistanceMeters())
+                .distanceText(candidate.getDistanceText())
+                .activeOfferLabel(boost.getLabel())
+                .build();
+    }
+
+    private Boolean appliesToBranch(SearchDocument document, UniqueOfferBoostDto boost) {
+        if (boost.getBranchIds().isEmpty()) {
+            return true;
+        }
+        return document.getBranch() != null
+                && boost.getBranchIds().contains(document.getBranch().getId());
+    }
+
     private void addArrayTerms(Set<String> queryTerms, JsonNode node) {
         if (node.isArray()) {
             node.forEach(item -> addTerm(queryTerms, item.asText("")));
@@ -895,7 +917,7 @@ public class StructuredSearchProcessor {
                                 "Availability has not been confirmed by the business")
                         : null)
                 .matchReasons(matchReasons(scored, language))
-                .badges(resolveBadges(brandProfile, document))
+                .badges(resolveBadges(brandProfile, document, scored.getActiveOfferLabel()))
                 .distanceMeters(scored.getDistanceMeters())
                 .branchName(document.getBranch() != null ? document.getBranch().getName() : null)
                 .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
@@ -953,8 +975,14 @@ public class StructuredSearchProcessor {
         return profile.getBrandColor();
     }
 
-    private List<String> resolveBadges(BusinessProfileDto profile, SearchDocument document) {
+    private List<String> resolveBadges(
+            BusinessProfileDto profile,
+            SearchDocument document,
+            String activeOfferLabel) {
         List<String> badges = new ArrayList<>();
+        if (activeOfferLabel != null && !activeOfferLabel.isBlank()) {
+            badges.add(activeOfferLabel);
+        }
         if (profile != null && hasOfficialLink(profile)) {
             badges.add("official channel");
         }

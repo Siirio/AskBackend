@@ -12,17 +12,18 @@ $caseResults = @()
 foreach ($case in $dataset.cases) {
     $request = @{
         raw_query = $case.raw_query
-        scope = $case.scope
+        mode = $case.mode
         page = 0
         page_size = $PageSize
-        sort = "intent_match"
-        language = $case.cohort
+        sort = "relevance"
+        locale = $case.cohort
     }
+    $request.explicit_filters = @{}
     if ($null -ne $case.max_price) {
-        $request.filters = @{ max_price = $case.max_price }
+        $request.explicit_filters.max_price = $case.max_price
     }
     if ($null -ne $case.city -and $case.city -ne "") {
-        $request.city = $case.city
+        $request.explicit_filters.city = $case.city
     }
 
     $startedAt = [System.Diagnostics.Stopwatch]::StartNew()
@@ -57,7 +58,6 @@ foreach ($case in $dataset.cases) {
         zero_result_correct = $zeroCorrect
         explicit_constraint_violations = $constraintViolations
         category_mismatches = $categoryMismatches
-        fallback_used = [bool]$response.diagnostics.fallback_used
         latency_ms = $startedAt.ElapsedMilliseconds
     }
 }
@@ -82,7 +82,6 @@ $report = [pscustomobject]@{
     zero_result_correctness = (@($caseResults | Where-Object zero_result_correct).Count / $caseResults.Count)
     explicit_constraint_violations = ($caseResults | Measure-Object explicit_constraint_violations -Sum).Sum
     category_mismatches = ($caseResults | Measure-Object category_mismatches -Sum).Sum
-    fallback_usage_count = @($caseResults | Where-Object fallback_used).Count
     cohorts = $cohorts
     cases = $caseResults
 }

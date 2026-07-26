@@ -1,6 +1,8 @@
 package kz.ask.business.uniqueoffer.domain.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -66,4 +68,19 @@ public class UniqueOffer extends BaseUuidV7Entity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private List<String> tags;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "unique_offer_product", joinColumns = @JoinColumn(name = "offer_id"))
+    @Column(name = "product_id", nullable = false)
+    private List<java.util.UUID> itemIds;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "unique_offer_service", joinColumns = @JoinColumn(name = "offer_id"))
+    @Column(name = "service_id", nullable = false)
+    private List<java.util.UUID> serviceIds;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "unique_offer_branch", joinColumns = @JoinColumn(name = "offer_id"))
+    @Column(name = "branch_id", nullable = false)
+    private List<java.util.UUID> branchIds;
 }

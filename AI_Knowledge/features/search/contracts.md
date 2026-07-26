@@ -45,7 +45,7 @@ Removed fields: `scope`, `selected_category`, top-level `city`, `filters.scope`,
 - `component` is exactly `ItemCard` or `ServiceCard`.
 - Each card includes short and full Item/Service text, price/currency, Business identity, public Business profile, optional branch context, availability truth, match reasons, and badges.
 - `business_profile` contains public logo, cover, description, number, email, Instagram, Telegram, and website values.
-- `diagnostics` is operational and must not be rendered.
+- Public responses contain no engine, fallback, latency, exception, or infrastructure diagnostics. Operational details remain in server logs.
 
 The chat button uses `business_id` to open/resume the durable business conversation with the selected Item/Service as entry context. Search itself never creates the conversation.
 

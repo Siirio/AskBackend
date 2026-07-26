@@ -65,20 +65,6 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatConversationDto startSystemConversation(UUID businessId, String customerName) {
-        ChatConversation conv = new ChatConversation();
-        conv.setBusinessId(businessId);
-        conv.setCustomerId(null);
-        conv.setSubject(customerName);
-        conv.setConversationType(ConversationType.GENERAL_SUPPORT);
-        prepareNewConversation(conv, ConversationStatus.PENDING);
-        conv.setLastMessageAt(Instant.now());
-        conv = conversationRepository.save(conv);
-        return toConversationDto(conv);
-    }
-
-    @Override
-    @Transactional
     public ChatConversationDto getOrCreatePlatformSupportConversation(UUID customerId, UUID businessId) {
         var existingConversation = businessId == null
                 ? conversationRepository.findFirstByCustomerIdAndBusinessIdIsNullAndConversationTypeOrderByCreatedAtDesc(
@@ -196,14 +182,6 @@ public class ChatServiceImpl implements ChatService {
                 msg.setReadAt(Instant.now());
                 messageRepository.save(msg);
             }
-        }
-    }
-
-    @Override
-    @Transactional
-    public void notifyBusinesses(String customerName, List<UUID> businessIds) {
-        for (UUID businessId : businessIds) {
-            startSystemConversation(businessId, customerName);
         }
     }
 

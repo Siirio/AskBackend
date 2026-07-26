@@ -14,6 +14,8 @@ public interface ServiceService {
 
     ServiceOfferingDto findById(UUID businessId, UUID serviceOfferingId);
 
+    Boolean allBelongToBusiness(UUID businessId, java.util.List<UUID> serviceIds);
+
     ServiceOfferingDto createService(UUID businessId, BusinessServiceCreateRequest request);
 
     ServiceOfferingDto updateService(UUID businessId, UUID serviceOfferingId, BusinessServiceUpdateRequest request);

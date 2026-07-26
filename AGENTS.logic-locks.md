@@ -57,3 +57,11 @@
 **Rule:** `MANAGE_SUPPORT_CHATS` permits platform inspection of `GENERAL_SUPPORT` and `PLATFORM_SUPPORT`. `MANAGED_IMPORT` requires `MANAGE_MANAGED_IMPORTS` and the assigned active grant.
 
 **Scope:** PlatformChatProcessor and platform conversation listing.
+
+## LOCKED: Business media is file-owned
+
+**Approved signal:** User correction on 2026-07-26.
+
+**Rule:** Business-profile logos and covers and Unique Offer covers are uploaded image files managed by ASK. Clients cannot submit media URLs. URL fields are only for external destinations such as websites, Instagram, Telegram, WhatsApp, and similar links. API responses may expose server-generated media locations for rendering.
+
+**Scope:** Business Profile and Unique Offer request contracts, media storage, business cabinet file inputs, search and modal rendering.

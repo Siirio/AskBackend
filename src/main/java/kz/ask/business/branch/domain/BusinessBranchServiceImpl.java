@@ -49,6 +49,13 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Boolean allBelongToBusiness(UUID businessId, List<UUID> branchIds) {
+        return branchIds.isEmpty()
+                || businessBranchRepository.countByIdInAndBusinessId(branchIds, businessId) == branchIds.size();
+    }
+
+    @Override
     @Transactional
     public BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails,
                                      BigDecimal latitude, BigDecimal longitude,

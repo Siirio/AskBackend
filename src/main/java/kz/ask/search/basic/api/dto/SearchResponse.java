@@ -16,5 +16,4 @@ public class SearchResponse {
     private Integer pageSize;
     private Integer total;
     private Boolean hasNext;
-    private SearchDiagnosticsResponse diagnostics;
 }

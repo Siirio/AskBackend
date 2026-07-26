@@ -5,35 +5,35 @@
       "id": "en_exact_trail_shoes",
       "cohort": "en",
       "raw_query": "trail running shoes",
-      "scope": "product",
+      "mode": "ITEM",
       "relevant_titles": ["Trail Running Shoes"],
-      "expected_component": "ProductCard",
+      "expected_component": "ItemCard",
       "expected_zero": false
     },
     {
       "id": "en_exact_running_shoes",
       "cohort": "en",
       "raw_query": "running shoes",
-      "scope": "product",
+      "mode": "ITEM",
       "relevant_titles": ["Trail Running Shoes"],
-      "expected_component": "ProductCard",
+      "expected_component": "ItemCard",
       "expected_zero": false
     },
     {
       "id": "en_price_constraint",
       "cohort": "en",
       "raw_query": "trail running shoes under 50000",
-      "scope": "product",
+      "mode": "ITEM",
       "max_price": 50000,
       "relevant_titles": ["Trail Running Shoes"],
-      "expected_component": "ProductCard",
+      "expected_component": "ItemCard",
       "expected_zero": false
     },
     {
       "id": "ru_zero_result",
       "cohort": "ru",
       "raw_query": "ремонт промышленного холодильника",
-      "scope": "service",
+      "mode": "SERVICE",
       "relevant_titles": [],
       "expected_component": "ServiceCard",
       "expected_zero": true
@@ -42,7 +42,7 @@
       "id": "kk_zero_result",
       "cohort": "kk",
       "raw_query": "домбыра жөндеу",
-      "scope": "service",
+      "mode": "SERVICE",
       "relevant_titles": [],
       "expected_component": "ServiceCard",
       "expected_zero": true
@@ -51,9 +51,9 @@
       "id": "en_zero_result",
       "cohort": "en",
       "raw_query": "vintage submarine engine",
-      "scope": "product",
+      "mode": "ITEM",
       "relevant_titles": [],
-      "expected_component": "ProductCard",
+      "expected_component": "ItemCard",
       "expected_zero": true
     }
   ]

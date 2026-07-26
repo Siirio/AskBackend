@@ -35,7 +35,14 @@ ask:
     action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
 
 management:
+  info:
+    env:
+      enabled: true
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
+
+info:
+  build:
+    commit: ${BUILD_SHA}

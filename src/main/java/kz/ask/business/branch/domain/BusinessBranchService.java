@@ -13,6 +13,8 @@ public interface BusinessBranchService {
 
     BusinessBranchDto findByBusinessAndId(UUID businessId, UUID branchId);
 
+    Boolean allBelongToBusiness(UUID businessId, List<UUID> branchIds);
+
     BusinessBranchDto create(UUID businessId, UUID cityId, String name, String address, String addressDetails,
                              BigDecimal latitude, BigDecimal longitude,
                              String timeZoneId,

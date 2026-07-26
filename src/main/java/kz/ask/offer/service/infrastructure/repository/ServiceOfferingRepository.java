@@ -17,6 +17,8 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
 
     Long countByBusinessId(UUID businessId);
 
+    Long countByIdInAndBusinessId(List<UUID> ids, UUID businessId);
+
     Page<Service> findByBusinessId(UUID businessId, Pageable pageable);
 
     @Query("""

@@ -16,4 +16,5 @@ public class ScoredSearchDocument {
     private List<String> warnings;
     private Integer distanceMeters;
     private String distanceText;
+    private String activeOfferLabel;
 }

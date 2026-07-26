@@ -135,7 +135,6 @@ public class GlobalExceptionHandler {
                             .timestamp(Instant.now())
                             .errorCode("VALUE_TOO_LONG")
                             .message("Значение поля превышает допустимую длину")
-                            .detail(detail)
                             .build());
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -143,7 +142,6 @@ public class GlobalExceptionHandler {
                         .timestamp(Instant.now())
                         .errorCode("DATA_CONFLICT")
                         .message("Данные конфликтуют с текущим состоянием")
-                        .detail(detail)
                         .build());
     }
 

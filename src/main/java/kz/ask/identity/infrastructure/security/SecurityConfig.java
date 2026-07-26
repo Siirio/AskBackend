@@ -89,6 +89,7 @@ public class SecurityConfig {
                     "/api/v1/cities",
                     "/api/v1/categories",
                     "/api/v1/businesses/*/business-profile",
+                    "/api/v1/business-media/files/*",
                     "/api/v1/businesses/*/storefront",
                     "/api/v1/businesses/*/drops",
                     "/api/v1/legal/documents"

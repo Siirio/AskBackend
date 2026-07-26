@@ -91,56 +91,54 @@ public class BusinessMapper {
     public void updateBusinessProfile(BusinessProfile profile, String brandColor, String logoUrl,
                                        String coverUrl, String description, String number, String email,
                                        String instagramUrl, String telegramUrl, String websiteUrl) {
-        profile.setBrandColor(brandColor);
-        profile.setLogoUrl(logoUrl);
-        profile.setCoverUrl(coverUrl);
-        profile.setDescription(description);
-        profile.setNumber(number);
-        profile.setEmail(email);
-        profile.setInstagramUrl(instagramUrl);
-        profile.setTelegramUrl(telegramUrl);
-        profile.setWebsiteUrl(websiteUrl);
+        if (brandColor != null) profile.setBrandColor(brandColor);
+        if (logoUrl != null) profile.setLogoUrl(logoUrl);
+        if (coverUrl != null) profile.setCoverUrl(coverUrl);
+        if (description != null) profile.setDescription(description);
+        if (number != null) profile.setNumber(number);
+        if (email != null) profile.setEmail(email);
+        if (instagramUrl != null) profile.setInstagramUrl(instagramUrl);
+        if (telegramUrl != null) profile.setTelegramUrl(telegramUrl);
+        if (websiteUrl != null) profile.setWebsiteUrl(websiteUrl);
     }
 
-    public UniqueOffer toUniqueOfferEntity(Business business, String name, String description,
-                                             java.time.Instant startDate, java.time.Instant endDate,
-                                             UniqueOfferType type, UniqueOfferStatus status, String coverUrl,
-                                             Integer discountPercent, BigDecimal discountAmount,
-                                             Boolean isActive, String currency, List<String> tags) {
+    public UniqueOffer toUniqueOfferEntity(Business business, UniqueOfferDto dto) {
         UniqueOffer offer = new UniqueOffer();
         offer.setBusiness(business);
-        offer.setName(name);
-        offer.setDescription(description);
-        offer.setStartDate(startDate);
-        offer.setEndDate(endDate);
-        offer.setType(type);
-        offer.setStatus(status);
-        offer.setCoverUrl(coverUrl);
-        offer.setDiscountPercent(discountPercent);
-        offer.setDiscountAmount(discountAmount);
-        offer.setTags(tags == null ? List.of() : tags);
-        offer.setIsActive(isActive != null ? isActive : Boolean.TRUE);
-        offer.setCurrency(currency != null ? currency : "KZT");
+        offer.setName(dto.getName());
+        offer.setDescription(dto.getDescription());
+        offer.setStartDate(dto.getStartDate());
+        offer.setEndDate(dto.getEndDate());
+        offer.setType(UniqueOfferType.valueOf(dto.getType()));
+        offer.setStatus(UniqueOfferStatus.valueOf(dto.getStatus()));
+        offer.setCoverUrl(dto.getCoverUrl());
+        offer.setDiscountPercent(dto.getDiscountPercent());
+        offer.setDiscountAmount(dto.getDiscountAmount());
+        offer.setTags(dto.getTags() == null ? List.of() : dto.getTags());
+        offer.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : Boolean.TRUE);
+        offer.setCurrency(dto.getCurrency());
+        offer.setItemIds(dto.getItemIds());
+        offer.setServiceIds(dto.getServiceIds());
+        offer.setBranchIds(dto.getBranchIds());
         return offer;
     }
 
-    public void updateUniqueOffer(UniqueOffer offer, String name, String description,
-                                   java.time.Instant startDate, java.time.Instant endDate,
-                                   String type, String status, String coverUrl,
-                                   Integer discountPercent, BigDecimal discountAmount,
-                                   Boolean isActive, String currency, List<String> tags) {
-        if (name != null) offer.setName(name);
-        if (description != null) offer.setDescription(description);
-        if (startDate != null) offer.setStartDate(startDate);
-        if (endDate != null) offer.setEndDate(endDate);
-        if (type != null) offer.setType(UniqueOfferType.valueOf(type));
-        if (status != null) offer.setStatus(UniqueOfferStatus.valueOf(status));
-        if (coverUrl != null) offer.setCoverUrl(coverUrl);
-        if (discountPercent != null) offer.setDiscountPercent(discountPercent);
-        if (discountAmount != null) offer.setDiscountAmount(discountAmount);
-        if (isActive != null) offer.setIsActive(isActive);
-        if (currency != null) offer.setCurrency(currency);
-        if (tags != null) offer.setTags(tags);
+    public void updateUniqueOffer(UniqueOffer offer, UniqueOfferDto dto) {
+        if (dto.getName() != null) offer.setName(dto.getName());
+        if (dto.getDescription() != null) offer.setDescription(dto.getDescription());
+        if (dto.getStartDate() != null) offer.setStartDate(dto.getStartDate());
+        if (dto.getEndDate() != null) offer.setEndDate(dto.getEndDate());
+        if (dto.getType() != null) offer.setType(UniqueOfferType.valueOf(dto.getType()));
+        if (dto.getStatus() != null) offer.setStatus(UniqueOfferStatus.valueOf(dto.getStatus()));
+        if (dto.getCoverUrl() != null) offer.setCoverUrl(dto.getCoverUrl());
+        if (dto.getDiscountPercent() != null) offer.setDiscountPercent(dto.getDiscountPercent());
+        if (dto.getDiscountAmount() != null) offer.setDiscountAmount(dto.getDiscountAmount());
+        if (dto.getIsActive() != null) offer.setIsActive(dto.getIsActive());
+        if (dto.getCurrency() != null) offer.setCurrency(dto.getCurrency());
+        if (dto.getTags() != null) offer.setTags(dto.getTags());
+        if (dto.getItemIds() != null) offer.setItemIds(dto.getItemIds());
+        if (dto.getServiceIds() != null) offer.setServiceIds(dto.getServiceIds());
+        if (dto.getBranchIds() != null) offer.setBranchIds(dto.getBranchIds());
     }
 
     public BranchMember toBranchMemberEntity(BusinessBranch branch, AppUser user,
@@ -237,6 +235,9 @@ public class BusinessMapper {
                 .isActive(entity.getIsActive())
                 .currency(entity.getCurrency())
                 .tags(entity.getTags())
+                .itemIds(entity.getItemIds())
+                .serviceIds(entity.getServiceIds())
+                .branchIds(entity.getBranchIds())
                 .build();
     }
 

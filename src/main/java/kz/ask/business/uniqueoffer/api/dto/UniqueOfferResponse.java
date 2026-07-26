@@ -23,7 +23,7 @@ public class UniqueOfferResponse {
     private Boolean isActive;
     private String currency;
     private List<String> tags;
-    private List<UUID> productIds;
+    private List<UUID> itemIds;
     private List<UUID> serviceIds;
     private List<UUID> branchIds;
 }

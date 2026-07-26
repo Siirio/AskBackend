@@ -11,8 +11,6 @@ public interface ChatService {
 
     ChatConversationDto startConversation(UUID customerId, UUID businessId, String subject);
 
-    ChatConversationDto startSystemConversation(UUID businessId, String customerName);
-
     ChatConversationDto getOrCreatePlatformSupportConversation(UUID customerId, UUID businessId);
 
     ChatMessageDto sendMessage(UUID conversationId, UUID senderUserId, String senderType, SendMessageRequest req);
@@ -30,8 +28,6 @@ public interface ChatService {
     ChatConversationDto closeConversation(UUID conversationId);
 
     void markRead(UUID conversationId, String readerType);
-
-    void notifyBusinesses(String customerName, List<UUID> businessIds);
 
     ChatConversationDto startManagedImportConversation(
             UUID ownerId,

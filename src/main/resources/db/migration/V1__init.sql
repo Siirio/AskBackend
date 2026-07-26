@@ -5,6 +5,8 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE SEQUENCE search_projection_version_seq;
+
 -- ---------------------------------------------------------------------------
 -- Identity
 -- ---------------------------------------------------------------------------
@@ -446,8 +448,8 @@ CREATE TABLE search_document (
     updated_at                   TIMESTAMPTZ    NOT NULL,
     document_type                VARCHAR(50)    NOT NULL,
     aggregate_id                 UUID           NOT NULL,
-    title                        VARCHAR(255)   NOT NULL,
-    normalized_title             TEXT           NOT NULL,
+    title                        VARCHAR(255),
+    normalized_title             TEXT,
     summary                      VARCHAR(255),
     category_label               VARCHAR(255),
     brand                        VARCHAR(255),
@@ -457,19 +459,22 @@ CREATE TABLE search_document (
     business_id                  UUID           REFERENCES business(id),
     branch_id                    UUID           REFERENCES business_branch(id),
     price                        NUMERIC,
-    currency                     VARCHAR(3)     NOT NULL,
+    currency                     VARCHAR(3),
     latitude                     NUMERIC(10,7),
     longitude                    NUMERIC(10,7),
     source                       VARCHAR(50),
     public_note                  VARCHAR(500),
-    verified_attributes          JSONB          NOT NULL,
-    ai_attributes                JSONB          NOT NULL,
-    aliases                      TEXT           NOT NULL,
+    verified_attributes          JSONB,
+    ai_attributes                JSONB,
+    aliases                      TEXT,
     ai_search_summary            TEXT,
-    availability_status          VARCHAR(32)    NOT NULL,
-    availability_source          VARCHAR(32)    NOT NULL,
+    availability_status          VARCHAR(32),
+    availability_source          VARCHAR(32),
     last_business_updated_at     TIMESTAMPTZ,
     indexed_at                   TIMESTAMPTZ,
+    projection_version           BIGINT         NOT NULL,
+    indexed_version              BIGINT,
+    projection_action            VARCHAR(16)    NOT NULL,
     search_vector                TSVECTOR GENERATED ALWAYS AS (
         to_tsvector('simple',
             coalesce(normalized_title, '') || ' ' ||
@@ -605,6 +610,10 @@ CREATE INDEX idx_search_document_active_type_price ON search_document (document_
 CREATE INDEX idx_search_document_business_active ON search_document (business_id, document_type, id);
 CREATE INDEX idx_search_document_verified_attributes ON search_document USING GIN (verified_attributes);
 CREATE INDEX idx_search_document_ai_attributes ON search_document USING GIN (ai_attributes);
+CREATE INDEX idx_search_document_dirty
+    ON search_document (document_type, aggregate_id)
+    WHERE projection_action = 'INDEX'
+      AND projection_version > coalesce(indexed_version, 0);
 
 -- Search outbox indexes
 CREATE UNIQUE INDEX uq_search_outbox_event

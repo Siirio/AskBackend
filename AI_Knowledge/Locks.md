@@ -14,6 +14,7 @@ LOCKED | Meilisearch is retrieval engine, PostgreSQL is source of truth + hydrat
 LOCKED | UniqueOffers only boost or decorate linked Item/Service results and never appear as standalone search results | Offers are brand signals, not another search corpus | UniqueOffer, unique_offer_product/service/branch tables
 
 ## Data Locks
+LOCKED | Flyway contains exactly V1 DDL and V2 reference inserts | The project uses a fresh-deploy baseline: structure belongs in V1 and cities/categories/reference rows belong in V2 | src/main/resources/db/migration
 LOCKED | One customer and business share one durable conversation | Branches and catalog cards are entry points, not conversation identity | ChatConversation, ChatServiceImpl, business inbox
 LOCKED | Business membership defaults apply to all branches | Branch overrides may change role or deny access; multiple owners are allowed | BusinessMember, branch access overrides, staff authorization
 LOCKED | Never invent stock, logistics, schedules, or availability | Must come from supplier input or trusted integration data | Product, ServiceBranchOffer, Booking

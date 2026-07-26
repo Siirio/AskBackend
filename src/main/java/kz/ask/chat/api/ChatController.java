@@ -2,13 +2,11 @@ package kz.ask.chat.api;
 
 import java.util.List;
 import java.util.UUID;
-import jakarta.validation.Valid;
 import kz.ask.chat.api.dto.ChatConversationDto;
 import kz.ask.chat.api.dto.ChatConversationListResponse;
 import kz.ask.chat.api.dto.ChatMessageDto;
 import kz.ask.chat.api.dto.ChatMessageListResponse;
 import kz.ask.chat.api.dto.SendMessageRequest;
-import kz.ask.chat.api.dto.SystemNotifyRequest;
 import kz.ask.chat.domain.ChatService;
 import kz.ask.chat.application.SupportProcessor;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
@@ -74,10 +72,4 @@ public class ChatController {
         chatService.markRead(conversationId, "CUSTOMER");
     }
 
-    @PostMapping("/system-notify")
-    public void notifyBusinesses(@AuthenticationPrincipal AskPrincipal principal,
-                                 @Valid @RequestBody SystemNotifyRequest req) {
-        String name = principal.getDisplayName() != null ? principal.getDisplayName() : "Пользователь";
-        chatService.notifyBusinesses(name, req.getBusinessIds());
-    }
 }
