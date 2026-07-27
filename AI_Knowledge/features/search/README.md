@@ -28,7 +28,9 @@ Meilisearch performs three bounded retrieval lanes:
 2. one combined expanded query containing approved aliases, synonyms, category terms, and related terms.
 3. one pure semantic request using the configured multilingual embedder.
 
-The three rankings use Reciprocal Rank Fusion. A semantic-lane failure degrades to the two lexical lanes. PostgreSQL fallback uses the complete raw/expanded query rather than one first term. PostgreSQL hydrates canonical projection rows and the public Business profile. A query-relevant dirty overlay provides read-your-writes behavior.
+The three rankings use Reciprocal Rank Fusion. Retrieval preserves each lane rank, each reciprocal-rank contribution, and the final fusion score in `SearchCandidateDto` instead of collapsing the result to aggregate IDs. A semantic-lane failure degrades to the two lexical lanes. PostgreSQL fallback uses the complete raw/expanded query rather than one first term. `SearchDocumentService` owns entity hydration and returns DTOs to the application layer. A query-relevant dirty overlay provides read-your-writes behavior.
+
+Weighted lexical expansions, weighted controlled concepts, ambiguity, clarification suggestions, and intent hypotheses remain structured through retrieval and ranking. Deterministic ranking records its retrieval, text, attribute, distance, constraint, and active-offer signals. High-ambiguity results are diversified across hypotheses before pagination; no generative model selects a business.
 
 Only explicit filters eliminate candidates. Category, city, country, price, radius, and open-now filters pass through the search plan. Interpreted prices, cities, qualifiers, package sizes, `mustHave`, and `notWanted` values are ranking signals. Coordinates affect ranking only for explicit distance sorting or an explicit radius filter.
 

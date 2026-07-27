@@ -1,11 +1,18 @@
 package kz.ask.search.basic.infrastructure.mapper;
 
+import kz.ask.business.branch.domain.BranchOpeningHoursPolicy;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.entity.SearchDocument;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SearchDocumentMapper {
+
+    private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
+
+    public SearchDocumentMapper(BranchOpeningHoursPolicy branchOpeningHoursPolicy) {
+        this.branchOpeningHoursPolicy = branchOpeningHoursPolicy;
+    }
 
     public void populateEntity(SearchDocument entity, SearchDocumentDto dto) {
         entity.setDocumentType(dto.getDocumentType());
@@ -55,6 +62,7 @@ public class SearchDocumentMapper {
                 .categoryLabel(entity.getCategoryLabel())
                 .businessName(entity.getBusinessName())
                 .branchName(entity.getBranchName())
+                .branchAddress(entity.getBranch() == null ? null : entity.getBranch().getAddress())
                 .price(entity.getPrice())
                 .currency(entity.getCurrency())
                 .latitude(entity.getLatitude())
@@ -63,6 +71,7 @@ public class SearchDocumentMapper {
                         ? entity.getBranch().getCity().getName() : null)
                 .country(entity.getBranch() != null && entity.getBranch().getCity() != null
                         ? entity.getBranch().getCity().getCountryCode() : null)
+                .openNow(branchOpeningHoursPolicy.isOpen(entity.getBranch()))
                 .tokens(entity.getTokens())
                 .aliases(entity.getAliases())
                 .conceptIds(entity.getConceptIds())

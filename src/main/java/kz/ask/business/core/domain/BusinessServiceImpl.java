@@ -73,7 +73,7 @@ public class BusinessServiceImpl implements BusinessService {
         if (branchName != null && !branchName.isBlank()) {
             branchDto = businessBranchService.create(
                     businessId, branchCityId, branchName.trim(), branchAddress, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null, false);
         }
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);

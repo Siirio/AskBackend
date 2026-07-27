@@ -10,6 +10,7 @@ import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchEventType;
 import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import kz.ask.search.basic.infrastructure.mapper.MeilisearchDocumentMapper;
+import kz.ask.search.basic.infrastructure.meilisearch.MeilisearchIndexGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Service;
 public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryService {
 
     private final SearchDocumentService searchDocumentService;
-    private final MeilisearchService meilisearchService;
+    private final MeilisearchIndexGateway meilisearchIndexGateway;
     private final MeilisearchDocumentMapper documentMapper;
     private final SearchDeliveryConfirmationProcessor confirmationProcessor;
     private final SearchSemanticEnrichmentProcessor semanticEnrichmentProcessor;
@@ -38,9 +39,9 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
             if (semanticEnrichmentProcessor.enrichIfRequired(prepared.get())) {
                 return "SEMANTIC_ENRICHMENT";
             }
-            meilisearchService.index(documentMapper.toIndexDocument(prepared.get()));
+            meilisearchIndexGateway.index(documentMapper.toIndexDocument(prepared.get()));
         } else {
-            meilisearchService.delete(event.getAggregateId());
+            meilisearchIndexGateway.delete(event.getAggregateId());
         }
         confirmationProcessor.confirm(event, action);
         return action.name();

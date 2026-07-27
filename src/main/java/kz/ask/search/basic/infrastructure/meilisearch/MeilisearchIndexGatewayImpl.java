@@ -1,4 +1,4 @@
-package kz.ask.search.basic.domain;
+package kz.ask.search.basic.infrastructure.meilisearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +13,7 @@ import com.meilisearch.sdk.model.Hybrid;
 import com.meilisearch.sdk.model.TaskInfo;
 import com.meilisearch.sdk.model.SwapIndexesParams;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
+import kz.ask.search.basic.domain.dto.SearchCandidateSetDto;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
 import kz.ask.shared.error.InternalServerException;
@@ -34,7 +33,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class MeilisearchServiceImpl implements MeilisearchService {
+public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
 
     private static final Integer DEFAULT_SEARCH_LIMIT = 200;
     private static final String FIELD_DOCUMENT_TYPE = "documentType";
@@ -44,7 +43,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private static final String FIELD_CATEGORY_LABEL = "categoryLabel";
     private static final String FIELD_VERIFIED_ATTRIBUTES = "verifiedAttributes";
     private static final String FIELD_AI_ATTRIBUTES = "aiAttributes";
-    private static final Integer RECIPROCAL_RANK_FUSION_CONSTANT = 60;
     private static final Double PURE_SEMANTIC_RATIO = 1.0;
 
     private final Client client;
@@ -55,8 +53,12 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private final String semanticEmbedderModel;
     private final Set<String> configuredIndexes = ConcurrentHashMap.newKeySet();
     private final Set<String> semanticIndexes = ConcurrentHashMap.newKeySet();
+    private final MeilisearchFilterCompiler filterCompiler;
+    private final ReciprocalRankFusionPolicy fusionPolicy;
 
-    public MeilisearchServiceImpl(Client client, ObjectMapper objectMapper,
+    public MeilisearchIndexGatewayImpl(Client client, ObjectMapper objectMapper,
+                                   MeilisearchFilterCompiler filterCompiler,
+                                   ReciprocalRankFusionPolicy fusionPolicy,
                                    @Value("${ask.ai.meilisearch.index-name:search_documents_v1}") String indexName,
                                    @Value("${ask.ai.meilisearch.semantic-enabled:true}") Boolean semanticEnabled,
                                    @Value("${ask.ai.meilisearch.semantic-embedder-name:ask_multilingual}")
@@ -65,6 +67,8 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                                    String semanticEmbedderModel) {
         this.client = client;
         this.objectMapper = objectMapper;
+        this.filterCompiler = filterCompiler;
+        this.fusionPolicy = fusionPolicy;
         this.indexName = indexName;
         this.semanticEnabled = semanticEnabled;
         this.semanticEmbedderName = semanticEmbedderName;
@@ -153,7 +157,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     }
 
     @Override
-    public List<UUID> search(SearchPlan plan, int limit) {
+    public SearchCandidateSetDto search(SearchPlan plan, int limit) {
         try {
             Index index = ensureIndex();
             String exactQuery = normalize(plan.getRawQuery());
@@ -164,7 +168,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                 expandedLane = executeSearch(index, expandedQuery, plan, limit);
             }
             List<UUID> semanticLane = executeSemanticSearch(index, plan, limit);
-            return fuse(List.of(exactLane, expandedLane, semanticLane), limit);
+            return fusionPolicy.fuse(exactLane, expandedLane, semanticLane, limit);
         } catch (MeilisearchException | IllegalArgumentException e) {
             log.error("Meilisearch search failed: {}", e.getMessage());
             throw new ExternalServiceException(ErrorCode.MEILISEARCH_SEARCH_FAILED);
@@ -211,7 +215,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     }
 
     private SearchRequest buildSearchRequest(String query, SearchPlan plan, int limit) {
-        String filter = buildFilterString(plan);
+        String filter = filterCompiler.compile(plan);
 
         SearchRequest request = new SearchRequest(query)
                 .setLimit(Math.min(limit, DEFAULT_SEARCH_LIMIT));
@@ -228,10 +232,18 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     }
 
     private String expandedQuery(SearchPlan plan) {
-        return java.util.stream.Stream.of(
+        java.util.stream.Stream<String> legacyTerms = java.util.stream.Stream.of(
                         plan.getExactTerms(), plan.getExpandedTerms(), plan.getAiSynonyms(),
                         plan.getRelatedTerms(), plan.getCategoryAliases(), plan.getConceptIds())
                 .flatMap(List::stream)
+                .filter(java.util.Objects::nonNull);
+        java.util.stream.Stream<String> weightedTerms = plan.getWeightedTerms() == null
+                ? java.util.stream.Stream.empty()
+                : plan.getWeightedTerms().stream()
+                        .sorted(java.util.Comparator.comparing(
+                                kz.ask.search.basic.domain.dto.WeightedSearchTermDto::getWeight).reversed())
+                        .map(kz.ask.search.basic.domain.dto.WeightedSearchTermDto::getValue);
+        return java.util.stream.Stream.concat(weightedTerms, legacyTerms)
                 .filter(term -> term != null && !term.isBlank())
                 .map(String::trim)
                 .distinct()
@@ -239,59 +251,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                 .collect(java.util.stream.Collectors.joining(" "));
     }
 
-    private List<UUID> fuse(List<List<UUID>> lanes, int limit) {
-        Map<UUID, Double> scores = new LinkedHashMap<>();
-        lanes.forEach(lane -> addLaneScores(scores, lane));
-        return scores.entrySet().stream()
-                .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed()
-                        .thenComparing(entry -> entry.getKey().toString()))
-                .limit(limit)
-                .map(Map.Entry::getKey)
-                .toList();
-    }
-
-    private void addLaneScores(Map<UUID, Double> scores, List<UUID> lane) {
-        for (int index = 0; index < lane.size(); index++) {
-            double score = 1.0 / (RECIPROCAL_RANK_FUSION_CONSTANT + index + 1);
-            scores.merge(lane.get(index), score, Double::sum);
-        }
-    }
-
-    private String buildFilterString(SearchPlan plan) {
-        List<String> filters = new ArrayList<>();
-
-        if (plan.getItemType() != null) {
-            filters.add(FIELD_DOCUMENT_TYPE + " = " + plan.getItemType().name());
-        }
-
-        if (plan.getMinPrice() != null) {
-            filters.add(FIELD_PRICE + " >= " + plan.getMinPrice().toPlainString());
-        }
-
-        if (plan.getMaxPrice() != null) {
-            filters.add(FIELD_PRICE + " <= " + plan.getMaxPrice().toPlainString());
-        }
-
-        if (plan.getCity() != null && !plan.getCity().isBlank()) {
-            filters.add(FIELD_CITY + " = " + escapeValue(plan.getCity()));
-        }
-
-        if (plan.getCountry() != null && !plan.getCountry().isBlank()) {
-            filters.add(FIELD_COUNTRY + " = " + escapeValue(plan.getCountry()));
-        }
-
-        if (plan.getUserSelectedCategory() != null && !plan.getUserSelectedCategory().isBlank()) {
-            filters.add(FIELD_CATEGORY_LABEL + " = " + escapeValue(plan.getUserSelectedCategory()));
-        }
-
-        if (plan.getRadiusMeters() != null
-                && plan.getUserLatitude() != null && plan.getUserLongitude() != null) {
-            filters.add("_geoRadius(" + plan.getUserLatitude() + ", "
-                    + plan.getUserLongitude() + ", " + plan.getRadiusMeters() + ")");
-        }
-
-        return String.join(" AND ", filters);
-    }
 
     private Index ensureIndex() throws MeilisearchException {
         return ensureIndex(indexName);
@@ -406,11 +365,6 @@ public class MeilisearchServiceImpl implements MeilisearchService {
 
     private void waitForTask(Index index, TaskInfo task) throws MeilisearchException {
         index.waitForTask(task.getTaskUid());
-    }
-
-    private String escapeValue(String value) {
-        String escaped = value.replace("'", "\\'");
-        return "'" + escaped + "'";
     }
 
     private String normalize(String value) {

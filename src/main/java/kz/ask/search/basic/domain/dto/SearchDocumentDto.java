@@ -26,12 +26,14 @@ public class SearchDocumentDto {
     private String categoryLabel;
     private String businessName;
     private String branchName;
+    private String branchAddress;
     private BigDecimal price;
     private String currency;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String city;
     private String country;
+    private Boolean openNow;
     private List<String> tokens;
     private String aliases;
     private List<String> conceptIds;

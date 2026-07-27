@@ -115,7 +115,8 @@ CREATE TABLE business_branch (
     address_details VARCHAR(512),
     latitude        NUMERIC,
     longitude       NUMERIC,
-    time_zone_id    VARCHAR(64)
+    time_zone_id    VARCHAR(64),
+    pickup_available BOOLEAN NOT NULL
 );
 
 CREATE TABLE branch_weekly_hours (

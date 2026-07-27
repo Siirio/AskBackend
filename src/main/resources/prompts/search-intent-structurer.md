@@ -88,6 +88,18 @@ ITEM_SEARCH shape:
     ],
     "ambiguity": "LOW | MEDIUM | HIGH"
   },
+  "intent_hypotheses": [
+    {
+      "intent_id": "",
+      "probability": 0.0,
+      "terms": [
+        { "term": "", "weight": 0.0 }
+      ],
+      "concepts": [
+        { "id": "CONTROLLED_CONCEPT_ID", "weight": 0.0 }
+      ]
+    }
+  ],
   "ranking": {
     "prioritize": [],
     "expand_if_no_results": [],
@@ -96,7 +108,8 @@ ITEM_SEARCH shape:
   "clarification": {
     "needed": false,
     "question": "",
-    "reason": ""
+    "reason": "",
+    "suggestions": []
   }
 }
 
@@ -151,6 +164,18 @@ SERVICE_SEARCH shape:
     ],
     "ambiguity": "LOW | MEDIUM | HIGH"
   },
+  "intent_hypotheses": [
+    {
+      "intent_id": "",
+      "probability": 0.0,
+      "terms": [
+        { "term": "", "weight": 0.0 }
+      ],
+      "concepts": [
+        { "id": "CONTROLLED_CONCEPT_ID", "weight": 0.0 }
+      ]
+    }
+  ],
   "ranking": {
     "prioritize": [],
     "expand_if_no_results": [],
@@ -159,7 +184,8 @@ SERVICE_SEARCH shape:
   "clarification": {
     "needed": false,
     "question": "",
-    "reason": ""
+    "reason": "",
+    "suggestions": []
   }
 }
 
@@ -198,6 +224,7 @@ Search semantics:
 - concepts may contain only ACTIVE_LEISURE, RIDE_ACTIVITY, MOTORSPORT, GAMING, BEAUTY, CLEANING, REPAIR, EDUCATION, HEALTHCARE, GROUP_ACTIVITY, KIDS_ACTIVITY, DATE_ACTIVITY, or INDOOR_ENTERTAINMENT.
 - Put concrete semantic alternatives into lexical_expansions with weights from 0 to 1.
 - For ambiguous activity queries, return several plausible alternatives and set ambiguity to HIGH. Do not choose one business or one concrete activity as the only answer.
+- Preserve every plausible interpretation in intent_hypotheses with normalized probabilities, weighted terms, and controlled concepts. Put concise user-facing alternatives into clarification.suggestions.
 - Treat common spelling mistakes as the intended normalized query when confidence is high.
 - Use semantic_query as a clean sentence representing user meaning.
 - Use canonical category keys where possible: beauty_services, haircut, barbershop, hair_salon, gaming_club, computer_club, sports_nutrition, creatine, bike_rental, bicycle_rental, cosmetics, laptop, electronics, watches.

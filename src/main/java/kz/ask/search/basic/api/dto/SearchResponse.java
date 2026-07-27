@@ -16,4 +16,6 @@ public class SearchResponse {
     private Integer pageSize;
     private Integer total;
     private Boolean hasNext;
+    private String ambiguity;
+    private List<String> suggestions;
 }

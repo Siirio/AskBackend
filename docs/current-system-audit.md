@@ -8,11 +8,13 @@ Business-owned Items and Services are canonical, versioned sources. Every suppor
 
 The outbox worker uses bounded `SKIP LOCKED` claims, retained retry/dead state, exponential backoff, stale-event supersession, and per-aggregate delivery ordering. PostgreSQL projection upserts are compare-and-set by aggregate version. Meilisearch operations wait for task completion and propagate failures.
 
-`search_document` contains the lexical projection, verified business attributes, separate AI attributes, availability provenance, search vector, trigram title, projection version, and enrichment claim state. `search_ai_metadata` stores model/schema versions, confidence, evidence, source, verification state, and extraction time without mutating canonical business truth.
+`search_document` contains the lexical projection, verified business attributes, separate AI attributes, availability provenance, search vector, trigram title, projection version, and the active semantic passport. Model/schema versions, confidence, evidence, source hashes, and extraction time currently remain on this table; there is no separate `search_ai_metadata` table.
 
 Meilisearch v1.10.3 is the primary bounded candidate engine. PostgreSQL full-text/trigram SQL is the bounded fallback. Hydration is batched, preserves engine order, and revalidates active/version state. No full-catalog `findAll`, `findActiveCandidates`, or outreach dependency remains in production search.
 
-Query interpretation is deterministic and self-contained. Optional DeepSeek interpretation has strict timeouts and validation; explicit filters take precedence. AI enrichment runs only for documents explicitly queued by an authorized platform user and safely no-ops without a key.
+Query interpretation is deterministic and self-contained. Optional DeepSeek interpretation has strict timeouts and validation; explicit filters take precedence. Platform catalog enrichment is explicit and authorized. Search semantic-passport enrichment also runs automatically in the outbox delivery path before indexing and degrades to the controlled ontology when the provider is unavailable.
+
+Retrieval preserves the three lane ranks and RRF contributions in a candidate DTO. Weighted terms, controlled concepts, ambiguity, clarification suggestions, and intent hypotheses remain structured through deterministic ranking. Application search hydration goes through `SearchDocumentService` and does not expose repositories or JPA entities.
 
 The public response preserves the raw query, reports interpreted constraints, separates exact and relaxed alternatives, paginates, and provides honest availability warnings and match reasons. Engine, fallback, timing, and exception diagnostics remain server-side. Search never creates requests, chats, recipients, broadcasts, or notifications.
 

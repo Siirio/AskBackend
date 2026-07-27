@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import kz.ask.business.profile.domain.BusinessProfileService;
-import kz.ask.business.branch.domain.BranchOpeningHoursPolicy;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
 import kz.ask.business.uniqueoffer.domain.UniqueOfferService;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
@@ -34,11 +33,17 @@ import kz.ask.search.basic.api.dto.SearchRequest;
 import kz.ask.search.basic.api.dto.SearchResponse;
 import kz.ask.search.basic.api.dto.SearchSectionResponse;
 import kz.ask.search.basic.domain.AttributeKeys;
-import kz.ask.search.basic.domain.MeilisearchService;
-import kz.ask.search.basic.domain.entity.SearchDocument;
+import kz.ask.search.basic.infrastructure.meilisearch.MeilisearchIndexGateway;
+import kz.ask.search.basic.domain.SearchDocumentService;
+import kz.ask.search.basic.domain.dto.SearchCandidateDto;
+import kz.ask.search.basic.domain.dto.SearchCandidateSetDto;
+import kz.ask.search.basic.domain.dto.SearchDocumentDto;
+import kz.ask.search.basic.domain.dto.SearchFallbackQueryDto;
+import kz.ask.search.basic.domain.dto.SearchIntentHypothesisDto;
+import kz.ask.search.basic.domain.dto.WeightedConceptDto;
+import kz.ask.search.basic.domain.dto.WeightedSearchTermDto;
 import kz.ask.search.basic.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
-import kz.ask.search.basic.infrastructure.repository.SearchDocumentRepository;
 import kz.ask.search.basic.infrastructure.repository.SearchQueryAliasRepository;
 
 import kz.ask.shared.util.DistanceCalculator;
@@ -77,6 +82,8 @@ public class StructuredSearchProcessor {
     private static final String DEFAULT_BRAND_COLOR = "#0d9b7c";
     private static final Integer MAX_CANDIDATES = 200;
     private static final Integer ACTIVE_OFFER_SCORE = 25;
+    private static final Integer WEIGHTED_TERM_SCORE = 20;
+    private static final Integer MAX_CLARIFICATION_SUGGESTIONS = 6;
     private static final Pattern MAX_PRICE_PATTERN = Pattern.compile(
             "(?:до|не\\s+дороже|максимум|under|below|up\\s+to|max(?:imum)?|no\\s+more\\s+than)\\s*(\\d+[\\d\\s]*)(к|k|тыс|тысяч|тг)?");
     private static final Pattern MIN_PRICE_PATTERN = Pattern.compile(
@@ -89,13 +96,12 @@ public class StructuredSearchProcessor {
             "(?:<|до|меньше|не\\s+больше)\\s*(\\d+[\\d\\s.,]*)(?:\\s*)(кг|kg|килограмм|килограмма|килограммов|г|гр|g|gram|грамм|грамма|граммов)");
 
     private final SearchIntentStructurer searchIntentStructurer;
-    private final SearchDocumentRepository searchDocumentRepository;
+    private final SearchDocumentService searchDocumentService;
     private final SearchQueryAliasRepository searchQueryAliasRepository;
     private final SearchTermEnricher searchTermEnricher;
     private final BusinessProfileService businessProfileService;
     private final UniqueOfferService uniqueOfferService;
-    private final MeilisearchService meilisearchService;
-    private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
+    private final MeilisearchIndexGateway meilisearchIndexGateway;
 
     public SearchResponse search(SearchRequest request) {
         int page = request.getPage() == null ? 0 : request.getPage();
@@ -126,14 +132,14 @@ public class StructuredSearchProcessor {
         List<ScoredSearchDocument> ordered = applyOfferBoosts(
                 Stream.concat(exact.stream(), alternatives.stream()).toList());
         ordered = sort(ordered, searchPlan.getSort());
+        ordered = diversify(ordered, searchPlan);
         int fromIndex = Math.min(page * pageSize, ordered.size());
         int toIndex = Math.min(fromIndex + pageSize, ordered.size());
         List<ScoredSearchDocument> pageResults = ordered.subList(fromIndex, toIndex);
         boolean hasNext = ordered.size() > toIndex || ordered.size() >= candidateLimit;
         Set<UUID> businessIds = pageResults.stream()
-                .map(scored -> scored.getDocument().getBusiness())
+                .map(scored -> scored.getDocument().getBusinessId())
                 .filter(Objects::nonNull)
-                .map(business -> business.getId())
                 .collect(Collectors.toSet());
         Map<UUID, BusinessProfileDto> businessProfiles = businessProfileService.findByBusinessIds(businessIds);
 
@@ -147,54 +153,62 @@ public class StructuredSearchProcessor {
                 .pageSize(pageSize)
                 .total(ordered.size())
                 .hasNext(hasNext)
+                .ambiguity(searchPlan.getAmbiguity())
+                .suggestions(searchPlan.getClarificationSuggestions())
                 .build();
     }
 
     private List<ScoredSearchDocument> searchViaMeilisearch(SearchPlan retrievalPlan, SearchPlan scoringPlan,
                                                              SearchLocationRequest userLocation, Integer candidateLimit) {
-        List<UUID> rankedIds = meilisearchService.search(retrievalPlan, candidateLimit);
+        SearchCandidateSetDto candidateSet = meilisearchIndexGateway.search(retrievalPlan, candidateLimit);
+        List<SearchCandidateDto> retrievalCandidates = candidateSet.getCandidates();
+        List<UUID> rankedIds = retrievalCandidates.stream().map(SearchCandidateDto::getAggregateId).toList();
         if (rankedIds.isEmpty()) {
             return List.of();
         }
 
         List<SearchDocumentType> retrievalTypes = resolvePlanDocumentTypes(retrievalPlan);
-        Map<UUID, SearchDocument> docsById = searchDocumentRepository
-                .findAllByDocumentTypeAndAggregateIdIn(retrievalTypes, rankedIds).stream()
+        Map<UUID, SearchDocumentDto> docsById = searchDocumentService
+                .findSearchableByAggregateIds(retrievalTypes.getFirst(), rankedIds).stream()
                 .collect(LinkedHashMap::new, (m, d) -> m.put(d.getAggregateId(), d), LinkedHashMap::putAll);
 
         List<ScoredSearchDocument> scored = new ArrayList<>();
         for (int i = 0; i < rankedIds.size(); i++) {
-            SearchDocument doc = docsById.get(rankedIds.get(i));
+            SearchDocumentDto doc = docsById.get(rankedIds.get(i));
             if (doc == null) {
                 continue;
             }
             if (Boolean.TRUE.equals(retrievalPlan.getOpenNow())
-                    && !branchOpeningHoursPolicy.isOpen(doc.getBranch())) {
+                    && !Boolean.TRUE.equals(doc.getOpenNow())) {
                 continue;
             }
-            int baseScore = 80 - (i * 2);
+            SearchCandidateDto retrievalCandidate = retrievalCandidates.get(i);
+            int baseScore = retrievalBaseScore(retrievalCandidate, retrievalCandidates);
             List<String> warnings = new ArrayList<>();
             int adjustedScore = baseScore
                     - pricePenalty(doc, scoringPlan, warnings)
                     - cityPenalty(doc, scoringPlan, warnings);
             Integer distanceMeters = null;
             String distanceText = null;
-            if ("distance".equals(scoringPlan.getSort()) && userLocation != null && doc.getBranch() != null
-                    && doc.getBranch().getLatitude() != null && doc.getBranch().getLongitude() != null) {
+            if ("distance".equals(scoringPlan.getSort()) && userLocation != null
+                    && doc.getLatitude() != null && doc.getLongitude() != null) {
                 double km = DistanceCalculator.km(
                         userLocation.getLat(), userLocation.getLng(),
-                        doc.getBranch().getLatitude().doubleValue(),
-                        doc.getBranch().getLongitude().doubleValue());
+                        doc.getLatitude().doubleValue(),
+                        doc.getLongitude().doubleValue());
                 distanceMeters = DistanceCalculator.meters(
                         userLocation.getLat(), userLocation.getLng(),
-                        doc.getBranch().getLatitude().doubleValue(),
-                        doc.getBranch().getLongitude().doubleValue());
+                        doc.getLatitude().doubleValue(),
+                        doc.getLongitude().doubleValue());
                 distanceText = formatDistance(distanceMeters);
                 adjustedScore = (int) (adjustedScore * Math.max(0.3, 1.0 / (1.0 + km * 0.5)));
             }
             scored.add(ScoredSearchDocument.builder()
                     .document(doc)
+                    .candidate(retrievalCandidate)
                     .score(Math.max(adjustedScore, 0))
+                    .rankingFeatures(retrievalFeatures(retrievalCandidate))
+                    .hypothesisId(resolveHypothesis(doc, scoringPlan))
                     .sectionType(resolveSectionType(warnings, adjustedScore))
                     .confidenceCode(resolveConfidenceCode(adjustedScore, warnings))
                     .warnings(warnings)
@@ -212,27 +226,8 @@ public class StructuredSearchProcessor {
 
     private List<ScoredSearchDocument> searchViaPostgres(SearchPlan retrievalPlan, SearchPlan scoringPlan,
                                                           SearchLocationRequest userLocation, Integer candidateLimit) {
-        List<String> documentTypes = resolvePlanDocumentTypes(retrievalPlan).stream().map(Enum::name).toList();
-        List<UUID> candidateIds = searchDocumentRepository.findPostgresCandidateIds(
-                documentTypes,
-                postgresQuery(retrievalPlan),
-                normalize(retrievalPlan.getUserSelectedCategory()),
-                retrievalPlan.getMinPrice(),
-                retrievalPlan.getMaxPrice(),
-                normalize(retrievalPlan.getCity()),
-                normalize(retrievalPlan.getCountry()),
-                retrievalPlan.getRadiusMeters(),
-                retrievalPlan.getUserLatitude(),
-                retrievalPlan.getUserLongitude(),
-                candidateLimit);
-        Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(candidateIds).stream()
-                .collect(Collectors.toMap(SearchDocument::getId, document -> document));
-        List<SearchDocument> ordered = candidateIds.stream()
-                .map(documents::get)
-                .filter(Objects::nonNull)
-                .filter(document -> !Boolean.TRUE.equals(retrievalPlan.getOpenNow())
-                        || branchOpeningHoursPolicy.isOpen(document.getBranch()))
-                .toList();
+        List<SearchDocumentDto> ordered = searchDocumentService.findPostgresCandidates(
+                fallbackQuery(retrievalPlan, candidateLimit));
         return rank(ordered, scoringPlan, userLocation);
     }
 
@@ -242,30 +237,9 @@ public class StructuredSearchProcessor {
         if (query.isBlank()) {
             return List.of();
         }
-        List<SearchDocumentType> types = resolvePlanDocumentTypes(plan);
-        List<String> documentTypes = types.stream().map(Enum::name).toList();
-        List<UUID> dirtyIds = searchDocumentRepository.findDirtyCandidateIds(
-                documentTypes,
-                query,
-                normalize(plan.getUserSelectedCategory()),
-                plan.getMinPrice(),
-                plan.getMaxPrice(),
-                normalize(plan.getCity()),
-                normalize(plan.getCountry()),
-                plan.getRadiusMeters(),
-                plan.getUserLatitude(),
-                plan.getUserLongitude(),
-                50);
-        if (dirtyIds.isEmpty()) {
-            return List.of();
-        }
-        Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(dirtyIds).stream()
-                .collect(Collectors.toMap(SearchDocument::getId, document -> document));
-        return dirtyIds.stream()
-                .map(documents::get)
-                .filter(Objects::nonNull)
-                .filter(document -> !Boolean.TRUE.equals(plan.getOpenNow())
-                        || branchOpeningHoursPolicy.isOpen(document.getBranch()))
+        List<SearchDocumentDto> documents = searchDocumentService.findDirtyCandidates(
+                fallbackQuery(plan, 50));
+        return documents.stream()
                 .filter(doc -> !alreadyFoundAggregateIds.contains(doc.getAggregateId()))
                 .map(doc -> score(doc, plan, userLocation))
                 .filter(scored -> scored.getScore() >= MINIMUM_RESULT_SCORE)
@@ -463,10 +437,15 @@ public class StructuredSearchProcessor {
                 .notWanted(resolveArray(intentStructure.path("constraints").path("not_wanted")))
                 .rankingPriorities(resolveArray(intentStructure.path("ranking").path("prioritize")))
                 .intentAttributes(extractIntentAttributes(intentStructure))
+                .weightedTerms(resolveWeightedTerms(intentStructure))
+                .weightedConcepts(resolveWeightedConcepts(intentStructure))
+                .ambiguity(resolveAmbiguity(intentStructure))
+                .clarificationSuggestions(resolveClarificationSuggestions(intentStructure))
+                .hypotheses(resolveHypotheses(intentStructure))
                 .build();
     }
 
-    private List<ScoredSearchDocument> rank(List<SearchDocument> candidates, SearchPlan plan,
+    private List<ScoredSearchDocument> rank(List<SearchDocumentDto> candidates, SearchPlan plan,
                                             SearchLocationRequest userLocation) {
         return candidates.stream()
                 .map(document -> score(document, plan, userLocation))
@@ -476,7 +455,7 @@ public class StructuredSearchProcessor {
                 .toList();
     }
 
-    private ScoredSearchDocument score(SearchDocument document, SearchPlan plan,
+    private ScoredSearchDocument score(SearchDocumentDto document, SearchPlan plan,
                                        SearchLocationRequest userLocation) {
         List<String> warnings = new ArrayList<>();
         Integer score = HARD_MATCH_SCORE;
@@ -489,26 +468,30 @@ public class StructuredSearchProcessor {
         score += scoreTerms(document, plan.getAiSynonyms(), CATEGORY_MATCH_SCORE, CATEGORY_MATCH_SCORE, NICE_TO_HAVE_SCORE);
         score += scoreTerms(document, plan.getNiceToHave(), NICE_TO_HAVE_SCORE, NICE_TO_HAVE_SCORE, NICE_TO_HAVE_SCORE);
         score += scoreStructuredAttributes(document, plan);
+        score += scoreWeightedTerms(document, plan.getWeightedTerms());
         score = score - pricePenalty(document, plan, warnings) - cityPenalty(document, plan, warnings);
         Integer distanceMeters = null;
         String distanceText = null;
-        if ("distance".equals(plan.getSort()) && userLocation != null && document.getBranch() != null
-                && document.getBranch().getLatitude() != null
-                && document.getBranch().getLongitude() != null) {
+        if ("distance".equals(plan.getSort()) && userLocation != null
+                && document.getLatitude() != null
+                && document.getLongitude() != null) {
             double km = DistanceCalculator.km(
                     userLocation.getLat(), userLocation.getLng(),
-                    document.getBranch().getLatitude().doubleValue(),
-                    document.getBranch().getLongitude().doubleValue());
+                    document.getLatitude().doubleValue(),
+                    document.getLongitude().doubleValue());
             distanceMeters = DistanceCalculator.meters(
                     userLocation.getLat(), userLocation.getLng(),
-                    document.getBranch().getLatitude().doubleValue(),
-                    document.getBranch().getLongitude().doubleValue());
+                    document.getLatitude().doubleValue(),
+                    document.getLongitude().doubleValue());
             distanceText = formatDistance(distanceMeters);
             score = (int) (score * Math.max(0.3, 1.0 / (1.0 + km * 0.5)));
         }
         return ScoredSearchDocument.builder()
                 .document(document)
+                .candidate(null)
                 .score(score)
+                .rankingFeatures(Map.of("deterministicTextScore", score.doubleValue()))
+                .hypothesisId(resolveHypothesis(document, plan))
                 .sectionType(resolveSectionType(warnings, score))
                 .confidenceCode(resolveConfidenceCode(score, warnings))
                 .warnings(warnings)
@@ -517,7 +500,7 @@ public class StructuredSearchProcessor {
                 .build();
     }
 
-    private Integer scoreTerms(SearchDocument document, List<String> terms, Integer titleScore,
+    private Integer scoreTerms(SearchDocumentDto document, List<String> terms, Integer titleScore,
                                Integer tokenScore, Integer bodyScore) {
         Integer score = 0;
         for (String term : terms) {
@@ -526,7 +509,7 @@ public class StructuredSearchProcessor {
         return score;
     }
 
-    private Integer scoreTerm(SearchDocument document, String term, Integer titleScore,
+    private Integer scoreTerm(SearchDocumentDto document, String term, Integer titleScore,
                               Integer tokenScore, Integer bodyScore) {
         if (term.isBlank()) {
             return 0;
@@ -537,7 +520,7 @@ public class StructuredSearchProcessor {
         return score;
     }
 
-    private Integer pricePenalty(SearchDocument document, SearchPlan plan, List<String> warnings) {
+    private Integer pricePenalty(SearchDocumentDto document, SearchPlan plan, List<String> warnings) {
         boolean hasHardFilter = plan.getMinPrice() != null || plan.getMaxPrice() != null;
         boolean hasSoftSignal = plan.getPossibleMinPrice() != null || plan.getPossibleMaxPrice() != null;
         if (document.getPrice() == null && (hasHardFilter || hasSoftSignal)) {
@@ -568,20 +551,20 @@ public class StructuredSearchProcessor {
         return softAdjustment;
     }
 
-    private Integer cityPenalty(SearchDocument document, SearchPlan plan, List<String> warnings) {
+    private Integer cityPenalty(SearchDocumentDto document, SearchPlan plan, List<String> warnings) {
         boolean hasHardCity = !plan.getCity().isBlank();
         boolean hasSoftCity = !plan.getPossibleCity().isBlank();
         if (!hasHardCity && !hasSoftCity) {
             return 0;
         }
-        if (document.getBranch() == null || document.getBranch().getCity() == null) {
+        if (document.getCity() == null || document.getCity().isBlank()) {
             if (hasHardCity) {
                 warnings.add("CITY_UNKNOWN");
                 return WRONG_CITY_PENALTY;
             }
             return 0;
         }
-        String docCity = normalize(document.getBranch().getCity().getName());
+        String docCity = normalize(document.getCity());
         if (hasHardCity) {
             if (contains(docCity, plan.getCity())) {
                 return 0;
@@ -631,11 +614,11 @@ public class StructuredSearchProcessor {
         return SIMILAR_SECTION_PRIORITY;
     }
 
-    private Boolean tokenContains(SearchDocument document, String term) {
+    private Boolean tokenContains(SearchDocumentDto document, String term) {
         return document.getTokens().stream().map(this::normalize).anyMatch(token -> contains(token, term));
     }
 
-    private String documentText(SearchDocument document) {
+    private String documentText(SearchDocumentDto document) {
         return String.join(" ",
                 normalize(document.getTitle()),
                 normalize(document.getSummary()),
@@ -645,8 +628,8 @@ public class StructuredSearchProcessor {
                 normalize(document.getEmbeddingText()),
                 document.getConceptIds() == null ? "" : normalize(String.join(" ", document.getConceptIds())),
                 document.getUseCases() == null ? "" : normalize(String.join(" ", document.getUseCases())),
-                document.getBusiness() != null ? normalize(document.getBusiness().getName()) : "",
-                document.getBranch() != null ? normalize(document.getBranch().getName()) : "");
+                normalize(document.getBusinessName()),
+                normalize(document.getBranchName()));
     }
 
     private Boolean contains(String value, String term) {
@@ -852,17 +835,191 @@ public class StructuredSearchProcessor {
         return List.copyOf(conceptIds);
     }
 
+    private List<WeightedSearchTermDto> resolveWeightedTerms(JsonNode intentStructure) {
+        Map<String, WeightedSearchTermDto> terms = new LinkedHashMap<>();
+        addWeightedTermNodes(terms, intentStructure.path("semantic").path("lexical_expansions"),
+                "LEXICAL_EXPANSION");
+        addWeightedTextNodes(terms, intentStructure.path("semantic").path("synonyms"),
+                BigDecimal.valueOf(0.7), "SYNONYM");
+        addWeightedTextNodes(terms, intentStructure.path("semantic").path("related_terms"),
+                BigDecimal.valueOf(0.5), "RELATED");
+        return List.copyOf(terms.values());
+    }
+
+    private void addWeightedTermNodes(
+            Map<String, WeightedSearchTermDto> terms,
+            JsonNode values,
+            String source) {
+        if (!values.isArray()) {
+            return;
+        }
+        values.forEach(value -> {
+            String term = normalize(value.isTextual() ? value.asText("") : value.path("term").asText(""));
+            if (term.isBlank()) {
+                return;
+            }
+            BigDecimal weight = value.isTextual()
+                    ? BigDecimal.ONE : boundedWeight(value.path("weight").decimalValue());
+            terms.put(term, WeightedSearchTermDto.builder()
+                    .value(term)
+                    .weight(weight)
+                    .source(source)
+                    .build());
+        });
+    }
+
+    private void addWeightedTextNodes(
+            Map<String, WeightedSearchTermDto> terms,
+            JsonNode values,
+            BigDecimal weight,
+            String source) {
+        if (!values.isArray()) {
+            return;
+        }
+        values.forEach(value -> {
+            String term = normalize(value.asText(""));
+            if (!term.isBlank()) {
+                terms.putIfAbsent(term, WeightedSearchTermDto.builder()
+                        .value(term)
+                        .weight(weight)
+                        .source(source)
+                        .build());
+            }
+        });
+    }
+
+    private List<WeightedConceptDto> resolveWeightedConcepts(JsonNode intentStructure) {
+        List<WeightedConceptDto> concepts = new ArrayList<>();
+        JsonNode values = intentStructure.path("semantic").path("concepts");
+        if (!values.isArray()) {
+            return List.of();
+        }
+        values.forEach(value -> {
+            String rawId = value.isTextual() ? value.asText("") : value.path("id").asText("");
+            kz.ask.search.basic.domain.enums.SearchConcept.resolve(rawId).ifPresent(concept ->
+                    concepts.add(WeightedConceptDto.builder()
+                            .conceptId(concept.name())
+                            .weight(value.isTextual()
+                                    ? BigDecimal.ONE : boundedWeight(value.path("weight").decimalValue()))
+                            .build()));
+        });
+        return List.copyOf(concepts);
+    }
+
+    private BigDecimal boundedWeight(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ONE;
+        }
+        return value.max(BigDecimal.ZERO).min(BigDecimal.ONE);
+    }
+
+    private String resolveAmbiguity(JsonNode intentStructure) {
+        String ambiguity = intentStructure.path("semantic").path("ambiguity").asText("LOW")
+                .trim().toUpperCase(Locale.ROOT);
+        return Set.of("LOW", "MEDIUM", "HIGH").contains(ambiguity) ? ambiguity : "LOW";
+    }
+
+    private List<String> resolveClarificationSuggestions(JsonNode intentStructure) {
+        Set<String> suggestions = new LinkedHashSet<>();
+        addArrayTerms(suggestions, intentStructure.path("clarification").path("suggestions"));
+        addArrayTerms(suggestions, intentStructure.path("possible_interpretations"));
+        JsonNode lexicalExpansions = intentStructure.path("semantic").path("lexical_expansions");
+        if (lexicalExpansions.isArray()) {
+            lexicalExpansions.forEach(value -> addTerm(suggestions,
+                    value.isTextual() ? value.asText("") : value.path("term").asText("")));
+        }
+        return suggestions.stream().limit(MAX_CLARIFICATION_SUGGESTIONS).toList();
+    }
+
+    private List<SearchIntentHypothesisDto> resolveHypotheses(JsonNode intentStructure) {
+        List<SearchIntentHypothesisDto> hypotheses = new ArrayList<>();
+        JsonNode values = intentStructure.path("intent_hypotheses");
+        if (values.isArray()) {
+            int index = 0;
+            for (JsonNode value : values) {
+                List<WeightedSearchTermDto> terms = new ArrayList<>();
+                addHypothesisTerms(terms, value.path("terms"));
+                hypotheses.add(SearchIntentHypothesisDto.builder()
+                        .intentId(value.path("intent_id").asText("intent-" + index))
+                        .probability(boundedWeight(value.path("probability").decimalValue()))
+                        .terms(List.copyOf(terms))
+                        .concepts(resolveHypothesisConcepts(value.path("concepts")))
+                        .build());
+                index++;
+            }
+        }
+        if (!hypotheses.isEmpty()) {
+            return List.copyOf(hypotheses);
+        }
+        List<WeightedSearchTermDto> primaryTerms = resolveWeightedTerms(intentStructure);
+        return List.of(SearchIntentHypothesisDto.builder()
+                .intentId("primary")
+                .probability(BigDecimal.ONE)
+                .terms(primaryTerms)
+                .concepts(resolveWeightedConcepts(intentStructure))
+                .build());
+    }
+
+    private void addHypothesisTerms(List<WeightedSearchTermDto> terms, JsonNode values) {
+        if (!values.isArray()) {
+            return;
+        }
+        values.forEach(value -> {
+            String term = normalize(value.isTextual() ? value.asText("") : value.path("term").asText(""));
+            if (!term.isBlank()) {
+                terms.add(WeightedSearchTermDto.builder()
+                        .value(term)
+                        .weight(value.isTextual()
+                                ? BigDecimal.ONE : boundedWeight(value.path("weight").decimalValue()))
+                        .source("HYPOTHESIS")
+                        .build());
+            }
+        });
+    }
+
+    private List<WeightedConceptDto> resolveHypothesisConcepts(JsonNode values) {
+        List<WeightedConceptDto> concepts = new ArrayList<>();
+        if (!values.isArray()) {
+            return concepts;
+        }
+        values.forEach(value -> {
+            String rawId = value.isTextual() ? value.asText("") : value.path("id").asText("");
+            kz.ask.search.basic.domain.enums.SearchConcept.resolve(rawId).ifPresent(concept ->
+                    concepts.add(WeightedConceptDto.builder()
+                            .conceptId(concept.name())
+                            .weight(value.isTextual()
+                                    ? BigDecimal.ONE : boundedWeight(value.path("weight").decimalValue()))
+                            .build()));
+        });
+        return List.copyOf(concepts);
+    }
+
+    private Integer scoreWeightedTerms(
+            SearchDocumentDto document,
+            List<WeightedSearchTermDto> weightedTerms) {
+        if (weightedTerms == null || weightedTerms.isEmpty()) {
+            return 0;
+        }
+        double score = weightedTerms.stream()
+                .mapToDouble(term -> {
+                    int matched = scoreTerm(document, term.getValue(), 1, 1, 1) > 0 ? 1 : 0;
+                    return matched * term.getWeight().doubleValue() * WEIGHTED_TERM_SCORE;
+                })
+                .sum();
+        return (int) Math.round(score);
+    }
+
     private List<ScoredSearchDocument> applyOfferBoosts(List<ScoredSearchDocument> candidates) {
         List<UUID> itemIds = candidates.stream()
                 .map(ScoredSearchDocument::getDocument)
                 .filter(document -> document.getDocumentType() == SearchDocumentType.ITEM)
-                .map(SearchDocument::getAggregateId)
+                .map(SearchDocumentDto::getAggregateId)
                 .distinct()
                 .toList();
         List<UUID> serviceIds = candidates.stream()
                 .map(ScoredSearchDocument::getDocument)
                 .filter(document -> document.getDocumentType() == SearchDocumentType.SERVICE)
-                .map(SearchDocument::getAggregateId)
+                .map(SearchDocumentDto::getAggregateId)
                 .distinct()
                 .toList();
         Map<UUID, UniqueOfferBoostDto> boosts = new HashMap<>();
@@ -875,6 +1032,23 @@ public class StructuredSearchProcessor {
                 .toList();
     }
 
+    private SearchFallbackQueryDto fallbackQuery(SearchPlan plan, Integer candidateLimit) {
+        return SearchFallbackQueryDto.builder()
+                .documentTypes(resolvePlanDocumentTypes(plan))
+                .query(postgresQuery(plan))
+                .category(normalize(plan.getUserSelectedCategory()))
+                .minPrice(plan.getMinPrice())
+                .maxPrice(plan.getMaxPrice())
+                .city(normalize(plan.getCity()))
+                .country(normalize(plan.getCountry()))
+                .radiusMeters(plan.getRadiusMeters())
+                .userLatitude(plan.getUserLatitude())
+                .userLongitude(plan.getUserLongitude())
+                .candidateLimit(candidateLimit)
+                .openNow(plan.getOpenNow())
+                .build();
+    }
+
     private ScoredSearchDocument applyOfferBoost(
             ScoredSearchDocument candidate,
             UniqueOfferBoostDto boost) {
@@ -883,7 +1057,11 @@ public class StructuredSearchProcessor {
         }
         return ScoredSearchDocument.builder()
                 .document(candidate.getDocument())
+                .candidate(candidate.getCandidate())
                 .score(candidate.getScore() + ACTIVE_OFFER_SCORE)
+                .rankingFeatures(withFeature(candidate.getRankingFeatures(), "activeOfferSignal",
+                        ACTIVE_OFFER_SCORE.doubleValue()))
+                .hypothesisId(candidate.getHypothesisId())
                 .sectionType(candidate.getSectionType())
                 .confidenceCode(candidate.getConfidenceCode())
                 .warnings(candidate.getWarnings())
@@ -891,6 +1069,109 @@ public class StructuredSearchProcessor {
                 .distanceText(candidate.getDistanceText())
                 .activeOfferLabel(boost.getLabel())
                 .build();
+    }
+
+    private Integer retrievalBaseScore(
+            SearchCandidateDto candidate,
+            List<SearchCandidateDto> candidates) {
+        double maximumFusion = candidates.stream()
+                .map(SearchCandidateDto::getFusionScore)
+                .filter(Objects::nonNull)
+                .mapToDouble(Double::doubleValue)
+                .max()
+                .orElse(1.0);
+        double normalizedFusion = maximumFusion == 0.0
+                ? 0.0 : candidate.getFusionScore() / maximumFusion;
+        return (int) Math.round(50.0 + normalizedFusion * 50.0);
+    }
+
+    private Map<String, Double> retrievalFeatures(SearchCandidateDto candidate) {
+        Map<String, Double> features = new LinkedHashMap<>();
+        features.put("retrievalFusionScore", candidate.getFusionScore());
+        addFeature(features, "rawLexicalScore", candidate.getRawLexicalScore());
+        addFeature(features, "expandedLexicalScore", candidate.getExpandedLexicalScore());
+        addFeature(features, "semanticSimilarity", candidate.getSemanticScore());
+        return Map.copyOf(features);
+    }
+
+    private void addFeature(Map<String, Double> features, String name, Double value) {
+        if (value != null) {
+            features.put(name, value);
+        }
+    }
+
+    private Map<String, Double> withFeature(
+            Map<String, Double> existing,
+            String name,
+            Double value) {
+        Map<String, Double> features = new LinkedHashMap<>();
+        if (existing != null) {
+            features.putAll(existing);
+        }
+        features.put(name, value);
+        return Map.copyOf(features);
+    }
+
+    private String resolveHypothesis(SearchDocumentDto document, SearchPlan plan) {
+        if (plan.getHypotheses() == null || plan.getHypotheses().isEmpty()) {
+            return "primary";
+        }
+        String text = documentText(document);
+        return plan.getHypotheses().stream()
+                .max(Comparator.comparingDouble(hypothesis ->
+                        hypothesisScore(text, hypothesis)))
+                .map(SearchIntentHypothesisDto::getIntentId)
+                .orElse("primary");
+    }
+
+    private double hypothesisScore(String documentText, SearchIntentHypothesisDto hypothesis) {
+        double probability = hypothesis.getProbability() == null
+                ? 1.0 : hypothesis.getProbability().doubleValue();
+        double termScore = hypothesis.getTerms() == null ? 0.0 : hypothesis.getTerms().stream()
+                .filter(term -> contains(documentText, normalize(term.getValue())))
+                .mapToDouble(term -> term.getWeight().doubleValue())
+                .sum();
+        double conceptScore = hypothesis.getConcepts() == null ? 0.0 : hypothesis.getConcepts().stream()
+                .filter(concept -> contains(documentText, normalize(concept.getConceptId())))
+                .mapToDouble(concept -> concept.getWeight().doubleValue())
+                .sum();
+        return probability * (termScore + conceptScore);
+    }
+
+    private List<ScoredSearchDocument> diversify(
+            List<ScoredSearchDocument> ordered,
+            SearchPlan plan) {
+        if (!"HIGH".equals(plan.getAmbiguity())
+                || plan.getHypotheses() == null
+                || plan.getHypotheses().size() < 2) {
+            return ordered;
+        }
+        Map<String, java.util.ArrayDeque<ScoredSearchDocument>> buckets = new LinkedHashMap<>();
+        plan.getHypotheses().forEach(hypothesis ->
+                buckets.put(hypothesis.getIntentId(), new java.util.ArrayDeque<>()));
+        java.util.ArrayDeque<ScoredSearchDocument> remaining = new java.util.ArrayDeque<>();
+        ordered.forEach(candidate -> {
+            java.util.ArrayDeque<ScoredSearchDocument> bucket = buckets.get(candidate.getHypothesisId());
+            if (bucket == null) {
+                remaining.add(candidate);
+            } else {
+                bucket.add(candidate);
+            }
+        });
+        List<ScoredSearchDocument> diversified = new ArrayList<>(ordered.size());
+        boolean added;
+        do {
+            added = false;
+            for (java.util.ArrayDeque<ScoredSearchDocument> bucket : buckets.values()) {
+                ScoredSearchDocument next = bucket.poll();
+                if (next != null) {
+                    diversified.add(next);
+                    added = true;
+                }
+            }
+        } while (added);
+        diversified.addAll(remaining);
+        return List.copyOf(diversified);
     }
 
     private String resolveSemanticQuery(JsonNode intentStructure, SearchIntentStructureRequest request) {
@@ -901,12 +1182,12 @@ public class StructuredSearchProcessor {
         return semanticQuery.isBlank() ? request.getRawQuery() : semanticQuery;
     }
 
-    private Boolean appliesToBranch(SearchDocument document, UniqueOfferBoostDto boost) {
+    private Boolean appliesToBranch(SearchDocumentDto document, UniqueOfferBoostDto boost) {
         if (boost.getBranchIds().isEmpty()) {
             return true;
         }
-        return document.getBranch() != null
-                && boost.getBranchIds().contains(document.getBranch().getId());
+        return document.getBranchId() != null
+                && boost.getBranchIds().contains(document.getBranchId());
     }
 
     private void addArrayTerms(Set<String> queryTerms, JsonNode node) {
@@ -941,14 +1222,14 @@ public class StructuredSearchProcessor {
             ScoredSearchDocument scored,
             Map<UUID, BusinessProfileDto> businessProfiles,
             String language) {
-        SearchDocument document = scored.getDocument();
-        UUID businessId = document.getBusiness() == null ? null : document.getBusiness().getId();
+        SearchDocumentDto document = scored.getDocument();
+        UUID businessId = document.getBusinessId();
         BusinessProfileDto brandProfile = businessId == null ? null : businessProfiles.get(businessId);
         return SearchCardResponse.builder()
                 .component(component(document.getDocumentType().name()))
                 .resultId(document.getAggregateId())
-                .businessId(document.getBusiness() != null ? document.getBusiness().getId() : null)
-                .businessName(document.getBusiness() != null ? document.getBusiness().getName() : null)
+                .businessId(document.getBusinessId())
+                .businessName(document.getBusinessName())
                 .resultType(document.getDocumentType().name())
                 .brandColor(resolveBrandColor(brandProfile))
                 .brandLogoUrl(brandProfile != null ? brandProfile.getLogoUrl() : null)
@@ -968,16 +1249,15 @@ public class StructuredSearchProcessor {
                 .matchReasons(matchReasons(scored, language))
                 .badges(resolveBadges(brandProfile, document, scored.getActiveOfferLabel()))
                 .distanceMeters(scored.getDistanceMeters())
-                .branchName(document.getBranch() != null ? document.getBranch().getName() : null)
-                .branchAddress(document.getBranch() != null ? document.getBranch().getAddress() : null)
-                .branchCity(document.getBranch() != null && document.getBranch().getCity() != null
-                        ? document.getBranch().getCity().getName() : null)
+                .branchName(document.getBranchName())
+                .branchAddress(document.getBranchAddress())
+                .branchCity(document.getCity())
                 .build();
     }
 
     private List<String> matchReasons(ScoredSearchDocument scored, String language) {
         List<String> reasons = new ArrayList<>();
-        SearchDocument document = scored.getDocument();
+        SearchDocumentDto document = scored.getDocument();
         if (scored.getScore() >= MINIMUM_RESULT_SCORE) {
             reasons.add(localized(language,
                     "Соответствует запросу",
@@ -1026,7 +1306,7 @@ public class StructuredSearchProcessor {
 
     private List<String> resolveBadges(
             BusinessProfileDto profile,
-            SearchDocument document,
+            SearchDocumentDto document,
             String activeOfferLabel) {
         List<String> badges = new ArrayList<>();
         if (activeOfferLabel != null && !activeOfferLabel.isBlank()) {
@@ -1038,7 +1318,7 @@ public class StructuredSearchProcessor {
         if (document.getSummary() != null && !document.getSummary().isBlank()) {
             badges.add("complete card");
         }
-        if (document.getBranch() != null && document.getBranch().getAddress() != null && !document.getBranch().getAddress().isBlank()) {
+        if (document.getBranchAddress() != null && !document.getBranchAddress().isBlank()) {
             badges.add("pickup");
         }
         return badges;
@@ -1123,7 +1403,7 @@ public class StructuredSearchProcessor {
         return attrs;
     }
 
-    private Integer scoreStructuredAttributes(SearchDocument document, SearchPlan plan) {
+    private Integer scoreStructuredAttributes(SearchDocumentDto document, SearchPlan plan) {
         Map<String, Object> intentAttrs = plan.getIntentAttributes();
         if (intentAttrs == null || intentAttrs.isEmpty()) {
             return 0;
@@ -1148,7 +1428,7 @@ public class StructuredSearchProcessor {
         return score;
     }
 
-    private Map<String, Object> combinedAttributes(SearchDocument document) {
+    private Map<String, Object> combinedAttributes(SearchDocumentDto document) {
         Map<String, Object> attributes = new HashMap<>();
         if (document.getAiAttributes() != null) {
             attributes.putAll(document.getAiAttributes());

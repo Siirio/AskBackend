@@ -1,8 +1,14 @@
 package kz.ask.search.basic.domain;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import kz.ask.business.branch.domain.BranchOpeningHoursPolicy;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
+import kz.ask.search.basic.domain.dto.SearchFallbackQueryDto;
 import kz.ask.search.basic.domain.entity.SearchDocument;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchProjectionAction;
@@ -20,6 +26,7 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
 
     private final SearchDocumentRepository searchDocumentRepository;
     private final SearchDocumentMapper searchDocumentMapper;
+    private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
 
     @Override
     @Transactional
@@ -85,6 +92,78 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         return searchDocumentRepository
                 .findProjectionByAggregate(type, aggregateId)
                 .map(searchDocumentMapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SearchDocumentDto> findSearchableByAggregateIds(
+            SearchDocumentType type,
+            Collection<UUID> aggregateIds) {
+        if (aggregateIds == null || aggregateIds.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, SearchDocumentDto> documents = searchDocumentRepository
+                .findAllByDocumentTypeAndAggregateIdIn(List.of(type), aggregateIds).stream()
+                .map(searchDocumentMapper::toDto)
+                .collect(LinkedHashMap::new,
+                        (values, document) -> values.put(document.getAggregateId(), document),
+                        LinkedHashMap::putAll);
+        return aggregateIds.stream().map(documents::get).filter(java.util.Objects::nonNull).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SearchDocumentDto> findPostgresCandidates(SearchFallbackQueryDto query) {
+        List<UUID> ids = searchDocumentRepository.findPostgresCandidateIds(
+                query.getDocumentTypes().stream().map(Enum::name).toList(),
+                query.getQuery(),
+                query.getCategory(),
+                query.getMinPrice(),
+                query.getMaxPrice(),
+                query.getCity(),
+                query.getCountry(),
+                query.getRadiusMeters(),
+                query.getUserLatitude(),
+                query.getUserLongitude(),
+                query.getCandidateLimit());
+        return hydrateOrdered(ids, query.getOpenNow());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SearchDocumentDto> findDirtyCandidates(SearchFallbackQueryDto query) {
+        List<UUID> ids = searchDocumentRepository.findDirtyCandidateIds(
+                query.getDocumentTypes().stream().map(Enum::name).toList(),
+                query.getQuery(),
+                query.getCategory(),
+                query.getMinPrice(),
+                query.getMaxPrice(),
+                query.getCity(),
+                query.getCountry(),
+                query.getRadiusMeters(),
+                query.getUserLatitude(),
+                query.getUserLongitude(),
+                query.getCandidateLimit());
+        return hydrateOrdered(ids, query.getOpenNow());
+    }
+
+    private List<SearchDocumentDto> hydrateOrdered(List<UUID> ids, Boolean openNow) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(SearchDocument::getId, document -> document));
+        return ids.stream()
+                .map(documents::get)
+                .filter(java.util.Objects::nonNull)
+                .filter(document -> !Boolean.TRUE.equals(openNow)
+                        || isOpen(document))
+                .map(searchDocumentMapper::toDto)
+                .toList();
+    }
+
+    private Boolean isOpen(SearchDocument document) {
+        return branchOpeningHoursPolicy.isOpen(document.getBranch());
     }
 
     @Override

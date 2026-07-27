@@ -87,3 +87,12 @@ Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 - Added a multilingual Meilisearch semantic lane alongside the two bounded lexical lanes and fused all available rankings through RRF.
 - Made query-interpretation cache keys context-complete and expanded evaluation coverage and metrics.
 - Wired explicit country, radius, and open-now filters through the search plan without changing canonical Item or Service facts.
+
+## 2026-07-27 — Signal-preserving search read pipeline
+
+- Replaced flat Meilisearch aggregate-ID retrieval with candidates that retain raw lexical, expanded lexical, semantic, and fusion signals.
+- Routed PostgreSQL hydration and dirty fallback through `SearchDocumentService` DTO methods.
+- Preserved weighted terms, controlled concepts, ambiguity, suggestions, and intent hypotheses through deterministic scoring and diversification.
+- Renamed the infrastructure port to `MeilisearchIndexGateway` and corrected the system audit to match the active semantic-passport storage and automatic delivery enrichment.
+- Reconciled the contradictory test rules in favor of the explicit no-tests delivery policy.
+- Restored clean-start integrity by aligning the first-branch caller with the current create contract and adding the persisted branch pickup field to the V1 baseline.

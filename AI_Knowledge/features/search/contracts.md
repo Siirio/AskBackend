@@ -47,6 +47,8 @@ Removed fields: `scope`, `selected_category`, top-level `city`, `filters.scope`,
 - Each card includes short and full Item/Service text, price/currency, Business identity, public Business profile, optional branch context, availability truth, match reasons, and badges.
 - `business_profile` contains public logo, cover, description, number, email, Instagram, Telegram, and website values.
 - Public responses contain no engine, fallback, latency, exception, or infrastructure diagnostics. Operational details remain in server logs.
+- `ambiguity` is `LOW`, `MEDIUM`, or `HIGH`.
+- `suggestions` contains bounded clarification chips derived from validated interpretations. It is empty when no useful clarification exists.
 
 The chat button uses `business_id` to open/resume the durable business conversation with the selected Item/Service as entry context. Search itself never creates the conversation.
 

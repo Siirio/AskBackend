@@ -1,11 +1,12 @@
-package kz.ask.search.basic.domain;
+package kz.ask.search.basic.infrastructure.meilisearch;
 
 import java.util.List;
 import java.util.UUID;
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
+import kz.ask.search.basic.domain.dto.SearchCandidateSetDto;
 
-public interface MeilisearchService {
+public interface MeilisearchIndexGateway {
 
     void index(MeilisearchIndexDocument document);
 
@@ -21,5 +22,5 @@ public interface MeilisearchService {
 
     void discardIndex(String targetIndex);
 
-    List<UUID> search(SearchPlan plan, int limit);
+    SearchCandidateSetDto search(SearchPlan plan, int limit);
 }
