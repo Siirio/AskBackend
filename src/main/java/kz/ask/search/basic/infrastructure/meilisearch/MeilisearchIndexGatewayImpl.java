@@ -261,7 +261,18 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
             return;
         }
         try {
-            Embedder current = index.getEmbeddersSettings().get(semanticEmbedderName);
+            Map<String, Embedder> embedders = index.getEmbeddersSettings();
+            if (embedders == null) {
+                Embedder embedder = new Embedder()
+                        .setSource(EmbedderSource.HUGGING_FACE)
+                        .setModel(semanticEmbedderModel)
+                        .setDocumentTemplate("{{doc.embeddingText}}");
+                waitForTask(index, index.updateEmbeddersSettings(Map.of(
+                        semanticEmbedderName, embedder)));
+                semanticIndexes.add(index.getUid());
+                return;
+            }
+            Embedder current = embedders.get(semanticEmbedderName);
             if (current == null || current.getSource() != EmbedderSource.HUGGING_FACE
                     || !semanticEmbedderModel.equals(current.getModel())) {
                 Embedder embedder = new Embedder()

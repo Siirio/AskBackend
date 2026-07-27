@@ -19,8 +19,6 @@ public class MeilisearchFilterCompiler {
         if (plan.getMaxPrice() != null) {
             filters.add("price <= " + plan.getMaxPrice().toPlainString());
         }
-        addTextFilter(filters, "city", plan.getCity());
-        addTextFilter(filters, "country", plan.getCountry());
         addTextFilter(filters, "categoryLabel", plan.getUserSelectedCategory());
         if (plan.getRadiusMeters() != null
                 && plan.getUserLatitude() != null
