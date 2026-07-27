@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import kz.ask.business.profile.domain.BusinessProfileService;
+import kz.ask.business.branch.domain.BranchOpeningHoursPolicy;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
 import kz.ask.business.uniqueoffer.domain.UniqueOfferService;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
@@ -94,6 +95,7 @@ public class StructuredSearchProcessor {
     private final BusinessProfileService businessProfileService;
     private final UniqueOfferService uniqueOfferService;
     private final MeilisearchService meilisearchService;
+    private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
 
     public SearchResponse search(SearchRequest request) {
         int page = request.getPage() == null ? 0 : request.getPage();
@@ -106,12 +108,10 @@ public class StructuredSearchProcessor {
         SearchLocationRequest userLocation = request.getUserLocation();
 
         List<ScoredSearchDocument> exactCandidates;
-        boolean fallbackUsed = false;
         try {
             exactCandidates = searchViaMeilisearch(searchPlan, searchPlan, userLocation, candidateLimit);
         } catch (Exception e) {
             log.warn("Meilisearch search is unavailable; falling back to PostgreSQL", e);
-            fallbackUsed = true;
             exactCandidates = searchViaPostgres(searchPlan, searchPlan, userLocation, candidateLimit);
         }
 
@@ -122,21 +122,6 @@ public class StructuredSearchProcessor {
                 .filter(scored -> scored.getWarnings().isEmpty())
                 .toList();
         List<ScoredSearchDocument> alternatives = List.of();
-        if (exact.size() < requestedWindow && hasRelaxableConstraints(searchPlan)) {
-            SearchPlan relaxedPlan = searchPlan.toBuilder()
-                    .city("")
-                    .minPrice(null)
-                    .maxPrice(null)
-                    .build();
-            List<ScoredSearchDocument> relaxed = fallbackUsed
-                    ? searchViaPostgres(relaxedPlan, searchPlan, userLocation, candidateLimit)
-                    : searchViaMeilisearch(relaxedPlan, searchPlan, userLocation, candidateLimit);
-            Set<UUID> exactIds = exact.stream().map(scored -> scored.getDocument().getId()).collect(Collectors.toSet());
-            alternatives = relaxed.stream()
-                    .filter(scored -> !scored.getWarnings().isEmpty())
-                    .filter(scored -> !exactIds.contains(scored.getDocument().getId()))
-                    .toList();
-        }
 
         List<ScoredSearchDocument> ordered = applyOfferBoosts(
                 Stream.concat(exact.stream(), alternatives.stream()).toList());
@@ -181,6 +166,10 @@ public class StructuredSearchProcessor {
         for (int i = 0; i < rankedIds.size(); i++) {
             SearchDocument doc = docsById.get(rankedIds.get(i));
             if (doc == null) {
+                continue;
+            }
+            if (Boolean.TRUE.equals(retrievalPlan.getOpenNow())
+                    && !branchOpeningHoursPolicy.isOpen(doc.getBranch())) {
                 continue;
             }
             int baseScore = 80 - (i * 2);
@@ -231,10 +220,19 @@ public class StructuredSearchProcessor {
                 retrievalPlan.getMinPrice(),
                 retrievalPlan.getMaxPrice(),
                 normalize(retrievalPlan.getCity()),
+                normalize(retrievalPlan.getCountry()),
+                retrievalPlan.getRadiusMeters(),
+                retrievalPlan.getUserLatitude(),
+                retrievalPlan.getUserLongitude(),
                 candidateLimit);
         Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(candidateIds).stream()
                 .collect(Collectors.toMap(SearchDocument::getId, document -> document));
-        List<SearchDocument> ordered = candidateIds.stream().map(documents::get).filter(Objects::nonNull).toList();
+        List<SearchDocument> ordered = candidateIds.stream()
+                .map(documents::get)
+                .filter(Objects::nonNull)
+                .filter(document -> !Boolean.TRUE.equals(retrievalPlan.getOpenNow())
+                        || branchOpeningHoursPolicy.isOpen(document.getBranch()))
+                .toList();
         return rank(ordered, scoringPlan, userLocation);
     }
 
@@ -253,6 +251,10 @@ public class StructuredSearchProcessor {
                 plan.getMinPrice(),
                 plan.getMaxPrice(),
                 normalize(plan.getCity()),
+                normalize(plan.getCountry()),
+                plan.getRadiusMeters(),
+                plan.getUserLatitude(),
+                plan.getUserLongitude(),
                 50);
         if (dirtyIds.isEmpty()) {
             return List.of();
@@ -262,6 +264,8 @@ public class StructuredSearchProcessor {
         return dirtyIds.stream()
                 .map(documents::get)
                 .filter(Objects::nonNull)
+                .filter(document -> !Boolean.TRUE.equals(plan.getOpenNow())
+                        || branchOpeningHoursPolicy.isOpen(document.getBranch()))
                 .filter(doc -> !alreadyFoundAggregateIds.contains(doc.getAggregateId()))
                 .map(doc -> score(doc, plan, userLocation))
                 .filter(scored -> scored.getScore() >= MINIMUM_RESULT_SCORE)
@@ -271,18 +275,13 @@ public class StructuredSearchProcessor {
     private String postgresQuery(SearchPlan plan) {
         return Stream.concat(Stream.of(plan.getRawQuery()),
                         Stream.of(plan.getExactTerms(), plan.getExpandedTerms(), plan.getHardMatchTerms(),
-                                        plan.getAiSynonyms(), plan.getRelatedTerms())
+                                        plan.getAiSynonyms(), plan.getRelatedTerms(), plan.getConceptIds())
                                 .flatMap(List::stream))
                 .map(this::normalize)
                 .filter(term -> !term.isBlank())
                 .distinct()
                 .limit(20)
                 .collect(Collectors.joining(" OR "));
-    }
-
-    private boolean hasRelaxableConstraints(SearchPlan plan) {
-        return !plan.getCity().isBlank() || plan.getMinPrice() != null || plan.getMaxPrice() != null
-                || plan.getMinPackageGrams() != null || plan.getMaxPackageGrams() != null;
     }
 
     private List<ScoredSearchDocument> sort(List<ScoredSearchDocument> documents, String sort) {
@@ -389,6 +388,8 @@ public class StructuredSearchProcessor {
                 ? null : request.getExplicitFilters().getCategory());
         aiRequest.setCity(request.getExplicitFilters() == null
                 ? null : request.getExplicitFilters().getCity());
+        aiRequest.setCountry(request.getExplicitFilters() == null
+                ? null : request.getExplicitFilters().getCountry());
         aiRequest.setSort(normalizeSort(request.getSort()));
         aiRequest.setUserLocation(request.getUserLocation());
         aiRequest.setLanguage(request.getLocale());
@@ -396,6 +397,10 @@ public class StructuredSearchProcessor {
                 ? null : request.getExplicitFilters().getMinPrice());
         aiRequest.setExplicitMaxPrice(request.getExplicitFilters() == null
                 ? null : request.getExplicitFilters().getMaxPrice());
+        aiRequest.setOpenNow(request.getExplicitFilters() == null
+                ? null : request.getExplicitFilters().getOpenNow());
+        aiRequest.setRadiusMeters(request.getExplicitFilters() == null
+                ? null : request.getExplicitFilters().getRadiusMeters());
         return aiRequest;
     }
 
@@ -427,13 +432,19 @@ public class StructuredSearchProcessor {
                 resolveAliasTargets(categoryAliases), resolveAliasTargets(expandedTerms));
         return SearchPlan.builder()
                 .rawQuery(request.getRawQuery())
+                .semanticQuery(resolveSemanticQuery(intentStructure, request))
                 .itemType(SearchDocumentType.valueOf(request.getSelectedMode()))
                 .city(normalize(request.getCity()))
+                .country(normalize(request.getCountry()))
                 .possibleCity(normalize(intentStructure.path("city").asText("")))
                 .userSelectedCategory(normalize(request.getSelectedCategory()))
                 .sort(normalizeSort(request.getSort()))
                 .minPrice(request.getExplicitMinPrice())
                 .maxPrice(request.getExplicitMaxPrice())
+                .openNow(request.getOpenNow())
+                .radiusMeters(request.getRadiusMeters())
+                .userLatitude(request.getUserLocation() == null ? null : request.getUserLocation().getLat())
+                .userLongitude(request.getUserLocation() == null ? null : request.getUserLocation().getLng())
                 .possibleMinPrice(parsePrice(request.getRawQuery(), MIN_PRICE_PATTERN, true))
                 .possibleMaxPrice(resolvePossibleMaxPrice(request))
                 .minPackageGrams(resolveMinPackageGrams(request))
@@ -446,6 +457,7 @@ public class StructuredSearchProcessor {
                 .expandedTerms(expandedTerms)
                 .aiSynonyms(resolveArray(intentStructure.path("semantic").path("synonyms")))
                 .relatedTerms(relatedTerms)
+                .conceptIds(resolveConceptIds(intentStructure))
                 .mustHave(resolveArray(intentStructure.path("constraints").path("must_have")))
                 .niceToHave(resolveArray(intentStructure.path("constraints").path("nice_to_have")))
                 .notWanted(resolveArray(intentStructure.path("constraints").path("not_wanted")))
@@ -628,6 +640,11 @@ public class StructuredSearchProcessor {
                 normalize(document.getTitle()),
                 normalize(document.getSummary()),
                 normalize(document.getCategoryLabel()),
+                normalize(document.getAliases()),
+                normalize(document.getSemanticSummary()),
+                normalize(document.getEmbeddingText()),
+                document.getConceptIds() == null ? "" : normalize(String.join(" ", document.getConceptIds())),
+                document.getUseCases() == null ? "" : normalize(String.join(" ", document.getUseCases())),
                 document.getBusiness() != null ? normalize(document.getBusiness().getName()) : "",
                 document.getBranch() != null ? normalize(document.getBranch().getName()) : "");
     }
@@ -704,8 +721,17 @@ public class StructuredSearchProcessor {
     private List<String> resolveRelatedTerms(JsonNode intentStructure) {
         Set<String> terms = new LinkedHashSet<>();
         addArrayTerms(terms, intentStructure.path("semantic").path("related_terms"));
+        addWeightedTerms(terms, intentStructure.path("semantic").path("lexical_expansions"));
         addArrayTerms(terms, intentStructure.path("ranking").path("expand_if_no_results"));
         return terms.stream().toList();
+    }
+
+    private void addWeightedTerms(Set<String> terms, JsonNode values) {
+        if (!values.isArray()) {
+            return;
+        }
+        values.forEach(value -> addTerm(terms, value.isTextual()
+                ? value.asText("") : value.path("term").asText("")));
     }
 
     private BigDecimal resolvePossibleMaxPrice(SearchIntentStructureRequest request) {
@@ -811,6 +837,21 @@ public class StructuredSearchProcessor {
         return terms.stream().toList();
     }
 
+    private List<String> resolveConceptIds(JsonNode intentStructure) {
+        Set<String> conceptIds = new LinkedHashSet<>();
+        JsonNode concepts = intentStructure.path("semantic").path("concepts");
+        if (concepts.isArray()) {
+            concepts.forEach(concept -> {
+                String conceptId = concept.isTextual()
+                        ? concept.asText("") : concept.path("id").asText("");
+                kz.ask.search.basic.domain.enums.SearchConcept.resolve(conceptId)
+                        .map(Enum::name)
+                        .ifPresent(conceptIds::add);
+            });
+        }
+        return List.copyOf(conceptIds);
+    }
+
     private List<ScoredSearchDocument> applyOfferBoosts(List<ScoredSearchDocument> candidates) {
         List<UUID> itemIds = candidates.stream()
                 .map(ScoredSearchDocument::getDocument)
@@ -850,6 +891,14 @@ public class StructuredSearchProcessor {
                 .distanceText(candidate.getDistanceText())
                 .activeOfferLabel(boost.getLabel())
                 .build();
+    }
+
+    private String resolveSemanticQuery(JsonNode intentStructure, SearchIntentStructureRequest request) {
+        String semanticQuery = intentStructure.path("semantic").path("semantic_query").asText("");
+        if (semanticQuery.isBlank()) {
+            semanticQuery = intentStructure.path("fallback_search").path("semantic_query").asText("");
+        }
+        return semanticQuery.isBlank() ? request.getRawQuery() : semanticQuery;
     }
 
     private Boolean appliesToBranch(SearchDocument document, UniqueOfferBoostDto boost) {

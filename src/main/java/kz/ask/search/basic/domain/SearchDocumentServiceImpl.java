@@ -43,6 +43,26 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
 
     @Override
     @Transactional
+    public Optional<Long> upsertSemanticMetadataIfVersion(SearchDocumentDto dto, Long expectedVersion) {
+        validate(dto);
+        SearchDocument document = searchDocumentRepository
+                .findProjectionByAggregateForUpdate(dto.getDocumentType(), dto.getAggregateId())
+                .orElseThrow(() -> new InternalServerException(
+                        ErrorCode.SEARCH_PROJECTION_VERSION_INVARIANT));
+        if (!document.getProjectionVersion().equals(expectedVersion)
+                || document.getProjectionAction() != SearchProjectionAction.INDEX) {
+            return Optional.empty();
+        }
+        searchDocumentMapper.populateEntity(document, dto);
+        Long version = searchDocumentRepository.nextVersion();
+        document.setProjectionVersion(version);
+        document.setProjectionAction(SearchProjectionAction.INDEX);
+        searchDocumentRepository.save(document);
+        return Optional.of(version);
+    }
+
+    @Override
+    @Transactional
     public Long delete(SearchDocumentType documentType, UUID aggregateId) {
         Long version = searchDocumentRepository.nextVersion();
         SearchDocument document = searchDocumentRepository
@@ -113,6 +133,11 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
                 || dto.getBusinessName() == null || dto.getBusinessName().isBlank()
                 || dto.getCurrency() == null || dto.getCurrency().isBlank()
                 || dto.getTokens() == null || dto.getAliases() == null
+                || dto.getConceptIds() == null || dto.getUseCases() == null
+                || dto.getSemanticSummary() == null || dto.getEmbeddingText() == null
+                || dto.getEmbeddingText().isBlank() || dto.getSemanticEvidence() == null
+                || dto.getSemanticSchemaVersion() == null || dto.getSemanticSchemaVersion().isBlank()
+                || dto.getSemanticSourceHash() == null || dto.getSemanticSourceHash().isBlank()
                 || dto.getVerifiedAttributes() == null || dto.getAiAttributes() == null
                 || dto.getAvailabilityStatus() == null || dto.getAvailabilitySource() == null) {
             throw new InternalServerException(ErrorCode.SEARCH_PROJECTION_INVALID);

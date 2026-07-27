@@ -17,6 +17,10 @@ public class MeilisearchIndexDocument {
     private String summary;
     private String aiSearchSummary;
     private String aliases;
+    private List<String> conceptIds;
+    private List<String> useCases;
+    private String semanticSummary;
+    private String embeddingText;
     private String brand;
     private String categoryPath;
     private String categoryLabel;
@@ -28,6 +32,7 @@ public class MeilisearchIndexDocument {
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String city;
+    private String country;
     private String documentType;
     private Map<String, Object> verifiedAttributes;
     private Map<String, Object> aiAttributes;

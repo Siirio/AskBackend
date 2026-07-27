@@ -36,6 +36,7 @@ import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BusinessProductProcessor {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String CREATED_AT_FIELD = "createdAt";
 
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
@@ -65,7 +67,10 @@ public class BusinessProductProcessor {
         int safeSize = Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page == null ? 0 : page, 0);
         Page<Item> items;
-        PageRequest request = PageRequest.of(safePage, safeSize);
+        PageRequest request = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Direction.DESC, CREATED_AT_FIELD));
         if (branchId != null) {
             requireBranch(businessId, branchId);
             if (query != null && !query.isBlank()) {
@@ -104,7 +109,6 @@ public class BusinessProductProcessor {
                 branchId == null ? null : businessBranchRepository.getReferenceById(branchId),
                 resolveCategory(req.getCategoryId(), req.getCategoryName()),
                 req);
-        item.setModerationStatus(ProductModerationStatus.PENDING);
         applyAutoModeration(item);
         Item saved = productRepository.save(item);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);

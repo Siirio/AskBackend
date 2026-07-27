@@ -11,12 +11,14 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | /api/v1/businesses/{businessId}/business-profile | No | Read the public profile |
-| PATCH | /api/v1/businesses/{businessId}/business-profile | OWNER/MANAGER | Update text, contact, social, and website fields |
+| PATCH | /api/v1/businesses/{businessId}/business-profile | OWNER/MANAGER | Update text, contact, social, website, delivery coverage, selected cities, and pickup availability |
 | POST | /api/v1/businesses/{businessId}/business-profile/logo | OWNER/MANAGER | Upload or replace the logo file |
 | POST | /api/v1/businesses/{businessId}/business-profile/cover | OWNER/MANAGER | Upload or replace the cover file |
 | GET | /api/v1/business-media/files/{storedName} | No | Render ASK-managed business media |
 
 Profile JSON never accepts `logoUrl` or `coverUrl`. Logo and cover use multipart field `file` and accept validated PNG, JPEG, or WebP images up to the configured limit. Responses expose server-generated media locations. `instagramUrl`, `telegramUrl`, and `websiteUrl` remain external URL fields.
+
+Business profile request/response JSON uses `deliveryCoverage` (`NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`), `deliveryCities`, and `pickupAvailable`. `SELECTED_CITIES` requires at least one non-blank city name. Owners and managers may change these values after onboarding.
 
 ## Registration
 `POST /api/v1/auth/business/register` accepts a business name, `businessScope`, and either
@@ -27,7 +29,9 @@ when branch input is present.
 ## Authenticated seller onboarding
 `POST /api/v1/business/onboarding` is Bearer-authenticated and creates a business for the current
 customer. It requires `businessName`, a selected or free-text `categoryId` or `categoryName`,
-`countryCode`, `legalForm`, `catalogSetupMode`, and `businessScope` (`ITEM`, `SERVICE`, or `BOTH`).
+`countryCode`, `legalForm`, `catalogSetupMode`, `businessScope` (`ITEM`, `SERVICE`, or `BOTH`),
+`deliveryCoverage`, and `pickupAvailable`. `deliveryCities` is required when
+`deliveryCoverage` is `SELECTED_CITIES`.
 
 - For `KZ_IP`, `legalIdentifier` (IIN) and `legalName` are required; the IIN is persisted as `iin`.
 - For `KZ_TOO`, `legalIdentifier` (BIN) and `legalName` are required; the BIN is persisted as `bin`.

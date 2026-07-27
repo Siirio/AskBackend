@@ -20,6 +20,7 @@ separate public listing or detail API in the current backend contract.
 - Item PATCH preserves the current branch when `branchId` is omitted or null. The current contract has no branch-clear operation; a non-null branch is verified against the owning Business.
 - The client supplies a selected category or explicitly requests creation of a `USER` category. Free-form category labels are not canonical data.
 - `isActive` is business-controlled (owner/staff toggle via PATCH /items/{itemId}).
-- `moderationStatus` is platform-controlled (PENDING/APPROVED/REJECTED).
-- Search visibility requires BOTH `isActive == true` AND `moderationStatus == APPROVED`.
+- Create synchronously assigns `moderationStatus`: `APPROVED` for normal Items and `REJECTED` when the prohibited-keyword autoban matches. Item creation has no pending manual-approval gate.
+- Search visibility requires BOTH `isActive == true` AND `moderationStatus == APPROVED`; normal Items therefore publish immediately, while autobanned Items remain saved in the business cabinet but stay out of search.
+- Business list responses are ordered by `createdAt DESC`.
 - Public search returns a compact Item row plus the complete public Business profile needed by the detail modal.

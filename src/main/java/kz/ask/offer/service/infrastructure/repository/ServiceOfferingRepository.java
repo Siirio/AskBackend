@@ -25,9 +25,9 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
         SELECT so FROM Service so
         WHERE so.business.id = :businessId
           AND (:branchId IS NULL OR so.branch.id = :branchId)
-          AND (:categoryLabel IS NULL OR LOWER(so.category.name) = LOWER(:categoryLabel))
+          AND (:categoryLabel = '' OR LOWER(so.category.name) = :categoryLabel)
           AND (:active IS NULL OR so.isActive = :active)
-          AND (:query IS NULL OR LOWER(so.name) LIKE :query OR LOWER(COALESCE(so.description, '')) LIKE :query)
+          AND (:query = '' OR LOWER(so.name) LIKE :query OR LOWER(COALESCE(so.description, '')) LIKE :query)
         """)
     Page<Service> search(UUID businessId, UUID branchId, String categoryLabel, Boolean active,
                           String query, Pageable pageable);

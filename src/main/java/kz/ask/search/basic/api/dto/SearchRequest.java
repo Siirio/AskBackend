@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 import kz.ask.search.basic.domain.enums.SearchScope;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,4 +43,9 @@ public class SearchRequest {
 
     @Valid
     private SearchFilterRequest explicitFilters;
+
+    @AssertTrue
+    public Boolean isRadiusLocationValid() {
+        return explicitFilters == null || explicitFilters.getRadiusMeters() == null || userLocation != null;
+    }
 }

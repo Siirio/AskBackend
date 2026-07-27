@@ -7,6 +7,9 @@ import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
 import com.meilisearch.sdk.model.Searchable;
+import com.meilisearch.sdk.model.Embedder;
+import com.meilisearch.sdk.model.EmbedderSource;
+import com.meilisearch.sdk.model.Hybrid;
 import com.meilisearch.sdk.model.TaskInfo;
 import com.meilisearch.sdk.model.SwapIndexesParams;
 import java.time.Instant;
@@ -37,20 +40,35 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private static final String FIELD_DOCUMENT_TYPE = "documentType";
     private static final String FIELD_PRICE = "price";
     private static final String FIELD_CITY = "city";
+    private static final String FIELD_COUNTRY = "country";
+    private static final String FIELD_CATEGORY_LABEL = "categoryLabel";
     private static final String FIELD_VERIFIED_ATTRIBUTES = "verifiedAttributes";
     private static final String FIELD_AI_ATTRIBUTES = "aiAttributes";
     private static final Integer RECIPROCAL_RANK_FUSION_CONSTANT = 60;
+    private static final Double PURE_SEMANTIC_RATIO = 1.0;
 
     private final Client client;
     private final ObjectMapper objectMapper;
     private final String indexName;
+    private final Boolean semanticEnabled;
+    private final String semanticEmbedderName;
+    private final String semanticEmbedderModel;
     private final Set<String> configuredIndexes = ConcurrentHashMap.newKeySet();
+    private final Set<String> semanticIndexes = ConcurrentHashMap.newKeySet();
 
     public MeilisearchServiceImpl(Client client, ObjectMapper objectMapper,
-                                   @Value("${ask.ai.meilisearch.index-name:search_documents_v1}") String indexName) {
+                                   @Value("${ask.ai.meilisearch.index-name:search_documents_v1}") String indexName,
+                                   @Value("${ask.ai.meilisearch.semantic-enabled:true}") Boolean semanticEnabled,
+                                   @Value("${ask.ai.meilisearch.semantic-embedder-name:ask_multilingual}")
+                                   String semanticEmbedderName,
+                                   @Value("${ask.ai.meilisearch.semantic-embedder-model:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}")
+                                   String semanticEmbedderModel) {
         this.client = client;
         this.objectMapper = objectMapper;
         this.indexName = indexName;
+        this.semanticEnabled = semanticEnabled;
+        this.semanticEmbedderName = semanticEmbedderName;
+        this.semanticEmbedderModel = semanticEmbedderModel;
     }
 
     @Override
@@ -141,14 +159,41 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             String exactQuery = normalize(plan.getRawQuery());
             String expandedQuery = expandedQuery(plan);
             List<UUID> exactLane = executeSearch(index, exactQuery, plan, limit);
-            if (expandedQuery.isBlank() || expandedQuery.equals(exactQuery)) {
-                return exactLane;
+            List<UUID> expandedLane = List.of();
+            if (!expandedQuery.isBlank() && !expandedQuery.equals(exactQuery)) {
+                expandedLane = executeSearch(index, expandedQuery, plan, limit);
             }
-            List<UUID> expandedLane = executeSearch(index, expandedQuery, plan, limit);
-            return fuse(exactLane, expandedLane, limit);
+            List<UUID> semanticLane = executeSemanticSearch(index, plan, limit);
+            return fuse(List.of(exactLane, expandedLane, semanticLane), limit);
         } catch (MeilisearchException | IllegalArgumentException e) {
             log.error("Meilisearch search failed: {}", e.getMessage());
             throw new ExternalServiceException(ErrorCode.MEILISEARCH_SEARCH_FAILED);
+        }
+    }
+
+    private List<UUID> executeSemanticSearch(Index index, SearchPlan plan, int limit) {
+        if (!semanticEnabled || !semanticIndexes.contains(index.getUid())) {
+            return List.of();
+        }
+        String query = normalize(plan.getSemanticQuery());
+        if (query.isBlank()) {
+            return List.of();
+        }
+        try {
+            SearchRequest request = buildSearchRequest(query, plan, limit)
+                    .setHybrid(Hybrid.builder()
+                            .semanticRatio(PURE_SEMANTIC_RATIO)
+                            .embedder(semanticEmbedderName)
+                            .build());
+            Searchable result = index.search(request);
+            return result.getHits().stream()
+                    .map(hit -> hit.get("id"))
+                    .filter(java.util.Objects::nonNull)
+                    .map(value -> UUID.fromString(value.toString().replace("\"", "")))
+                    .toList();
+        } catch (MeilisearchException | IllegalArgumentException failure) {
+            log.warn("Meilisearch semantic lane is unavailable: {}", failure.getMessage());
+            return List.of();
         }
     }
 
@@ -185,7 +230,7 @@ public class MeilisearchServiceImpl implements MeilisearchService {
     private String expandedQuery(SearchPlan plan) {
         return java.util.stream.Stream.of(
                         plan.getExactTerms(), plan.getExpandedTerms(), plan.getAiSynonyms(),
-                        plan.getRelatedTerms(), plan.getCategoryAliases())
+                        plan.getRelatedTerms(), plan.getCategoryAliases(), plan.getConceptIds())
                 .flatMap(List::stream)
                 .filter(term -> term != null && !term.isBlank())
                 .map(String::trim)
@@ -194,10 +239,9 @@ public class MeilisearchServiceImpl implements MeilisearchService {
                 .collect(java.util.stream.Collectors.joining(" "));
     }
 
-    private List<UUID> fuse(List<UUID> exactLane, List<UUID> expandedLane, int limit) {
+    private List<UUID> fuse(List<List<UUID>> lanes, int limit) {
         Map<UUID, Double> scores = new LinkedHashMap<>();
-        addLaneScores(scores, exactLane);
-        addLaneScores(scores, expandedLane);
+        lanes.forEach(lane -> addLaneScores(scores, lane));
         return scores.entrySet().stream()
                 .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed()
                         .thenComparing(entry -> entry.getKey().toString()))
@@ -232,6 +276,20 @@ public class MeilisearchServiceImpl implements MeilisearchService {
             filters.add(FIELD_CITY + " = " + escapeValue(plan.getCity()));
         }
 
+        if (plan.getCountry() != null && !plan.getCountry().isBlank()) {
+            filters.add(FIELD_COUNTRY + " = " + escapeValue(plan.getCountry()));
+        }
+
+        if (plan.getUserSelectedCategory() != null && !plan.getUserSelectedCategory().isBlank()) {
+            filters.add(FIELD_CATEGORY_LABEL + " = " + escapeValue(plan.getUserSelectedCategory()));
+        }
+
+        if (plan.getRadiusMeters() != null
+                && plan.getUserLatitude() != null && plan.getUserLongitude() != null) {
+            filters.add("_geoRadius(" + plan.getUserLatitude() + ", "
+                    + plan.getUserLongitude() + ", " + plan.getRadiusMeters() + ")");
+        }
+
         return String.join(" AND ", filters);
     }
 
@@ -250,6 +308,8 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         }
         if (!configuredIndexes.contains(targetIndex)) {
             configureSettings(index);
+        } else if (semanticEnabled && !semanticIndexes.contains(targetIndex)) {
+            configureSemanticSettings(index);
         }
         return index;
     }
@@ -260,19 +320,45 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         }
         waitForTask(index, index.updateSearchableAttributesSettings(new String[]{
                 "title", "normalizedTitle", "brand", "categoryPath", "categoryLabel",
-                "aliases", "tokens", "aiSearchSummary", "summary",
+                "aliases", "conceptIds", "useCases", "semanticSummary", "embeddingText",
+                "tokens", "aiSearchSummary", "summary",
                 "businessName", "branchName"
         }));
         waitForTask(index, index.updateFilterableAttributesSettings(new String[]{
                 FIELD_DOCUMENT_TYPE, FIELD_PRICE, FIELD_CITY,
+                FIELD_COUNTRY,
+                FIELD_CATEGORY_LABEL,
                 FIELD_VERIFIED_ATTRIBUTES, FIELD_AI_ATTRIBUTES,
                 "aggregateId", "currency", "availabilityStatus"
         }));
         waitForTask(index, index.updateSortableAttributesSettings(new String[]{
                 FIELD_PRICE
         }));
+        configureSemanticSettings(index);
         configuredIndexes.add(index.getUid());
         log.info("Meilisearch index '{}' settings configured", index.getUid());
+    }
+
+    private void configureSemanticSettings(Index index) {
+        if (!semanticEnabled) {
+            return;
+        }
+        try {
+            Embedder current = index.getEmbeddersSettings().get(semanticEmbedderName);
+            if (current == null || current.getSource() != EmbedderSource.HUGGING_FACE
+                    || !semanticEmbedderModel.equals(current.getModel())) {
+                Embedder embedder = new Embedder()
+                        .setSource(EmbedderSource.HUGGING_FACE)
+                        .setModel(semanticEmbedderModel)
+                        .setDocumentTemplate("{{doc.embeddingText}}");
+                waitForTask(index, index.updateEmbeddersSettings(Map.of(
+                        semanticEmbedderName, embedder)));
+            }
+            semanticIndexes.add(index.getUid());
+        } catch (MeilisearchException failure) {
+            log.warn("Meilisearch semantic embedder is unavailable for index '{}': {}",
+                    index.getUid(), failure.getMessage());
+        }
     }
 
     private Map<String, Object> toMeiliDocument(MeilisearchIndexDocument doc) {
@@ -284,9 +370,13 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put("summary", nullToEmpty(doc.getSummary()));
         map.put("aiSearchSummary", nullToEmpty(doc.getAiSearchSummary()));
         map.put("aliases", nullToEmpty(doc.getAliases()));
+        map.put("conceptIds", doc.getConceptIds() != null ? doc.getConceptIds() : List.of());
+        map.put("useCases", doc.getUseCases() != null ? doc.getUseCases() : List.of());
+        map.put("semanticSummary", nullToEmpty(doc.getSemanticSummary()));
+        map.put("embeddingText", nullToEmpty(doc.getEmbeddingText()));
         map.put("brand", nullToEmpty(doc.getBrand()));
         map.put("categoryPath", nullToEmpty(doc.getCategoryPath()));
-        map.put("categoryLabel", nullToEmpty(doc.getCategoryLabel()));
+        map.put("categoryLabel", normalize(doc.getCategoryLabel()));
         map.put("businessName", nullToEmpty(doc.getBusinessName()));
         map.put("branchName", nullToEmpty(doc.getBranchName()));
         map.put("tokens", doc.getTokens() != null ? doc.getTokens() : List.of());
@@ -294,7 +384,13 @@ public class MeilisearchServiceImpl implements MeilisearchService {
         map.put("currency", nullToEmpty(doc.getCurrency()));
         map.put("latitude", doc.getLatitude());
         map.put("longitude", doc.getLongitude());
-        map.put(FIELD_CITY, nullToEmpty(doc.getCity()));
+        map.put(FIELD_CITY, normalize(doc.getCity()));
+        map.put(FIELD_COUNTRY, normalize(doc.getCountry()));
+        if (doc.getLatitude() != null && doc.getLongitude() != null) {
+            map.put("_geo", Map.of(
+                    "lat", doc.getLatitude().doubleValue(),
+                    "lng", doc.getLongitude().doubleValue()));
+        }
         if (doc.getDocumentType() == null) {
             throw new InternalServerException(ErrorCode.SEARCH_PROJECTION_INVALID);
         }

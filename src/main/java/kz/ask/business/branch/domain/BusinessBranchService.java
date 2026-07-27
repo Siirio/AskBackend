@@ -19,7 +19,8 @@ public interface BusinessBranchService {
                              BigDecimal latitude, BigDecimal longitude,
                              String timeZoneId,
                              List<WeeklyOpeningIntervalDto> weeklyHours,
-                             List<SpecialOpeningIntervalDto> specialHours);
+                             List<SpecialOpeningIntervalDto> specialHours,
+                             Boolean pickupAvailable);
 
     BusinessBranchDto findFirstByBusinessId(UUID businessId);
 
@@ -29,5 +30,6 @@ public interface BusinessBranchService {
                              BigDecimal latitude, BigDecimal longitude,
                              String timeZoneId,
                              List<WeeklyOpeningIntervalDto> weeklyHours,
-                             List<SpecialOpeningIntervalDto> specialHours);
+                             List<SpecialOpeningIntervalDto> specialHours,
+                             Boolean pickupAvailable);
 }

@@ -26,6 +26,7 @@ import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BusinessServiceProcessor {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String CREATED_AT_FIELD = "createdAt";
 
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
@@ -51,8 +53,10 @@ public class BusinessServiceProcessor {
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         Page<ServiceOfferingDto> offers = serviceService.listOffers(
                 businessId, branchId, categoryName, active, query,
-                PageRequest.of(Math.max(page == null ? 0 : page, 0),
-                        Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE)));
+                PageRequest.of(
+                        Math.max(page == null ? 0 : page, 0),
+                        Math.min(Math.max(size == null ? 20 : size, 1), MAX_PAGE_SIZE),
+                        Sort.by(Sort.Direction.DESC, CREATED_AT_FIELD)));
         return BusinessServiceListResponse.builder()
                 .items(offers.getContent().stream().map(this::toRowResponse).toList())
                 .page(offers.getNumber())

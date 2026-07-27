@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +18,9 @@ public class IntentStructureCache {
 
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public JsonNode get(String rawQuery) {
-        String key = normalizeKey(rawQuery);
+    public JsonNode get(SearchIntentStructureRequest request, String promptVersion,
+                        String modelVersion, String schemaVersion) {
+        String key = cacheKey(request, promptVersion, modelVersion, schemaVersion);
         CacheEntry entry = cache.get(key);
         if (entry == null) {
             return null;
@@ -31,8 +33,9 @@ public class IntentStructureCache {
         return entry.data;
     }
 
-    public void put(String rawQuery, JsonNode data) {
-        String key = normalizeKey(rawQuery);
+    public void put(SearchIntentStructureRequest request, String promptVersion,
+                    String modelVersion, String schemaVersion, JsonNode data) {
+        String key = cacheKey(request, promptVersion, modelVersion, schemaVersion);
         cache.put(key, new CacheEntry(data, Instant.now().plusSeconds(TTL_SECONDS)));
         evictIfNeeded();
     }
@@ -55,6 +58,31 @@ public class IntentStructureCache {
             return "";
         }
         return rawQuery.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private String cacheKey(SearchIntentStructureRequest request, String promptVersion,
+                            String modelVersion, String schemaVersion) {
+        return String.join("|",
+                normalizeKey(request.getRawQuery()),
+                value(request.getSelectedMode()),
+                value(request.getLanguage()),
+                value(request.getCity()),
+                value(request.getCountry()),
+                value(request.getSelectedCategory()),
+                value(request.getExplicitMinPrice()),
+                value(request.getExplicitMaxPrice()),
+                value(request.getOpenNow()),
+                value(request.getRadiusMeters()),
+                value(request.getSort()),
+                request.getUserLocation() == null ? "" : value(request.getUserLocation().getLat()),
+                request.getUserLocation() == null ? "" : value(request.getUserLocation().getLng()),
+                value(promptVersion),
+                value(modelVersion),
+                value(schemaVersion));
+    }
+
+    private String value(Object value) {
+        return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
     }
 
     private record CacheEntry(JsonNode data, Instant expiresAt) {}

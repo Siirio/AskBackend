@@ -13,6 +13,7 @@ import kz.ask.business.branch.domain.dto.BusinessBranchDto;
 import kz.ask.business.branch.domain.dto.BranchOpeningSummary;
 import kz.ask.business.branch.domain.dto.SpecialOpeningIntervalDto;
 import kz.ask.business.branch.domain.dto.WeeklyOpeningIntervalDto;
+import kz.ask.business.branch.domain.entity.BusinessBranch;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -68,6 +69,31 @@ public class BranchOpeningHoursPolicy {
         }
 
         return evaluateWeekly(currentDay, currentTime, today, zoneId, branch);
+    }
+
+    public Boolean isOpen(BusinessBranch branch) {
+        if (branch == null) {
+            return false;
+        }
+        BusinessBranchDto dto = BusinessBranchDto.builder()
+                .timeZoneId(branch.getTimeZoneId())
+                .weeklyHours(branch.getWeeklyHours() == null ? List.of() : branch.getWeeklyHours().stream()
+                        .map(interval -> WeeklyOpeningIntervalDto.builder()
+                                .dayOfWeek(interval.getDayOfWeek())
+                                .opensAt(interval.getOpensAt())
+                                .closesAt(interval.getClosesAt())
+                                .build())
+                        .toList())
+                .specialHours(branch.getSpecialHours() == null ? List.of() : branch.getSpecialHours().stream()
+                        .map(interval -> SpecialOpeningIntervalDto.builder()
+                                .date(interval.getDate())
+                                .closed(interval.getClosed())
+                                .opensAt(interval.getOpensAt())
+                                .closesAt(interval.getClosesAt())
+                                .build())
+                        .toList())
+                .build();
+        return "OPEN".equals(evaluate(dto).getState());
     }
 
     private SpecialOpeningIntervalDto findSpecialOverride(

@@ -22,6 +22,7 @@ import kz.ask.business.branch.domain.entity.SpecialOpeningInterval;
 import kz.ask.business.branch.domain.entity.WeeklyOpeningInterval;
 import kz.ask.business.member.domain.entity.BusinessMember;
 import kz.ask.business.profile.domain.entity.BusinessProfile;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 import kz.ask.shared.domain.entity.City;
 import kz.ask.business.uniqueoffer.domain.entity.UniqueOffer;
 import kz.ask.identity.authorization.domain.enums.Role;
@@ -90,7 +91,9 @@ public class BusinessMapper {
 
     public void updateBusinessProfile(BusinessProfile profile, String brandColor, String logoUrl,
                                        String coverUrl, String description, String number, String email,
-                                       String instagramUrl, String telegramUrl, String websiteUrl) {
+                                       String instagramUrl, String telegramUrl, String websiteUrl,
+                                       DeliveryCoverage deliveryCoverage, List<String> deliveryCities,
+                                       Boolean pickupAvailable) {
         if (brandColor != null) profile.setBrandColor(brandColor);
         if (logoUrl != null) profile.setLogoUrl(logoUrl);
         if (coverUrl != null) profile.setCoverUrl(coverUrl);
@@ -100,6 +103,15 @@ public class BusinessMapper {
         if (instagramUrl != null) profile.setInstagramUrl(instagramUrl);
         if (telegramUrl != null) profile.setTelegramUrl(telegramUrl);
         if (websiteUrl != null) profile.setWebsiteUrl(websiteUrl);
+        if (deliveryCoverage != null) profile.setDeliveryCoverage(deliveryCoverage);
+        if (deliveryCities != null) {
+            profile.setDeliveryCities(deliveryCities.stream()
+                    .filter(city -> city != null && !city.isBlank())
+                    .map(String::trim)
+                    .distinct()
+                    .toList());
+        }
+        if (pickupAvailable != null) profile.setPickupAvailable(pickupAvailable);
     }
 
     public UniqueOffer toUniqueOfferEntity(Business business, UniqueOfferDto dto) {
@@ -177,6 +189,9 @@ public class BusinessMapper {
                 .instagramUrl(entity.getInstagramUrl())
                 .telegramUrl(entity.getTelegramUrl())
                 .websiteUrl(entity.getWebsiteUrl())
+                .deliveryCoverage(entity.getDeliveryCoverage())
+                .deliveryCities(entity.getDeliveryCities())
+                .pickupAvailable(entity.getPickupAvailable())
                 .build();
     }
 
@@ -193,6 +208,7 @@ public class BusinessMapper {
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .timeZoneId(entity.getTimeZoneId())
+                .pickupAvailable(entity.getPickupAvailable())
                 .weeklyHours(entity.getWeeklyHours() != null
                         ? entity.getWeeklyHours().stream().map(this::toWeeklyDto).toList()
                         : null)

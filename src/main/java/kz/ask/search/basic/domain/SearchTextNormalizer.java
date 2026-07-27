@@ -43,10 +43,12 @@ public final class SearchTextNormalizer {
         return tokens;
     }
 
-    public static List<String> tokenize(String name, String description, List<String> tags, String businessName) {
+    public static List<String> tokenize(String name, String description, String category,
+                                        List<String> tags, String businessName) {
         List<String> tokens = new ArrayList<>();
         tokens.addAll(tokenize(name));
         tokens.addAll(tokenize(description));
+        tokens.addAll(tokenize(category));
         if (tags != null) {
             for (String tag : tags) {
                 tokens.addAll(tokenize(tag));

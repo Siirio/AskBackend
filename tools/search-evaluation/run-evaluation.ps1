@@ -46,7 +46,11 @@ foreach ($case in $dataset.cases) {
         ($null -ne $case.max_price -and $null -ne $_.price -and $_.price -gt $case.max_price)
     }).Count
     $categoryMismatches = @($cards | Where-Object { $_.component -ne $case.expected_component }).Count
+    $cityViolations = @($cards | Where-Object {
+        $null -ne $case.city -and $case.city -ne "" -and $_.branch_city -ne $case.city
+    }).Count
     $zeroCorrect = if ($case.expected_zero) { $cards.Count -eq 0 } else { $true }
+    $semanticMiss = -not $case.expected_zero -and $relevantTitles.Count -gt 0 -and $topTenRelevant -eq 0
 
     $caseResults += [pscustomobject]@{
         id = $case.id
@@ -58,6 +62,9 @@ foreach ($case in $dataset.cases) {
         zero_result_correct = $zeroCorrect
         explicit_constraint_violations = $constraintViolations
         category_mismatches = $categoryMismatches
+        city_filter_violations = $cityViolations
+        semantic_miss = $semanticMiss
+        expected_zero = [bool]$case.expected_zero
         latency_ms = $startedAt.ElapsedMilliseconds
     }
 }
@@ -82,6 +89,9 @@ $report = [pscustomobject]@{
     zero_result_correctness = (@($caseResults | Where-Object zero_result_correct).Count / $caseResults.Count)
     explicit_constraint_violations = ($caseResults | Measure-Object explicit_constraint_violations -Sum).Sum
     category_mismatches = ($caseResults | Measure-Object category_mismatches -Sum).Sum
+    wrong_category_rate = (($caseResults | Measure-Object category_mismatches -Sum).Sum / [Math]::Max(1, ($caseResults | Measure-Object result_count -Sum).Sum))
+    city_filter_violation_rate = (($caseResults | Measure-Object city_filter_violations -Sum).Sum / [Math]::Max(1, ($caseResults | Measure-Object result_count -Sum).Sum))
+    semantic_miss_rate = (@($caseResults | Where-Object semantic_miss).Count / [Math]::Max(1, @($caseResults | Where-Object { -not $_.expected_zero }).Count))
     cohorts = $cohorts
     cases = $caseResults
 }

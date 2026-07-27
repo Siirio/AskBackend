@@ -26,7 +26,9 @@ public class SellerOnboardingProcessor {
                 principal.getUserId(), request.getBusinessName(), request.getCategoryId(),
                 request.getCategoryName(), request.getBusinessScope(),
                 request.getLegalForm(), request.getLegalIdentifier(), request.getLegalName(),
-                request.getCountryCode(), request.getCorporateEmail());
+                request.getCountryCode(), request.getCorporateEmail(),
+                request.getDeliveryCoverage(), request.getDeliveryCities(),
+                request.getPickupAvailable());
         businessVerificationService.create(registration.getBusiness().getId(),
                 verification(request));
         return SellerOnboardingResponse.builder()

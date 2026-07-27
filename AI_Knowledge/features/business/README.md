@@ -12,7 +12,7 @@ Business is the legal root for a company, its profile, memberships, optional bra
 - A branch access override may assign another role or deny access for one branch. Multiple owners are allowed.
 - OWNER can manage every role; MANAGER can manage workers only; WORKER cannot manage staff.
 - Invite codes: secondary self-service path, optional maxUses + expiry.
-- Delivery is per-branch. Each branch sets its own delivery mode. No business-level delivery profile.
+- BusinessProfile owns the seller-supplied delivery coverage (`NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`), selected city names, and pickup availability. Branches continue to own physical fulfilment addresses and opening hours.
 - Business scope is `ITEM`, `SERVICE`, or `BOTH`. It only states what the business offers; it is not a separate setup lifecycle.
 - A business has one flat category that describes who the company is. Items and services have their own flat categories that describe what the business sells or does.
 - Category suggestions can be selected or a user can create a new category. System and user-created categories are both searchable.

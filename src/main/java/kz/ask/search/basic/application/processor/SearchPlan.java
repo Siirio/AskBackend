@@ -12,13 +12,19 @@ import lombok.Getter;
 public class SearchPlan {
 
     private String rawQuery;
+    private String semanticQuery;
     private SearchDocumentType itemType;
     private String city;
+    private String country;
     private String possibleCity;
     private String userSelectedCategory;
     private String sort;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private Boolean openNow;
+    private Integer radiusMeters;
+    private Double userLatitude;
+    private Double userLongitude;
     private BigDecimal possibleMinPrice;
     private BigDecimal possibleMaxPrice;
     private BigDecimal minPackageGrams;
@@ -31,6 +37,7 @@ public class SearchPlan {
     private List<String> expandedTerms;
     private List<String> aiSynonyms;
     private List<String> relatedTerms;
+    private List<String> conceptIds;
     private List<String> mustHave;
     private List<String> niceToHave;
     private List<String> notWanted;

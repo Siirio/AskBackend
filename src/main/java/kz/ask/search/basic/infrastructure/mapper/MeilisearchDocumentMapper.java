@@ -16,6 +16,9 @@ public class MeilisearchDocumentMapper {
         String city = document.getBranch() != null && document.getBranch().getCity() != null
                 ? document.getBranch().getCity().getName()
                 : "";
+        String country = document.getBranch() != null && document.getBranch().getCity() != null
+                ? document.getBranch().getCity().getCountryCode()
+                : "";
         return new MeilisearchIndexDocument(
                 document.getAggregateId().toString(),
                 document.getAggregateId().toString(),
@@ -24,6 +27,10 @@ public class MeilisearchDocumentMapper {
                 document.getSummary(),
                 document.getAiSearchSummary(),
                 document.getAliases(),
+                copy(document.getConceptIds()),
+                copy(document.getUseCases()),
+                document.getSemanticSummary(),
+                document.getEmbeddingText(),
                 document.getBrand(),
                 document.getCategoryPath(),
                 document.getCategoryLabel(),
@@ -35,6 +42,7 @@ public class MeilisearchDocumentMapper {
                 document.getLatitude(),
                 document.getLongitude(),
                 city,
+                country,
                 document.getDocumentType().name(),
                 copy(document.getVerifiedAttributes()),
                 copy(document.getAiAttributes()),
@@ -52,6 +60,10 @@ public class MeilisearchDocumentMapper {
                 document.getSummary(),
                 null,
                 document.getAliases(),
+                copy(document.getConceptIds()),
+                copy(document.getUseCases()),
+                document.getSemanticSummary(),
+                document.getEmbeddingText(),
                 null,
                 null,
                 document.getCategoryLabel(),
@@ -63,6 +75,7 @@ public class MeilisearchDocumentMapper {
                 document.getLatitude(),
                 document.getLongitude(),
                 document.getCity(),
+                document.getCountry(),
                 document.getDocumentType().name(),
                 copy(document.getVerifiedAttributes()),
                 copy(document.getAiAttributes()),
@@ -73,5 +86,9 @@ public class MeilisearchDocumentMapper {
 
     private Map<String, Object> copy(Map<String, Object> attributes) {
         return attributes == null ? Map.of() : new HashMap<>(attributes);
+    }
+
+    private List<String> copy(List<String> values) {
+        return values == null ? List.of() : new ArrayList<>(values);
     }
 }

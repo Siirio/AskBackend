@@ -18,5 +18,6 @@
 
 ## Service management (business cabinet)
 - Services tab: list with name, category, price, schedule, status (active/inactive)
+- New active Services publish immediately, appear first, and remain visible after reload.
 - Actions: edit, activate, deactivate, delete
 - Schedule text: free-form display text (e.g., "Пн-Пт 9:00-18:00"), not slot blocking

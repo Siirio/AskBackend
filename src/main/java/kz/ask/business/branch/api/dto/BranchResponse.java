@@ -24,4 +24,5 @@ public class BranchResponse {
     private List<WeeklyOpeningIntervalDto> weeklyHours;
     private List<SpecialOpeningIntervalDto> specialHours;
     private BranchOpeningSummaryResponse openingSummary;
+    private Boolean pickupAvailable;
 }

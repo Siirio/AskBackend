@@ -204,7 +204,14 @@ CREATE TABLE business_profile (
     email         VARCHAR(255),
     instagram_url VARCHAR(255),
     telegram_url  VARCHAR(255),
-    website_url   VARCHAR(255)
+    website_url   VARCHAR(255),
+    delivery_coverage VARCHAR(32),
+    pickup_available BOOLEAN
+);
+
+CREATE TABLE business_profile_delivery_city (
+    business_profile_id UUID         NOT NULL REFERENCES business_profile(id) ON DELETE CASCADE,
+    city_name           VARCHAR(120) NOT NULL
 );
 
 CREATE TABLE business_verification (
@@ -467,6 +474,17 @@ CREATE TABLE search_document (
     verified_attributes          JSONB,
     ai_attributes                JSONB,
     aliases                      TEXT,
+    concept_ids                  JSONB,
+    use_cases                    JSONB,
+    semantic_summary             TEXT,
+    embedding_text               TEXT,
+    semantic_confidence          NUMERIC(4,3),
+    semantic_evidence            JSONB,
+    semantic_model_version       VARCHAR(255),
+    semantic_schema_version      VARCHAR(64),
+    semantic_source_hash         VARCHAR(64),
+    semantic_metadata_source_hash VARCHAR(64),
+    semantic_generated_at        TIMESTAMPTZ,
     ai_search_summary            TEXT,
     availability_status          VARCHAR(32),
     availability_source          VARCHAR(32),
@@ -483,6 +501,10 @@ CREATE TABLE search_document (
             coalesce(category_path, '') || ' ' ||
             coalesce(category_label, '') || ' ' ||
             coalesce(aliases, '') || ' ' ||
+            coalesce(concept_ids::text, '') || ' ' ||
+            coalesce(use_cases::text, '') || ' ' ||
+            coalesce(semantic_summary, '') || ' ' ||
+            coalesce(embedding_text, '') || ' ' ||
             coalesce(ai_search_summary, '') || ' ' ||
             coalesce(summary, '') || ' ' ||
             coalesce(business_name, '') || ' ' ||

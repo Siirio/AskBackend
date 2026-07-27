@@ -8,6 +8,8 @@ Services owned by a Business, optional branch-specific facts, and chat-first cus
 - A Service can be created before any branch exists.
 - A Service has one flat `SERVICE` category selected from suggestions or explicitly created by a user.
 - A later branch association may hold location-specific price, schedule, or visibility.
+- Active Services publish immediately and business lists order new Services first.
+- Semantic aliases, controlled concepts, use cases, summaries, and embeddings are derived into `SearchDocument`; they are never stored as canonical Service attributes.
 - ON_DEMAND: works without resources/schedules/windows.
 - SCHEDULED: may use resources, schedules, windows, and booking.
 - ServiceResource: optional abstract capacity — NOT specialist accounts.

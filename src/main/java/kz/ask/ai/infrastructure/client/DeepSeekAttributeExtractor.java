@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.search.basic.domain.AttributeKeys;
+import kz.ask.search.basic.domain.enums.SearchConcept;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
 import lombok.Builder;
@@ -145,8 +146,31 @@ public class DeepSeekAttributeExtractor {
                         .map(String::trim)
                         .distinct()
                         .toList())
+                .conceptIds(raw.conceptIds == null ? List.of() : raw.conceptIds.stream()
+                        .map(SearchConcept::resolve)
+                        .flatMap(java.util.Optional::stream)
+                        .map(SearchConcept::name)
+                        .distinct()
+                        .toList())
+                .useCases(raw.useCases == null ? List.of() : raw.useCases.stream()
+                        .filter(StringUtils::hasText)
+                        .map(String::trim)
+                        .distinct()
+                        .toList())
+                .confidence(validConfidence(raw.confidence) ? raw.confidence : null)
+                .evidence(raw.evidence == null ? List.of() : raw.evidence.stream()
+                        .filter(StringUtils::hasText)
+                        .map(String::trim)
+                        .distinct()
+                        .toList())
                 .facts(facts)
                 .build();
+    }
+
+    private boolean validConfidence(BigDecimal confidence) {
+        return confidence != null
+                && confidence.compareTo(BigDecimal.ZERO) >= 0
+                && confidence.compareTo(BigDecimal.ONE) <= 0;
     }
 
     private boolean validFact(ExtractionFactRaw fact) {
@@ -198,6 +222,10 @@ public class DeepSeekAttributeExtractor {
         private UUID id;
         private String searchSummary;
         private List<String> aliases;
+        private List<String> conceptIds;
+        private List<String> useCases;
+        private BigDecimal confidence;
+        private List<String> evidence;
         private List<ExtractionFact> facts;
     }
 }

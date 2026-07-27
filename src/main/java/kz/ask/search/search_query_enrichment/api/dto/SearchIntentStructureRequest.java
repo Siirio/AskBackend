@@ -17,6 +17,7 @@ public class SearchIntentStructureRequest {
     private String selectedMode;
     private String selectedCategory;
     private String city;
+    private String country;
     private String sort;
 
     @Valid
@@ -25,4 +26,6 @@ public class SearchIntentStructureRequest {
     private String language;
     private BigDecimal explicitMinPrice;
     private BigDecimal explicitMaxPrice;
+    private Boolean openNow;
+    private Integer radiusMeters;
 }

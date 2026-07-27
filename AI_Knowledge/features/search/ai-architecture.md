@@ -27,13 +27,19 @@ kz.ask
 | Search enricher | Canonical search projection plus accepted metadata | Index-only aliases, normalized terms, and evidence-bearing attributes | Change canonical Item/Service data or choose a business/result |
 | RASE search consultant | Raw query, immutable mode, and explicit filters | Validated query interpretation or retrieval hints | Change mode/filters, query businesses directly, rank cards, or invent stock, delivery, schedules, or availability |
 
-`RASE` is the advisory search-AI boundary: it may consult an AI provider, but all provider output is validated before retrieval. It is optional; deterministic interpretation is the fallback.
+`RASE` is the advisory search-AI boundary: it may consult an AI provider, but all provider output is validated before retrieval. It is optional; deterministic interpretation uses the controlled ontology as the fallback.
+
+## Search-owned semantic passport
+
+`SearchDocument` stores derived aliases, controlled concept IDs, use cases, semantic summary, embedding text, confidence, evidence, model/schema versions, source hash, and generation time. These values never mutate canonical Item or Service data.
+
+The source hash invalidates metadata after title, description, category, or canonical Item tags change. Outbox delivery performs provider enrichment outside database transactions, then stores a new projection version and replacement outbox event atomically. If DeepSeek is unavailable, the controlled ontology still creates deterministic metadata and Meilisearch generates the multilingual vector locally.
 
 ## Data flow
 
 ```text
 Business, Item, or Service DTO -> accepted metadata -> search projection -> Meilisearch
-raw customer query + immutable mode -> RASE consultant -> validated interpretation -> candidate retrieval -> deterministic ranking -> response
+raw customer query + immutable mode -> RASE consultant -> validated concepts and expansions -> raw lexical + expanded lexical + semantic retrieval -> RRF -> deterministic ranking -> response
 ```
 
 Catalog enrichment may fill only missing descriptions and add text-supported tags or attributes to Item, Service, and UniqueOffer records. It must not replace manual data, change moderation, select a business, create requests/chats/notifications, or claim availability.

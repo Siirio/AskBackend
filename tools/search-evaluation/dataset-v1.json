@@ -1,5 +1,5 @@
 {
-  "version": "search-evaluation-v1",
+  "version": "search-evaluation-v2",
   "cases": [
     {
       "id": "en_exact_trail_shoes",
@@ -55,6 +55,69 @@
       "relevant_titles": [],
       "expected_component": "ItemCard",
       "expected_zero": true
+    },
+    {
+      "id": "ru_semantic_karting_typo",
+      "cohort": "ru",
+      "raw_query": "покататся",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "ru_semantic_ride_activities",
+      "cohort": "ru",
+      "raw_query": "покататься",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг", "Прокат велосипедов", "Конные прогулки"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "ru_semantic_racing",
+      "cohort": "ru",
+      "raw_query": "где погонять",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "ru_group_activity",
+      "cohort": "ru",
+      "raw_query": "куда сходить с друзьями",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг", "Компьютерный клуб"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "ru_active_evening",
+      "cohort": "ru",
+      "raw_query": "что-то активное вечером",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг", "Скалодром"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "kk_kids_activity",
+      "cohort": "kk",
+      "raw_query": "балалармен қайда баруға болады",
+      "mode": "SERVICE",
+      "relevant_titles": ["Детский развлекательный центр"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
+    },
+    {
+      "id": "mixed_group_ride",
+      "cohort": "kk",
+      "raw_query": "достармен покататься",
+      "mode": "SERVICE",
+      "relevant_titles": ["Картинг", "Прокат велосипедов", "Конные прогулки"],
+      "expected_component": "ServiceCard",
+      "expected_zero": false
     }
   ]
 }

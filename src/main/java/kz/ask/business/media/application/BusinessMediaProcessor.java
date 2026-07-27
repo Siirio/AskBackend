@@ -56,7 +56,8 @@ public class BusinessMediaProcessor {
         String fileUrl = store(file);
         try {
             businessProfileService.save(
-                    businessId, null, fileUrl, null, null, null, null, null, null, null);
+                    businessId, null, fileUrl, null, null, null, null, null, null, null,
+                    null, null, null);
         } catch (RuntimeException e) {
             deleteManagedFile(fileUrl);
             throw e;
@@ -75,7 +76,8 @@ public class BusinessMediaProcessor {
         String fileUrl = store(file);
         try {
             businessProfileService.save(
-                    businessId, null, null, fileUrl, null, null, null, null, null, null);
+                    businessId, null, null, fileUrl, null, null, null, null, null, null,
+                    null, null, null);
         } catch (RuntimeException e) {
             deleteManagedFile(fileUrl);
             throw e;

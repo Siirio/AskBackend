@@ -1,6 +1,8 @@
 package kz.ask.business.profile.api.dto;
 
+import java.util.List;
 import java.util.UUID;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,4 +21,7 @@ public class BusinessProfileResponse {
     private String instagramUrl;
     private String telegramUrl;
     private String websiteUrl;
+    private DeliveryCoverage deliveryCoverage;
+    private List<String> deliveryCities;
+    private Boolean pickupAvailable;
 }

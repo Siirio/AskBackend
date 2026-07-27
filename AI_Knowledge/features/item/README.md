@@ -12,3 +12,5 @@ Item CRUD, optional branch association, flat ITEM categories, and search-documen
 - Item deletion: disabled Items must not appear in live search.
 - Category identity, not a free-form `category_label`, is canonical. Imports may propose a category; user approval selects or explicitly creates it.
 - Platform AI may propose attributes only during assigned managed import; approved Item facts remain canonical.
+- Item creation publishes immediately: auto-moderation synchronously assigns `APPROVED` unless a prohibited keyword assigns `REJECTED`.
+- Business Item lists are ordered newest first so a created Item remains visible after reload.

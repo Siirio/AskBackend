@@ -61,7 +61,8 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
                                      BigDecimal latitude, BigDecimal longitude,
                                      String timeZoneId,
                                      List<WeeklyOpeningIntervalDto> weeklyHours,
-                                     List<SpecialOpeningIntervalDto> specialHours) {
+                                     List<SpecialOpeningIntervalDto> specialHours,
+                                     Boolean pickupAvailable) {
         Business business = businessRepository.getReferenceById(businessId);
         City city = null;
         if (cityId != null) {
@@ -70,6 +71,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
         }
         BusinessBranch entity = businessMapper.toBranchEntity(business, city, name, address, addressDetails,
                 latitude, longitude, timeZoneId);
+        entity.setPickupAvailable(Boolean.TRUE.equals(pickupAvailable));
         applySchedule(entity, weeklyHours, specialHours);
         entity = businessBranchRepository.save(entity);
         return businessMapper.toBusinessBranchDto(entity);
@@ -99,7 +101,8 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
                                      BigDecimal latitude, BigDecimal longitude,
                                      String timeZoneId,
                                      List<WeeklyOpeningIntervalDto> weeklyHours,
-                                     List<SpecialOpeningIntervalDto> specialHours) {
+                                     List<SpecialOpeningIntervalDto> specialHours,
+                                     Boolean pickupAvailable) {
         BusinessBranch branch = businessBranchRepository.findById(branchId).orElse(null);
         if (branch == null) return null;
         if (name != null) branch.setName(name);
@@ -112,6 +115,7 @@ public class BusinessBranchServiceImpl implements BusinessBranchService {
         if (latitude != null) branch.setLatitude(latitude);
         if (longitude != null) branch.setLongitude(longitude);
         if (timeZoneId != null) branch.setTimeZoneId(timeZoneId);
+        if (pickupAvailable != null) branch.setPickupAvailable(pickupAvailable);
         if (weeklyHours != null) {
             branch.getWeeklyHours().clear();
             branch.getWeeklyHours().addAll(

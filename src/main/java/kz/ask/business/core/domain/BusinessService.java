@@ -1,10 +1,12 @@
 package kz.ask.business.core.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.core.domain.dto.BusinessDto;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.core.domain.dto.BusinessRegistrationResult;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 
 public interface BusinessService {
 
@@ -31,7 +33,10 @@ public interface BusinessService {
                                        String legalIdentifier,
                                        String legalName,
                                        String countryCode,
-                                       String contactEmail);
+                                       String contactEmail,
+                                       DeliveryCoverage deliveryCoverage,
+                                       List<String> deliveryCities,
+                                       Boolean pickupAvailable);
 
     BusinessRegistrationResult findByOwner(UUID userId);
 

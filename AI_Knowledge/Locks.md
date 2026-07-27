@@ -19,7 +19,7 @@ LOCKED | One customer and business share one durable conversation | Branches and
 LOCKED | Business membership defaults apply to all branches | Branch overrides may change role or deny access; multiple owners are allowed | BusinessMember, branch access overrides, staff authorization
 LOCKED | Never invent stock, logistics, schedules, or availability | Must come from supplier input or trusted integration data | Product, ServiceBranchOffer, Booking
 LOCKED | No intermediate import entities between file upload and Item/Service creation | Files transfer directly to the target feature. User exit = progress lost | import pipeline
-LOCKED | Delivery is per-branch, not per-business | Each branch sets its own delivery mode. No business-level delivery profile | BusinessDeliveryProfile, BusinessBranchDeliveryOverride, shipping
+LOCKED | Business-wide delivery coverage is collected during seller onboarding and remains editable | Online businesses may have no branches, so delivery coverage and pickup availability belong to the public BusinessProfile; branch data continues to own physical addresses and opening hours | SellerOnboardingRequest, BusinessProfile, business profile API
 LOCKED | One concrete sellable variation = one Item entity | Search grouping uses tags and SearchDocument. No variant tables | Item entity
 LOCKED | Business, Item, and Service each store one typed flat category plus canonical attributes | Description and tags supplement attributes; categories are SYSTEM or USER and never hierarchical | Business, Item, Service, category/search flows
 LOCKED | Email-based auth for MVP | Password/OTP and Google OAuth use verified email. SMS remains disabled until a real provider is connected | identity domain, AuthChallenge, AppUser, Google OAuth

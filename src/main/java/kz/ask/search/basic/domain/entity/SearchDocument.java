@@ -106,6 +106,42 @@ public class SearchDocument extends BaseUuidV7Entity {
     @Column(columnDefinition = "TEXT")
     private String aliases;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "concept_ids", columnDefinition = "JSONB")
+    private List<String> conceptIds;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "use_cases", columnDefinition = "JSONB")
+    private List<String> useCases;
+
+    @Column(name = "semantic_summary", columnDefinition = "TEXT")
+    private String semanticSummary;
+
+    @Column(name = "embedding_text", columnDefinition = "TEXT")
+    private String embeddingText;
+
+    @Column(name = "semantic_confidence")
+    private BigDecimal semanticConfidence;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "semantic_evidence", columnDefinition = "JSONB")
+    private List<String> semanticEvidence;
+
+    @Column(name = "semantic_model_version")
+    private String semanticModelVersion;
+
+    @Column(name = "semantic_schema_version")
+    private String semanticSchemaVersion;
+
+    @Column(name = "semantic_source_hash")
+    private String semanticSourceHash;
+
+    @Column(name = "semantic_metadata_source_hash")
+    private String semanticMetadataSourceHash;
+
+    @Column(name = "semantic_generated_at")
+    private Instant semanticGeneratedAt;
+
     @Column(name = "ai_search_summary")
     private String aiSearchSummary;
 

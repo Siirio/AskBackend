@@ -54,6 +54,9 @@ public class BusinessBranch extends BaseUuidV7Entity {
             joinColumns = @JoinColumn(name = "branch_id"))
     private List<SpecialOpeningInterval> specialHours = new ArrayList<>();
 
+    @Column(name = "pickup_available")
+    private Boolean pickupAvailable = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "business_id", nullable = false)
     private Business business;

@@ -32,14 +32,15 @@
 - `mode` is required and accepts only `ITEM` or `SERVICE`.
 - `sort` accepts `relevance`, `distance`, or `price_asc`.
 - `page` is 0 through 20; `page_size` is 1 through 50.
-- Only `explicit_filters` are hard filters. Unsupported filter behavior must not be claimed by clients.
+- Category, city, country, price, open-now, and radius values under `explicit_filters` are hard filters.
+- `radius_meters` requires `user_location`.
 
 Removed fields: `scope`, `selected_category`, top-level `city`, `filters.scope`, `overrides`, and `language`. `PRODUCT` is not a compatibility value.
 
 ## Response
 
 - `raw_query`, `mode`, and `understood_query` preserve request context.
-- `sections` contains exact and explicitly relaxed Item/Service results.
+- `sections` contains relevant Item/Service results that satisfy every explicit filter.
 - `result_id` is the canonical Item/Service ID.
 - `result_type` is `ITEM` or `SERVICE`.
 - `component` is exactly `ItemCard` or `ServiceCard`.

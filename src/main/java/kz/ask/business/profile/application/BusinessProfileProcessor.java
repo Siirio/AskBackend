@@ -40,7 +40,10 @@ public class BusinessProfileProcessor {
                 request.getEmail(),
                 request.getInstagramUrl(),
                 request.getTelegramUrl(),
-                request.getWebsiteUrl()));
+                request.getWebsiteUrl(),
+                request.getDeliveryCoverage(),
+                request.getDeliveryCities(),
+                request.getPickupAvailable()));
     }
 
     private BusinessProfileResponse toResponse(BusinessProfileDto dto) {
@@ -60,6 +63,9 @@ public class BusinessProfileProcessor {
                 .instagramUrl(dto.getInstagramUrl())
                 .telegramUrl(dto.getTelegramUrl())
                 .websiteUrl(dto.getWebsiteUrl())
+                .deliveryCoverage(dto.getDeliveryCoverage())
+                .deliveryCities(dto.getDeliveryCities())
+                .pickupAvailable(dto.getPickupAvailable())
                 .build();
     }
 }

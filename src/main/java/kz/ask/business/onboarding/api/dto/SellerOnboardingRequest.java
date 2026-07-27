@@ -4,9 +4,12 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.core.domain.enums.BusinessScope;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -39,6 +42,15 @@ public class SellerOnboardingRequest {
 
     @NotNull
     private BusinessScope businessScope;
+
+    @NotNull
+    private DeliveryCoverage deliveryCoverage;
+
+    @Size(max = 50)
+    private List<@Size(max = 120) String> deliveryCities;
+
+    @NotNull
+    private Boolean pickupAvailable;
 
     @Pattern(regexp = OPTIONAL_HTTP_URL)
     private String twoGisUrl;
@@ -87,6 +99,13 @@ public class SellerOnboardingRequest {
         return hasText(twoGisUrl) || hasText(kaspiUrl) || hasText(ozonUrl)
                 || hasText(wildberriesUrl) || hasText(websiteUrl)
                 || hasText(instagramUrl) || hasText(telegramUrl);
+    }
+
+    @AssertTrue(message = "At least one delivery city is required for selected city coverage")
+    public boolean isDeliveryCoverageValid() {
+        return deliveryCoverage == null
+                || deliveryCoverage != DeliveryCoverage.SELECTED_CITIES
+                || deliveryCities != null && deliveryCities.stream().anyMatch(this::hasText);
     }
 
     private boolean hasText(String value) {

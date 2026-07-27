@@ -24,8 +24,10 @@ flowchart LR
     D --> A[Optional AI hints]
     A --> E[Exact full-query lane]
     A --> X[Combined expanded lane]
+    A --> S[Semantic vector lane]
     E --> R[Reciprocal Rank Fusion]
     X --> R
+    S --> R
     R --> H[PostgreSQL hydration and dirty overlay]
     H --> B[Public Business profile hydration]
     B --> C[Compact Item or Service row]
@@ -33,4 +35,4 @@ flowchart LR
     C -->|chat| T[Explicit business conversation action]
 ```
 
-Meilisearch failure switches to bounded PostgreSQL lexical retrieval. AI cannot change mode, apply hard inferred constraints, select businesses, or invent availability.
+Semantic failure preserves both lexical lanes. Full Meilisearch failure switches to bounded PostgreSQL lexical retrieval. AI cannot change mode, apply hard inferred constraints, select businesses, or invent availability.

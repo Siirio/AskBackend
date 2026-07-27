@@ -10,6 +10,8 @@ public interface SearchDocumentService {
 
     Long upsert(SearchDocumentDto dto);
 
+    Optional<Long> upsertSemanticMetadataIfVersion(SearchDocumentDto dto, Long expectedVersion);
+
     Long delete(SearchDocumentType documentType, UUID aggregateId);
 
     Optional<SearchDocumentDto> findByAggregate(SearchDocumentType type, UUID aggregateId);

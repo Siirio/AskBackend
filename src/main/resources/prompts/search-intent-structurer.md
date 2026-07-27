@@ -79,7 +79,14 @@ ITEM_SEARCH shape:
     "semantic_query": "",
     "search_keywords": [],
     "synonyms": [],
-    "related_terms": []
+    "related_terms": [],
+    "concepts": [
+      { "id": "CONTROLLED_CONCEPT_ID", "weight": 0.0 }
+    ],
+    "lexical_expansions": [
+      { "term": "", "weight": 0.0 }
+    ],
+    "ambiguity": "LOW | MEDIUM | HIGH"
   },
   "ranking": {
     "prioritize": [],
@@ -135,7 +142,14 @@ SERVICE_SEARCH shape:
     "semantic_query": "",
     "search_keywords": [],
     "synonyms": [],
-    "related_terms": []
+    "related_terms": [],
+    "concepts": [
+      { "id": "CONTROLLED_CONCEPT_ID", "weight": 0.0 }
+    ],
+    "lexical_expansions": [
+      { "term": "", "weight": 0.0 }
+    ],
+    "ambiguity": "LOW | MEDIUM | HIGH"
   },
   "ranking": {
     "prioritize": [],
@@ -181,6 +195,10 @@ Search semantics:
 - If a feature phrase is the query, such as "лазерная подсветка", put the whole phrase into must_have and search_keywords so primary results must contain that phrase, tag, or attribute.
 - Put direct searchable terms into search_keywords.
 - Put broader fallback concepts into related_terms and expand_if_no_results.
+- concepts may contain only ACTIVE_LEISURE, RIDE_ACTIVITY, MOTORSPORT, GAMING, BEAUTY, CLEANING, REPAIR, EDUCATION, HEALTHCARE, GROUP_ACTIVITY, KIDS_ACTIVITY, DATE_ACTIVITY, or INDOOR_ENTERTAINMENT.
+- Put concrete semantic alternatives into lexical_expansions with weights from 0 to 1.
+- For ambiguous activity queries, return several plausible alternatives and set ambiguity to HIGH. Do not choose one business or one concrete activity as the only answer.
+- Treat common spelling mistakes as the intended normalized query when confidence is high.
 - Use semantic_query as a clean sentence representing user meaning.
 - Use canonical category keys where possible: beauty_services, haircut, barbershop, hair_salon, gaming_club, computer_club, sports_nutrition, creatine, bike_rental, bicycle_rental, cosmetics, laptop, electronics, watches.
 - AI-inferred category is a semantic signal, not a database filter. Prefer canonical keys plus display terms and aliases over one raw category phrase.

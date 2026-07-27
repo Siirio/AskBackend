@@ -11,8 +11,10 @@ import kz.ask.search.basic.domain.enums.SearchProjectionAction;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface SearchDocumentRepository extends JpaRepository<SearchDocument, UUID> {
@@ -29,6 +31,15 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
         """)
     Optional<SearchDocument> findProjectionByAggregate(@Param("documentType") SearchDocumentType documentType,
                                                         @Param("aggregateId") UUID aggregateId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select d from SearchDocument d
+        where d.documentType = :documentType and d.aggregateId = :aggregateId
+        """)
+    Optional<SearchDocument> findProjectionByAggregateForUpdate(
+            @Param("documentType") SearchDocumentType documentType,
+            @Param("aggregateId") UUID aggregateId);
 
     @Query("""
             SELECT DISTINCT d FROM SearchDocument d
@@ -84,6 +95,14 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
           and (:minPrice is null or d.price >= :minPrice)
           and (:maxPrice is null or d.price <= :maxPrice)
           and (:city = '' or lower(coalesce(city.name, '')) = :city)
+          and (:country = '' or lower(coalesce(city.country_code, '')) = :country)
+          and (:radiusMeters is null
+               or branch.latitude is not null and branch.longitude is not null
+               and 6371000 * acos(least(1, greatest(-1,
+                   sin(radians(:userLatitude)) * sin(radians(branch.latitude))
+                   + cos(radians(:userLatitude)) * cos(radians(branch.latitude))
+                   * cos(radians(branch.longitude) - radians(:userLongitude))
+               ))) <= :radiusMeters)
         order by
           ts_rank_cd(d.search_vector, websearch_to_tsquery('simple', :query)) desc,
           similarity(d.normalized_title, :query) desc,
@@ -96,6 +115,10 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                                         @Param("minPrice") BigDecimal minPrice,
                                         @Param("maxPrice") BigDecimal maxPrice,
                                         @Param("city") String city,
+                                        @Param("country") String country,
+                                        @Param("radiusMeters") Integer radiusMeters,
+                                        @Param("userLatitude") Double userLatitude,
+                                        @Param("userLongitude") Double userLongitude,
                                         @Param("candidateLimit") Integer candidateLimit);
 
     @Query(value = """
@@ -113,6 +136,14 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
           and (:minPrice is null or d.price >= :minPrice)
           and (:maxPrice is null or d.price <= :maxPrice)
           and (:city = '' or lower(coalesce(city.name, '')) = :city)
+          and (:country = '' or lower(coalesce(city.country_code, '')) = :country)
+          and (:radiusMeters is null
+               or branch.latitude is not null and branch.longitude is not null
+               and 6371000 * acos(least(1, greatest(-1,
+                   sin(radians(:userLatitude)) * sin(radians(branch.latitude))
+                   + cos(radians(:userLatitude)) * cos(radians(branch.latitude))
+                   * cos(radians(branch.longitude) - radians(:userLongitude))
+               ))) <= :radiusMeters)
         order by
           ts_rank_cd(d.search_vector, websearch_to_tsquery('simple', :query)) desc,
           similarity(d.normalized_title, :query) desc,
@@ -125,6 +156,10 @@ public interface SearchDocumentRepository extends JpaRepository<SearchDocument, 
                                      @Param("minPrice") BigDecimal minPrice,
                                      @Param("maxPrice") BigDecimal maxPrice,
                                      @Param("city") String city,
+                                     @Param("country") String country,
+                                     @Param("radiusMeters") Integer radiusMeters,
+                                     @Param("userLatitude") Double userLatitude,
+                                     @Param("userLongitude") Double userLongitude,
                                      @Param("candidateLimit") Integer candidateLimit);
 
     @Query("""

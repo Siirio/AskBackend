@@ -20,4 +20,5 @@ public class UpdateBranchRequest {
     private String timeZoneId;
     private List<WeeklyOpeningIntervalDto> weeklyHours;
     private List<SpecialOpeningIntervalDto> specialHours;
+    private Boolean pickupAvailable;
 }

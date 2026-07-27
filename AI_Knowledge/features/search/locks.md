@@ -15,4 +15,7 @@ LOCKED | Explicit filters are hard; interpreted query signals are soft | AI/text
 LOCKED | Distance affects rank only for explicit distance sorting | Coordinates alone are not location intent | StructuredSearchProcessor
 LOCKED | Public resultId equals aggregateId | SearchDocument UUID is internal projection identity | SearchCardResponse
 LOCKED | At most two Meilisearch lexical requests execute per public query and use deterministic rank fusion | Recall expansion remains bounded | MeilisearchServiceImpl
+LOCKED | One additional semantic Meilisearch lane may execute and must degrade independently without disabling lexical retrieval | Semantic recall must not make search dependent on embeddings | MeilisearchServiceImpl
+LOCKED | Semantic aliases, concepts, use cases, summaries, evidence, and model metadata belong to SearchDocument only | Derived search meaning must not pollute canonical Item or Service facts | SearchDocument, SearchProjectionComposer, SearchSemanticEnrichmentProcessor
+LOCKED | Controlled concept IDs are validated by the backend and unknown IDs are discarded | Free-form model labels create ontology drift | SearchConcept, SearchConceptOntology, DeepSeekAttributeExtractor
 LOCKED | Canonical search terminology is ITEM and SERVICE | PRODUCT/ALL compatibility values create contract drift | search enums, request/response, AI prompts

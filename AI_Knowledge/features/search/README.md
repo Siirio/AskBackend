@@ -14,16 +14,23 @@ The worker prepares the exact desired action/version in a short transaction, cal
 
 `projectionVersion > indexedVersion` is dirty. `indexedAt` records confirmation time only and is not a version.
 
+## Semantic metadata
+
+`SearchDocument` owns derived aliases, controlled concept IDs, use cases, semantic summary, embedding text, confidence, evidence, model/schema versions, source hash, and generation time. Canonical Item and Service fields never store these search-only values.
+
+Every projection mutation invalidates the previous semantic passport by changing its source hash. The outbox delivery path enriches the projection outside the canonical write transaction, persists the new version atomically with a replacement outbox event, and then indexes it. DeepSeek is optional: the controlled ontology produces a deterministic passport when AI is unavailable.
+
 ## Read path
 
-Meilisearch performs at most two bounded lexical requests:
+Meilisearch performs three bounded retrieval lanes:
 
 1. complete normalized raw query;
 2. one combined expanded query containing approved aliases, synonyms, category terms, and related terms.
+3. one pure semantic request using the configured multilingual embedder.
 
-The two rankings use Reciprocal Rank Fusion. PostgreSQL fallback uses the complete raw/expanded query rather than one first term. PostgreSQL hydrates canonical projection rows and the public Business profile. A query-relevant dirty overlay provides read-your-writes behavior.
+The three rankings use Reciprocal Rank Fusion. A semantic-lane failure degrades to the two lexical lanes. PostgreSQL fallback uses the complete raw/expanded query rather than one first term. PostgreSQL hydrates canonical projection rows and the public Business profile. A query-relevant dirty overlay provides read-your-writes behavior.
 
-Only explicit filters eliminate candidates. Interpreted prices, cities, qualifiers, package sizes, `mustHave`, and `notWanted` values are ranking signals. Coordinates affect ranking only for explicit distance sorting.
+Only explicit filters eliminate candidates. Category, city, country, price, radius, and open-now filters pass through the search plan. Interpreted prices, cities, qualifiers, package sizes, `mustHave`, and `notWanted` values are ranking signals. Coordinates affect ranking only for explicit distance sorting or an explicit radius filter.
 
 ## Result presentation
 

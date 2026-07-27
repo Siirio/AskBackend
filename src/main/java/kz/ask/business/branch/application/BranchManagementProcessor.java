@@ -41,7 +41,7 @@ public class BranchManagementProcessor {
         BusinessBranchDto dto = businessBranchService.create(
                 businessId, req.getCityId(), req.getName(), req.getAddress(), req.getAddressDetails(),
                 req.getLatitude(), req.getLongitude(), req.getTimeZoneId(),
-                req.getWeeklyHours(), req.getSpecialHours());
+                req.getWeeklyHours(), req.getSpecialHours(), req.getPickupAvailable());
         return toResponse(dto);
     }
 
@@ -64,7 +64,7 @@ public class BranchManagementProcessor {
         BusinessBranchDto dto = businessBranchService.update(
                 branchId, req.getName(), req.getAddress(), req.getAddressDetails(), req.getCityId(),
                 req.getLatitude(), req.getLongitude(), req.getTimeZoneId(),
-                req.getWeeklyHours(), req.getSpecialHours());
+                req.getWeeklyHours(), req.getSpecialHours(), req.getPickupAvailable());
         return toResponse(dto);
     }
 
@@ -109,6 +109,7 @@ public class BranchManagementProcessor {
                 .weeklyHours(dto.getWeeklyHours())
                 .specialHours(dto.getSpecialHours())
                 .openingSummary(toOpeningResponse(summary))
+                .pickupAvailable(dto.getPickupAvailable())
                 .build();
     }
 

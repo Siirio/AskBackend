@@ -1,12 +1,14 @@
 package kz.ask.business.profile.domain;
 
-import java.util.UUID;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
 import kz.ask.business.profile.domain.entity.BusinessProfile;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 import kz.ask.business.core.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.core.infrastructure.repository.BusinessRepository;
 import kz.ask.business.profile.infrastructure.repository.BusinessProfileRepository;
@@ -45,11 +47,14 @@ public class BusinessProfileServiceImpl implements BusinessProfileService {
     @Transactional
     public BusinessProfileDto save(UUID businessId, String brandColor, String logoUrl, String coverUrl,
                                     String description, String number, String email,
-                                    String instagramUrl, String telegramUrl, String websiteUrl) {
+                                    String instagramUrl, String telegramUrl, String websiteUrl,
+                                    DeliveryCoverage deliveryCoverage, List<String> deliveryCities,
+                                    Boolean pickupAvailable) {
         BusinessProfile profile = businessProfileRepository.findByBusinessId(businessId)
                 .orElseGet(() -> businessMapper.toBusinessProfileEntity(businessRepository.getReferenceById(businessId)));
         businessMapper.updateBusinessProfile(profile, brandColor, logoUrl, coverUrl,
-                description, number, email, instagramUrl, telegramUrl, websiteUrl);
+                description, number, email, instagramUrl, telegramUrl, websiteUrl,
+                deliveryCoverage, deliveryCities, pickupAvailable);
         return businessMapper.toBusinessProfileDto(businessProfileRepository.save(profile));
     }
 }

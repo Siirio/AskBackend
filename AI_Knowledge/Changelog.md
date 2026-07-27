@@ -2,6 +2,10 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-27 | Replaced the former branch-only delivery assumption with a seller-supplied BusinessProfile fulfilment policy because online businesses may have no branch. Seller onboarding now persists delivery coverage, selected cities, and pickup availability; OWNER/MANAGER may edit the same fields later | seller onboarding, BusinessProfile, V1 baseline, frontend business profile
+
+2026-07-26 | Fixed catalog rows disappearing after reload: Item and Service cabinet lists now sort by createdAt descending, normal Items are synchronously auto-approved with no pending gate, prohibited alcohol/weapon keywords auto-reject while preserving the Item in the cabinet, and active Services publish immediately | item, service, moderation, AskFrontend business cabinet
+
 2026-07-26 | Squashed the final search sequence, desired-action columns, nullable tombstone fields, and dirty index into the fresh V1 DDL; retained V2 for reference-data inserts only; removed V4/V5 so Flyway has exactly two migrations. Existing databases with the removed history must be recreated | V1__init.sql, V2__reference_data.sql, removed V4/V5, search operations, migration lock
 
 2026-07-26 | Corrected business media ownership and Unique Offer context: Business Profile logo/cover and Unique Offer cover are authenticated PNG/JPEG/WebP file uploads with signature validation, server-generated media locations, replacement cleanup, and persistent prod/stage volumes; active date-valid offers now add a +25 boost and badge only to linked Item/Service results with branch restrictions respected | business media, business profile, unique offers, search, AskFrontend business cabinet, compose, locks
@@ -74,4 +78,12 @@ Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 2026-07-22 | Separated personal login from optional business workspaces, aligned Item/Service cabinet calls with optional branch ownership, removed hover-only quick actions, replaced the 2GIS map dependency with configurable OpenStreetMap/geocoding coordinates, and corrected search enrichment SQL to persisted `is_*` columns | identity, business, item, service, search, frontend
 2026-07-23 | Restored authenticated ITEM/SERVICE Excel import, persisted complete catalog and branch form fields, added Item deep links in V1, enabled explicit USER category creation, made branch working hours owner/manager editable, exposed support-authorized customer-business chats to platform staff, and made managed-import activation the direct seven-day per-business catalog entitlement | importing, item, service, business branches/categories, messaging, platform, V1, AskFrontend
 
+2026-07-27 | Kept nullable Service list filters string-typed by normalizing category names before the repository query, preventing PostgreSQL `lower(bytea)` failures when the cabinet reloads an unfiltered list | ServiceServiceImpl, ServiceOfferingRepository
+
 2026-07-24 | Security hardening: removed all hardcoded credential fallbacks from application.yml (JWT secret, superadmin password, HMAC/encryption keys, DB credentials), profile-gated Swagger to local only, changed anyRequest().permitAll() to denyAll() in SecurityConfig. REST design fixes: wrapped all root JSON arrays in *ListResponse DTOs (BranchListResponse, BusinessInvitationListResponse, BusinessMemberListResponse), simplified URLs by removing redundant parent IDs from individual entity operations (PATCH /branches/{id}, DELETE /invitations/{id}, PATCH /members/{id}, POST /members/{id}/deactivate). Relaxed CodeRules.md to allow *ListResponse DTOs and @Transactional(readOnly=true) | application.yml, application-local.yml, SecurityConfig, BranchController, BranchManagementProcessor, BusinessInvitationController, BusinessInvitationProcessor, BusinessMembersController, BusinessMembersProcessor, CodeRules.md, business/contracts.md
+## 2026-07-27 — Semantic search passport and hybrid retrieval
+
+- Added search-owned semantic metadata with source/model/schema versioning and deterministic ontology fallback.
+- Added a multilingual Meilisearch semantic lane alongside the two bounded lexical lanes and fused all available rankings through RRF.
+- Made query-interpretation cache keys context-complete and expanded evaluation coverage and metrics.
+- Wired explicit country, radius, and open-now filters through the search plan without changing canonical Item or Service facts.

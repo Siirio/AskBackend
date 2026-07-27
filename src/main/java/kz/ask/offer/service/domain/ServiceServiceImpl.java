@@ -34,8 +34,10 @@ public class ServiceServiceImpl implements ServiceService {
     @Transactional(readOnly = true)
     public Page<ServiceOfferingDto> listOffers(UUID businessId, UUID branchId, String categoryName,
                                                Boolean active, String query, Pageable pageable) {
-        String term = query == null || query.isBlank() ? null : "%" + query.trim().toLowerCase() + "%";
-        return serviceOfferingRepository.search(businessId, branchId, categoryName, active, term, pageable)
+        String normalizedCategoryName = categoryName == null || categoryName.isBlank()
+                ? "" : categoryName.trim().toLowerCase();
+        String term = query == null || query.isBlank() ? "" : "%" + query.trim().toLowerCase() + "%";
+        return serviceOfferingRepository.search(businessId, branchId, normalizedCategoryName, active, term, pageable)
                 .map(this::toDto);
     }
 

@@ -37,11 +37,17 @@ public class DeepSeekSearchIntentStructurer {
     @Value("${ask.ai.search.max-tokens:1800}")
     private Integer maxTokens;
 
+    @Value("${ask.ai.search.prompt-version:1}")
+    private String promptVersion;
+
+    @Value("${ask.ai.search.schema-version:1}")
+    private String schemaVersion;
+
     @Value("classpath:prompts/search-intent-structurer.md")
     private Resource promptResource;
 
     public JsonNode structure(SearchIntentStructureRequest request) {
-        JsonNode cached = cache.get(request.getRawQuery());
+        JsonNode cached = cache.get(request, promptVersion, model, schemaVersion);
         if (cached != null) {
             return cached;
         }
@@ -49,7 +55,7 @@ public class DeepSeekSearchIntentStructurer {
             throw new ValidationException(ErrorCode.AI_SEARCH_API_KEY_MISSING);
         }
         JsonNode result = callDeepSeek(request);
-        cache.put(request.getRawQuery(), result);
+        cache.put(request, promptVersion, model, schemaVersion, result);
         return result;
     }
 

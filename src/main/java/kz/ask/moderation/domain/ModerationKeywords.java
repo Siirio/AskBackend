@@ -16,10 +16,7 @@ public final class ModerationKeywords {
             "алкоголь", "alcohol", "водка", "vodka", "пиво", "beer", "вино", "wine",
             "коньяк", "cognac", "виски", "whiskey", "шампанское", "champagne", "ликер", "liqueur",
             "наркотик", "drug", "марихуан", "marijuana", "каннабис", "cannabis",
-            "трава", "weed", "кокаин", "cocaine", "героин", "heroin"
-    );
-
-    private static final Set<String> TOY_WEAPONS = Set.of(
+            "трава", "weed", "кокаин", "cocaine", "героин", "heroin",
             "нож", "knife", "меч", "sword", "пистолет", "pistol", "gun", "ружье", "rifle",
             "винтовка", "автомат", "сабля", "saber", "sabre", "кинжал", "dagger",
             "шпага", "rapier", "арбалет", "crossbow", "лук", "bow", "катана", "katana",
@@ -28,10 +25,6 @@ public final class ModerationKeywords {
 
     public static String prohibitedMatch(String text) {
         return matchAny(text, PROHIBITED);
-    }
-
-    public static String toyWeaponMatch(String text) {
-        return matchAny(text, TOY_WEAPONS);
     }
 
     private static String matchAny(String text, Set<String> keywords) {
@@ -49,9 +42,5 @@ public final class ModerationKeywords {
 
     public static List<String> prohibitedKeywords() {
         return List.copyOf(PROHIBITED);
-    }
-
-    public static List<String> toyWeaponKeywords() {
-        return List.copyOf(TOY_WEAPONS);
     }
 }

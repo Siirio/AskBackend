@@ -1,5 +1,6 @@
 package kz.ask.business.core.domain;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
@@ -14,6 +15,7 @@ import kz.ask.business.member.domain.BusinessMemberService;
 import kz.ask.business.core.domain.dto.BusinessRegistrationResult;
 import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.profile.domain.BusinessProfileService;
+import kz.ask.business.profile.domain.enums.DeliveryCoverage;
 import kz.ask.business.core.infrastructure.mapper.BusinessMapper;
 import kz.ask.business.core.infrastructure.repository.BusinessRepository;
 
@@ -76,7 +78,7 @@ public class BusinessServiceImpl implements BusinessService {
 
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);
         businessProfileService.save(businessId, null, null, null, null, null, contactEmail,
-                null, null, null);
+                null, null, null, DeliveryCoverage.NO_DELIVERY, List.of(), false);
 
         return BusinessRegistrationResult.builder()
                 .business(businessDto)
@@ -96,7 +98,10 @@ public class BusinessServiceImpl implements BusinessService {
                                               String legalIdentifier,
                                               String legalName,
                                               String countryCode,
-                                              String contactEmail) {
+                                              String contactEmail,
+                                              DeliveryCoverage deliveryCoverage,
+                                              List<String> deliveryCities,
+                                              Boolean pickupAvailable) {
         if (businessScope == null) {
             throw new ValidationException(ErrorCode.BUSINESS_SCOPE_REQUIRED);
         }
@@ -119,7 +124,7 @@ public class BusinessServiceImpl implements BusinessService {
         UUID businessId = business.getId();
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);
         businessProfileService.save(businessId, null, null, null, null, null, contactEmail,
-                null, null, null);
+                null, null, null, deliveryCoverage, deliveryCities, pickupAvailable);
         return BusinessRegistrationResult.builder()
                 .business(businessMapper.toBusinessDto(business))
                 .member(memberDto)

@@ -13,17 +13,27 @@ import org.springframework.stereotype.Component;
 public class DeterministicSearchIntentStructurer {
 
     private final ObjectMapper objectMapper;
+    private final SearchConceptOntology searchConceptOntology;
 
     public JsonNode structure(SearchIntentStructureRequest request) {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("request_type", request.getSelectedMode() + "_SEARCH");
 
         ObjectNode semantic = root.putObject("semantic");
-        semantic.put("semantic_query", request.getRawQuery().trim());
+        semantic.put("semantic_query", searchConceptOntology.normalizeQuery(request.getRawQuery()));
         ArrayNode keywords = semantic.putArray("search_keywords");
         keywords.add(request.getRawQuery().trim());
         semantic.putArray("synonyms");
-        semantic.putArray("related_terms");
+        ArrayNode relatedTerms = semantic.putArray("related_terms");
+        searchConceptOntology.resolveExpansions(request.getRawQuery()).forEach(relatedTerms::add);
+        ArrayNode concepts = semantic.putArray("concepts");
+        searchConceptOntology.resolveConceptIds(request.getRawQuery()).forEach(conceptId -> {
+            ObjectNode concept = concepts.addObject();
+            concept.put("id", conceptId);
+            concept.put("weight", 1.0);
+        });
+        semantic.put("ambiguity",
+                searchConceptOntology.resolveExpansions(request.getRawQuery()).size() > 1 ? "HIGH" : "LOW");
 
         root.putObject("item");
         root.putObject("service");
