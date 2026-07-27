@@ -2,66 +2,54 @@
 
 ## Purpose
 
-Search AI helps ASK understand a user query and enrich the search projection. It is not a second Item/Service store, a moderation engine, or a result selector. PostgreSQL remains canonical, Meilisearch remains the candidate engine, and the selected `ITEM` or `SERVICE` mode remains immutable.
+Search AI provides optional query interpretation (price range, city inference, ambiguity detection). It does not rank results, select businesses, enrich documents at index time, or change the user's selected mode.
 
 ## Target package map
 
-Use lowercase Java packages even when the product name is written as AI.
-
 ```text
 kz.ask
-├── ai/infrastructure/{client,config}                 shared DeepSeek transport and extraction contract
-├── catalog/enrichment/{api,application}              platform-triggered canonical catalog enrichment
+├── ai/infrastructure/{client,config}                 shared DeepSeek transport
+├── catalog/enrichment/{api,application}              platform-triggered catalog enrichment
 └── search
-    ├── basic                                         deterministic retrieval and projection
-    └── ai_driven/search_query_enrichment             query understanding and index-only enrichment
+    ├── basic                                         projection, retrieval, ranking, delivery
+    └── search_query_enrichment                       query interpretation (AI or regex fallback)
 ```
 
-`catalog.enrichment` owns the platform action that updates selected catalog records. `search.ai_driven` owns query understanding and derived search metadata only. Shared provider transport is outside both features; neither feature selects search results.
+`catalog.enrichment` owns the platform action that updates selected catalog records (description, attributes, tags). `search.search_query_enrichment` owns query interpretation only. Shared provider transport is outside both features; neither feature selects search results.
 
 ## Responsibility boundaries
 
 | Role | Input | Output | Must not do |
 | --- | --- | --- | --- |
-| Catalog enrichment | Existing Item, Service, or UniqueOffer text fields | Missing factual description, additive tags, and additive structured attributes | Replace manual data, invent operational facts, use web search, read images, or decide moderation |
-| Search enricher | Canonical search projection plus accepted metadata | Index-only aliases, normalized terms, and evidence-bearing attributes | Change canonical Item/Service data or choose a business/result |
-| RASE search consultant | Raw query, immutable mode, and explicit filters | Validated query interpretation or retrieval hints | Change mode/filters, query businesses directly, rank cards, or invent stock, delivery, schedules, or availability |
+| Catalog enrichment | Existing Item, Service, or UniqueOffer text fields | Missing factual description, additive tags, and additive structured attributes | Replace manual data, invent operational facts, or enrich search projections |
+| Query interpreter | Raw query, mode, explicit filters | Normalized query, inferred prices/city, ambiguity, suggestions | Change mode/filters, rank cards, or invent availability |
 
-`RASE` is the advisory search-AI boundary: it may consult an AI provider, but all provider output is validated before retrieval. It is optional; deterministic interpretation uses the controlled ontology as the fallback.
-
-## Search-owned semantic passport
-
-`SearchDocument` stores derived aliases, controlled concept IDs, use cases, semantic summary, embedding text, confidence, evidence, model/schema versions, source hash, and generation time. These values never mutate canonical Item or Service data.
-
-The source hash invalidates metadata after title, description, category, or canonical Item tags change. Outbox delivery performs provider enrichment outside database transactions, then stores a new projection version and replacement outbox event atomically. If DeepSeek is unavailable, the controlled ontology still creates deterministic metadata and Meilisearch generates the multilingual vector locally.
-
-## Data flow
+## Read path data flow
 
 ```text
-Business, Item, or Service DTO -> accepted metadata -> search projection -> Meilisearch
-raw customer query + immutable mode -> RASE consultant -> validated concepts and expansions -> raw lexical + expanded lexical + semantic retrieval -> RRF -> deterministic ranking -> response
+raw customer query + mode + explicit filters
+  → DeepSeek query interpretation (or regex fallback)
+  → single Meilisearch native hybrid search (semanticRatio=0.5)
+  → PostgreSQL hydration via SearchDocumentService
+  → 3-signal ranking (price penalty, city penalty, offer boost)
+  → sectioning (exact / alternatives)
+  → response
 ```
 
-Catalog enrichment may fill only missing descriptions and add text-supported tags or attributes to Item, Service, and UniqueOffer records. It must not replace manual data, change moderation, select a business, create requests/chats/notifications, or claim availability.
+## Write path data flow
 
-## Moderation is a policy, not a search-AI concern
+```text
+Item/Service mutation → deterministic SearchDocument projection → outbox event
+  → worker delivers to Meilisearch → confirmation
+```
 
-Moderation returns one `ModerationDecision`-shaped value with an outcome, reason code, evidence, and review requirement. A policy may recognize a contextual signal such as a weapon term in a toy description, but that context affects the single decision. It must not create another processor branch for every category exception.
+`embeddingText` is composed deterministically from title + description + category + tags + businessName. Meilisearch's HuggingFace embedder generates vectors from this field. No AI writes to the search projection.
 
-Policy data needs an owner and a documented source. Short-lived experiments may live in versioned configuration; durable policy data belongs in a managed data source. A generic keyword utility is not a policy system.
+## Current violations resolved
 
-## Migration rules
-
-1. Move one live responsibility with its consumer and update every import in the same change.
-2. Remove `SearchTermEnricher`'s sport-nutrition and bike-rental literals unless a documented owner supplies a curated vocabulary.
-3. Split `StructuredSearchProcessor` by runtime responsibility: request orchestration, RASE consultation, candidate retrieval, deterministic ranking, and response mapping. Processors use DTOs only; repositories and entities remain behind domain services.
-4. Move Item/Service mutations and moderation out of processors. Their domain services own persistence; mappers own entity/DTO copying.
-
-## Current violations to remove
-
-- `StructuredSearchProcessor` combines repository/entity access, query structuring, candidate retrieval, ranking, and response construction.
-- `SearchTermEnricher` embeds product verticals directly in generic search.
-- `BusinessProductProcessor` owns `Item` mutation, three repositories, mapping, search-outbox publication, and moderation.
-- Catalog enrichment has one target-aware processor rather than three duplicated feature implementations; target-specific allowlists remain inside that processor until dedicated catalog domain services are introduced.
-
-The current package move preserves the existing runtime path. The next cleanup replaces the remaining non-generic vocabulary and DTO/service violations only after the product documentation is approved feature by feature.
+- `StructuredSearchProcessor` is now a clean orchestration pipeline: interpret → search → hydrate → rank → respond (~350 lines).
+- `SearchTermEnricher` removed — no product verticals embedded in search.
+- Semantic enrichment processors removed — no index-time AI enrichment.
+- PostgreSQL full-text fallback and dirty overlay removed.
+- Reciprocal Rank Fusion replaced by native Meilisearch hybrid search.
+- Deterministic ontology (`SearchConceptOntology`), concepts, hypotheses deleted.

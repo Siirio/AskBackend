@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
-import kz.ask.search.basic.domain.dto.SearchCandidateSetDto;
+import kz.ask.search.basic.domain.dto.SearchHitDto;
 
 public interface MeilisearchIndexGateway {
 
@@ -22,5 +22,5 @@ public interface MeilisearchIndexGateway {
 
     void discardIndex(String targetIndex);
 
-    SearchCandidateSetDto search(SearchPlan plan, int limit);
+    List<SearchHitDto> search(SearchPlan plan, int limit);
 }

@@ -31,19 +31,7 @@ public class SearchDocumentMapper {
         entity.setLongitude(dto.getLongitude());
         entity.setTokens(dto.getTokens());
         entity.setVerifiedAttributes(dto.getVerifiedAttributes());
-        entity.setAiAttributes(dto.getAiAttributes());
-        entity.setAliases(dto.getAliases());
-        entity.setConceptIds(dto.getConceptIds());
-        entity.setUseCases(dto.getUseCases());
-        entity.setSemanticSummary(dto.getSemanticSummary());
         entity.setEmbeddingText(dto.getEmbeddingText());
-        entity.setSemanticConfidence(dto.getSemanticConfidence());
-        entity.setSemanticEvidence(dto.getSemanticEvidence());
-        entity.setSemanticModelVersion(dto.getSemanticModelVersion());
-        entity.setSemanticSchemaVersion(dto.getSemanticSchemaVersion());
-        entity.setSemanticSourceHash(dto.getSemanticSourceHash());
-        entity.setSemanticMetadataSourceHash(dto.getSemanticMetadataSourceHash());
-        entity.setSemanticGeneratedAt(dto.getSemanticGeneratedAt());
         entity.setSource(dto.getSource());
         entity.setAvailabilityStatus(dto.getAvailabilityStatus());
         entity.setAvailabilitySource(dto.getAvailabilitySource());
@@ -73,20 +61,8 @@ public class SearchDocumentMapper {
                         ? entity.getBranch().getCity().getCountryCode() : null)
                 .openNow(branchOpeningHoursPolicy.isOpen(entity.getBranch()))
                 .tokens(entity.getTokens())
-                .aliases(entity.getAliases())
-                .conceptIds(entity.getConceptIds())
-                .useCases(entity.getUseCases())
-                .semanticSummary(entity.getSemanticSummary())
                 .embeddingText(entity.getEmbeddingText())
-                .semanticConfidence(entity.getSemanticConfidence())
-                .semanticEvidence(entity.getSemanticEvidence())
-                .semanticModelVersion(entity.getSemanticModelVersion())
-                .semanticSchemaVersion(entity.getSemanticSchemaVersion())
-                .semanticSourceHash(entity.getSemanticSourceHash())
-                .semanticMetadataSourceHash(entity.getSemanticMetadataSourceHash())
-                .semanticGeneratedAt(entity.getSemanticGeneratedAt())
                 .verifiedAttributes(entity.getVerifiedAttributes())
-                .aiAttributes(entity.getAiAttributes())
                 .source(entity.getSource())
                 .availabilityStatus(entity.getAvailabilityStatus())
                 .availabilitySource(entity.getAvailabilitySource())

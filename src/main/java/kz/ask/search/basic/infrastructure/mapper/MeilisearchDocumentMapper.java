@@ -25,11 +25,6 @@ public class MeilisearchDocumentMapper {
                 document.getTitle(),
                 document.getNormalizedTitle(),
                 document.getSummary(),
-                document.getAiSearchSummary(),
-                document.getAliases(),
-                copy(document.getConceptIds()),
-                copy(document.getUseCases()),
-                document.getSemanticSummary(),
                 document.getEmbeddingText(),
                 document.getBrand(),
                 document.getCategoryPath(),
@@ -45,7 +40,6 @@ public class MeilisearchDocumentMapper {
                 country,
                 document.getDocumentType().name(),
                 copy(document.getVerifiedAttributes()),
-                copy(document.getAiAttributes()),
                 document.getAvailabilityStatus() != null ? document.getAvailabilityStatus().name() : "UNKNOWN",
                 document.getProjectionVersion(),
                 null);
@@ -58,11 +52,6 @@ public class MeilisearchDocumentMapper {
                 document.getTitle(),
                 document.getNormalizedTitle(),
                 document.getSummary(),
-                null,
-                document.getAliases(),
-                copy(document.getConceptIds()),
-                copy(document.getUseCases()),
-                document.getSemanticSummary(),
                 document.getEmbeddingText(),
                 null,
                 null,
@@ -78,7 +67,6 @@ public class MeilisearchDocumentMapper {
                 document.getCountry(),
                 document.getDocumentType().name(),
                 copy(document.getVerifiedAttributes()),
-                copy(document.getAiAttributes()),
                 document.getAvailabilityStatus().name(),
                 document.getProjectionVersion(),
                 null);
@@ -86,9 +74,5 @@ public class MeilisearchDocumentMapper {
 
     private Map<String, Object> copy(Map<String, Object> attributes) {
         return attributes == null ? Map.of() : new HashMap<>(attributes);
-    }
-
-    private List<String> copy(List<String> values) {
-        return values == null ? List.of() : new ArrayList<>(values);
     }
 }

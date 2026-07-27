@@ -1,16 +1,11 @@
 package kz.ask.search.basic.application;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.Collections;
-import java.util.HexFormat;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import kz.ask.search.basic.domain.SearchTextNormalizer;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.enums.SearchAvailabilitySource;
@@ -25,7 +20,6 @@ import org.springframework.stereotype.Component;
 public class SearchProjectionComposer {
 
     private static final String SOURCE_ITEMS_SERVICES = "ITEMS_SERVICES";
-    private static final String SEMANTIC_SCHEMA_VERSION = "1";
 
     public SearchDocumentDto composeItem(UUID itemId, UUID businessId, UUID branchId,
                                           String name, String description,
@@ -57,17 +51,9 @@ public class SearchProjectionComposer {
                 .longitude(longitude)
                 .tokens(SearchTextNormalizer.tokenize(
                         safeName, safeDescription, categoryLabel, safeTags, safeBusinessName))
-                .aliases(safeTags.isEmpty() ? "" : String.join(", ", safeTags))
-                .conceptIds(List.of())
-                .useCases(List.of())
-                .semanticSummary(safeDescription)
-                .embeddingText(embeddingText(
-                        safeName, safeDescription, categoryLabel, safeTags, List.of(), List.of()))
-                .semanticEvidence(List.of())
-                .semanticSchemaVersion(SEMANTIC_SCHEMA_VERSION)
-                .semanticSourceHash(sourceHash(safeName, safeDescription, categoryLabel, safeTags))
+                .embeddingText(buildEmbeddingText(
+                        safeName, safeDescription, categoryLabel, safeTags, safeBusinessName))
                 .verifiedAttributes(safeAttributes)
-                .aiAttributes(Collections.emptyMap())
                 .source(SOURCE_ITEMS_SERVICES)
                 .availabilityStatus(SearchAvailabilityStatus.UNKNOWN)
                 .availabilitySource(SearchAvailabilitySource.UNKNOWN)
@@ -103,17 +89,9 @@ public class SearchProjectionComposer {
                 .longitude(longitude)
                 .tokens(SearchTextNormalizer.tokenize(
                         safeName, safeDescription, categoryLabel, List.of(), safeBusinessName))
-                .aliases(String.join(", ", List.of()))
-                .conceptIds(List.of())
-                .useCases(List.of())
-                .semanticSummary(safeDescription)
-                .embeddingText(embeddingText(
-                        safeName, safeDescription, categoryLabel, List.of(), List.of(), List.of()))
-                .semanticEvidence(List.of())
-                .semanticSchemaVersion(SEMANTIC_SCHEMA_VERSION)
-                .semanticSourceHash(sourceHash(safeName, safeDescription, categoryLabel, List.of()))
+                .embeddingText(buildEmbeddingText(
+                        safeName, safeDescription, categoryLabel, List.of(), safeBusinessName))
                 .verifiedAttributes(safeAttributes)
-                .aiAttributes(Collections.emptyMap())
                 .source(SOURCE_ITEMS_SERVICES)
                 .availabilityStatus(SearchAvailabilityStatus.UNKNOWN)
                 .availabilitySource(SearchAvailabilitySource.UNKNOWN)
@@ -121,43 +99,16 @@ public class SearchProjectionComposer {
                 .build();
     }
 
-    public SearchDocumentDto applySemanticMetadata(SearchDocumentDto projection,
-                                                    List<String> aliases,
-                                                    List<String> conceptIds,
-                                                    List<String> useCases,
-                                                    String semanticSummary,
-                                                    BigDecimal confidence,
-                                                    List<String> evidence,
-                                                    String modelVersion,
-                                                    Instant generatedAt) {
-        List<String> safeAliases = distinct(aliases);
-        List<String> safeConceptIds = distinct(conceptIds);
-        List<String> safeUseCases = distinct(useCases);
-        List<String> safeEvidence = distinct(evidence);
-        String safeSummary = semanticSummary == null || semanticSummary.isBlank()
-                ? projection.getSummary() : semanticSummary.trim();
-        List<String> tokens = SearchTextNormalizer.tokenize(
-                projection.getTitle(),
-                String.join(" ", projection.getSummary(), safeSummary),
-                projection.getCategoryLabel(),
-                concatLists(safeAliases, safeConceptIds, safeUseCases),
-                projection.getBusinessName());
-        return projection.toBuilder()
-                .tokens(tokens)
-                .aliases(String.join(", ", safeAliases))
-                .conceptIds(safeConceptIds)
-                .useCases(safeUseCases)
-                .semanticSummary(safeSummary)
-                .embeddingText(embeddingText(
-                        projection.getTitle(), safeSummary, projection.getCategoryLabel(),
-                        safeAliases, safeConceptIds, safeUseCases))
-                .semanticConfidence(confidence)
-                .semanticEvidence(safeEvidence)
-                .semanticModelVersion(modelVersion)
-                .semanticSchemaVersion(SEMANTIC_SCHEMA_VERSION)
-                .semanticMetadataSourceHash(projection.getSemanticSourceHash())
-                .semanticGeneratedAt(generatedAt)
-                .build();
+    private String buildEmbeddingText(String title, String description, String category,
+                                       List<String> tags, String businessName) {
+        return String.join(". ",
+                        title,
+                        description != null ? description : "",
+                        category != null ? category : "",
+                        tags.isEmpty() ? "" : String.join(", ", tags),
+                        businessName)
+                .replaceAll("\\.\\s*\\.", ".")
+                .trim();
     }
 
     private String requireText(String value) {
@@ -167,49 +118,14 @@ public class SearchProjectionComposer {
         return value.trim();
     }
 
-    private String embeddingText(String title, String summary, String category,
-                                 List<String> aliases, List<String> conceptIds, List<String> useCases) {
-        return concatLists(
-                        List.of(title, summary == null ? "" : summary, category == null ? "" : category),
-                        aliases, conceptIds, useCases)
-                .stream()
-                .filter(value -> value != null && !value.isBlank())
-                .map(String::trim)
-                .distinct()
-                .collect(java.util.stream.Collectors.joining(". "));
-    }
-
-    private String sourceHash(String title, String description, String category, List<String> aliases) {
-        String source = String.join("\n",
-                title,
-                description == null ? "" : description,
-                category == null ? "" : category,
-                String.join("\n", aliases));
-        try {
-            return HexFormat.of().formatHex(
-                    MessageDigest.getInstance("SHA-256").digest(source.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException failure) {
-            throw new IllegalStateException(failure);
-        }
-    }
-
     private List<String> distinct(List<String> values) {
         if (values == null) {
             return List.of();
         }
-        LinkedHashSet<String> result = new LinkedHashSet<>();
-        values.stream()
+        return values.stream()
                 .filter(value -> value != null && !value.isBlank())
                 .map(String::trim)
-                .forEach(result::add);
-        return List.copyOf(result);
-    }
-
-    @SafeVarargs
-    private final List<String> concatLists(List<String>... values) {
-        return java.util.Arrays.stream(values)
-                .filter(java.util.Objects::nonNull)
-                .flatMap(List::stream)
+                .distinct()
                 .toList();
     }
 }

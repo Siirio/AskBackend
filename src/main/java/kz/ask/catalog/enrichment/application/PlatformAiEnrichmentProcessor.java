@@ -1,7 +1,6 @@
 package kz.ask.catalog.enrichment.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -171,7 +170,6 @@ public class PlatformAiEnrichmentProcessor {
                 item.getPrice(), item.getBusiness().getCurrency(), item.getTags(), item.getAttributes(),
                 item.getBranch() == null ? null : item.getBranch().getLatitude(),
                 item.getBranch() == null ? null : item.getBranch().getLongitude());
-        projection = applySemanticMetadata(projection, result);
         Long version = searchDocumentService.upsert(projection);
         searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(), SearchEventType.UPSERT, version);
     }
@@ -192,7 +190,6 @@ public class PlatformAiEnrichmentProcessor {
                 service.getBasePrice(), service.getBusiness().getCurrency(), service.getAttributes(),
                 service.getBranch() == null ? null : service.getBranch().getLatitude(),
                 service.getBranch() == null ? null : service.getBranch().getLongitude());
-        projection = applySemanticMetadata(projection, result);
         Long version = searchDocumentService.upsert(projection);
         searchOutboxService.publish(SearchAggregateType.SERVICE, service.getId(), SearchEventType.UPSERT, version);
     }
@@ -232,26 +229,6 @@ public class PlatformAiEnrichmentProcessor {
     private void apply(UniqueOffer offer, DeepSeekAttributeExtractor.ExtractionResult result) {
         offer.setDescription(fillDescription(offer.getDescription(), result.getSearchSummary()));
         offer.setTags(mergeTerms(offer.getTags(), result.getAliases()));
-    }
-
-    private SearchDocumentDto applySemanticMetadata(
-            SearchDocumentDto projection,
-            DeepSeekAttributeExtractor.ExtractionResult result) {
-        List<String> evidence = new ArrayList<>(result.getEvidence());
-        result.getFacts().stream()
-                .map(DeepSeekAttributeExtractor.ExtractionFact::getEvidence)
-                .filter(StringUtils::hasText)
-                .forEach(evidence::add);
-        return searchProjectionComposer.applySemanticMetadata(
-                projection,
-                result.getAliases(),
-                result.getConceptIds(),
-                result.getUseCases(),
-                result.getSearchSummary(),
-                result.getConfidence(),
-                evidence,
-                extractor.modelVersion(),
-                Instant.now());
     }
 
     private Map<String, Object> mergeAttributes(Map<String, Object> current,

@@ -1,7 +1,12 @@
 package kz.ask.search.search_query_enrichment.domain;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import kz.ask.search.basic.application.processor.SearchInterpretation;
 import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.search_query_enrichment.infrastructure.client.DeepSeekSearchIntentStructurer;
 import lombok.RequiredArgsConstructor;
@@ -13,35 +18,54 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LayeredSearchIntentStructurer implements SearchIntentStructurer {
 
-    private final DeterministicSearchIntentStructurer deterministicStructurer;
+    private static final Pattern MAX_PRICE_PATTERN = Pattern.compile(
+            "(?:до|не\\s+дороже|максимум|under|below|up\\s+to|max(?:imum)?|no\\s+more\\s+than)\\s*(\\d+[\\d\\s]*)(к|k|тыс|тысяч|тг)?");
+    private static final Pattern MIN_PRICE_PATTERN = Pattern.compile(
+            "(?:от|минимум|over|above|from|min(?:imum)?|at\\s+least)\\s*(\\d+[\\d\\s]*)(к|k|тыс|тысяч|тг)?");
+
     private final DeepSeekSearchIntentStructurer aiStructurer;
 
     @Override
-    public JsonNode structure(SearchIntentStructureRequest request) {
-        JsonNode deterministic = deterministicStructurer.structure(request);
+    public SearchInterpretation interpret(SearchIntentStructureRequest request) {
         if (!aiStructurer.isAvailable()) {
-            return deterministic;
+            return rawInterpretation(request);
         }
         try {
-            JsonNode enhanced = aiStructurer.structure(request);
-            enforceExplicitMode(enhanced, request);
-            return enhanced;
+            return aiStructurer.interpret(request);
         } catch (RuntimeException failure) {
-            log.warn("AI query enhancement is unavailable: {}. Using deterministic interpretation.",
+            log.warn("AI query enhancement is unavailable: {}. Using raw interpretation.",
                     rootCauseMessage(failure));
-            return deterministic;
+            return rawInterpretation(request);
         }
     }
 
-    private void enforceExplicitMode(JsonNode enhanced, SearchIntentStructureRequest request) {
-        if (!(enhanced instanceof ObjectNode objectNode)) {
-            return;
+    private SearchInterpretation rawInterpretation(SearchIntentStructureRequest request) {
+        String query = normalize(request.getRawQuery());
+        return SearchInterpretation.builder()
+                .normalizedQuery(query)
+                .inferredMinPrice(parsePrice(query, MIN_PRICE_PATTERN))
+                .inferredMaxPrice(parsePrice(query, MAX_PRICE_PATTERN))
+                .inferredCity(null)
+                .ambiguity("LOW")
+                .suggestions(List.of())
+                .build();
+    }
+
+    private BigDecimal parsePrice(String query, Pattern pattern) {
+        Matcher matcher = pattern.matcher(query);
+        if (!matcher.find()) {
+            return null;
         }
-        if ("ITEM".equalsIgnoreCase(request.getSelectedMode())) {
-            objectNode.put("request_type", "ITEM_SEARCH");
-        } else if ("SERVICE".equalsIgnoreCase(request.getSelectedMode())) {
-            objectNode.put("request_type", "SERVICE_SEARCH");
+        BigDecimal value = new BigDecimal(matcher.group(1).replace(" ", ""));
+        String suffix = normalize(matcher.group(2));
+        if (List.of("к", "k", "тыс", "тысяч").contains(suffix)) {
+            return value.multiply(BigDecimal.valueOf(1000L));
         }
+        return value;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private String rootCauseMessage(Throwable failure) {

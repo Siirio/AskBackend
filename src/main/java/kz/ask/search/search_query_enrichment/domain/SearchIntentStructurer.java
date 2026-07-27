@@ -1,9 +1,9 @@
 package kz.ask.search.search_query_enrichment.domain;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import kz.ask.search.basic.application.processor.SearchInterpretation;
 import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 
 public interface SearchIntentStructurer {
 
-    JsonNode structure(SearchIntentStructureRequest request);
+    SearchInterpretation interpret(SearchIntentStructureRequest request);
 }

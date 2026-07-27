@@ -15,11 +15,6 @@ public class MeilisearchIndexDocument {
     private String title;
     private String normalizedTitle;
     private String summary;
-    private String aiSearchSummary;
-    private String aliases;
-    private List<String> conceptIds;
-    private List<String> useCases;
-    private String semanticSummary;
     private String embeddingText;
     private String brand;
     private String categoryPath;
@@ -35,7 +30,6 @@ public class MeilisearchIndexDocument {
     private String country;
     private String documentType;
     private Map<String, Object> verifiedAttributes;
-    private Map<String, Object> aiAttributes;
     private String availabilityStatus;
     private Long projectionVersion;
     private Instant syncedAt;

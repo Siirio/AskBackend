@@ -6,9 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import kz.ask.business.branch.domain.BranchOpeningHoursPolicy;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
-import kz.ask.search.basic.domain.dto.SearchFallbackQueryDto;
 import kz.ask.search.basic.domain.entity.SearchDocument;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchProjectionAction;
@@ -26,7 +24,6 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
 
     private final SearchDocumentRepository searchDocumentRepository;
     private final SearchDocumentMapper searchDocumentMapper;
-    private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
 
     @Override
     @Transactional
@@ -46,26 +43,6 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
         document.setProjectionAction(SearchProjectionAction.INDEX);
         searchDocumentRepository.save(document);
         return version;
-    }
-
-    @Override
-    @Transactional
-    public Optional<Long> upsertSemanticMetadataIfVersion(SearchDocumentDto dto, Long expectedVersion) {
-        validate(dto);
-        SearchDocument document = searchDocumentRepository
-                .findProjectionByAggregateForUpdate(dto.getDocumentType(), dto.getAggregateId())
-                .orElseThrow(() -> new InternalServerException(
-                        ErrorCode.SEARCH_PROJECTION_VERSION_INVARIANT));
-        if (!document.getProjectionVersion().equals(expectedVersion)
-                || document.getProjectionAction() != SearchProjectionAction.INDEX) {
-            return Optional.empty();
-        }
-        searchDocumentMapper.populateEntity(document, dto);
-        Long version = searchDocumentRepository.nextVersion();
-        document.setProjectionVersion(version);
-        document.setProjectionAction(SearchProjectionAction.INDEX);
-        searchDocumentRepository.save(document);
-        return Optional.of(version);
     }
 
     @Override
@@ -113,61 +90,6 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SearchDocumentDto> findPostgresCandidates(SearchFallbackQueryDto query) {
-        List<UUID> ids = searchDocumentRepository.findPostgresCandidateIds(
-                query.getDocumentTypes().stream().map(Enum::name).toList(),
-                query.getQuery(),
-                query.getCategory(),
-                query.getMinPrice(),
-                query.getMaxPrice(),
-                query.getCity(),
-                query.getCountry(),
-                query.getRadiusMeters(),
-                query.getUserLatitude(),
-                query.getUserLongitude(),
-                query.getCandidateLimit());
-        return hydrateOrdered(ids, query.getOpenNow());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<SearchDocumentDto> findDirtyCandidates(SearchFallbackQueryDto query) {
-        List<UUID> ids = searchDocumentRepository.findDirtyCandidateIds(
-                query.getDocumentTypes().stream().map(Enum::name).toList(),
-                query.getQuery(),
-                query.getCategory(),
-                query.getMinPrice(),
-                query.getMaxPrice(),
-                query.getCity(),
-                query.getCountry(),
-                query.getRadiusMeters(),
-                query.getUserLatitude(),
-                query.getUserLongitude(),
-                query.getCandidateLimit());
-        return hydrateOrdered(ids, query.getOpenNow());
-    }
-
-    private List<SearchDocumentDto> hydrateOrdered(List<UUID> ids, Boolean openNow) {
-        if (ids.isEmpty()) {
-            return List.of();
-        }
-        Map<UUID, SearchDocument> documents = searchDocumentRepository.findAllByIdIn(ids).stream()
-                .collect(java.util.stream.Collectors.toMap(SearchDocument::getId, document -> document));
-        return ids.stream()
-                .map(documents::get)
-                .filter(java.util.Objects::nonNull)
-                .filter(document -> !Boolean.TRUE.equals(openNow)
-                        || isOpen(document))
-                .map(searchDocumentMapper::toDto)
-                .toList();
-    }
-
-    private Boolean isOpen(SearchDocument document) {
-        return branchOpeningHoursPolicy.isOpen(document.getBranch());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Optional<SearchDocumentDto> prepareDelivery(SearchDocumentType type, UUID aggregateId,
                                                        Long eventVersion, SearchProjectionAction action) {
         SearchDocument document = requireProjection(type, aggregateId);
@@ -211,13 +133,9 @@ public class SearchDocumentServiceImpl implements SearchDocumentService {
                 || dto.getCategoryLabel() == null || dto.getCategoryLabel().isBlank()
                 || dto.getBusinessName() == null || dto.getBusinessName().isBlank()
                 || dto.getCurrency() == null || dto.getCurrency().isBlank()
-                || dto.getTokens() == null || dto.getAliases() == null
-                || dto.getConceptIds() == null || dto.getUseCases() == null
-                || dto.getSemanticSummary() == null || dto.getEmbeddingText() == null
-                || dto.getEmbeddingText().isBlank() || dto.getSemanticEvidence() == null
-                || dto.getSemanticSchemaVersion() == null || dto.getSemanticSchemaVersion().isBlank()
-                || dto.getSemanticSourceHash() == null || dto.getSemanticSourceHash().isBlank()
-                || dto.getVerifiedAttributes() == null || dto.getAiAttributes() == null
+                || dto.getTokens() == null
+                || dto.getEmbeddingText() == null || dto.getEmbeddingText().isBlank()
+                || dto.getVerifiedAttributes() == null
                 || dto.getAvailabilityStatus() == null || dto.getAvailabilitySource() == null) {
             throw new InternalServerException(ErrorCode.SEARCH_PROJECTION_INVALID);
         }

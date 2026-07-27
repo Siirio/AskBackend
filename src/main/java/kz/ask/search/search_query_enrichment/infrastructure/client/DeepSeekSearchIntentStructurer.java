@@ -3,8 +3,12 @@ package kz.ask.search.search_query_enrichment.infrastructure.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import kz.ask.search.basic.application.processor.SearchInterpretation;
 import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.search_query_enrichment.infrastructure.cache.IntentStructureCache;
 import kz.ask.shared.error.ErrorCode;
@@ -46,8 +50,9 @@ public class DeepSeekSearchIntentStructurer {
     @Value("classpath:prompts/search-intent-structurer.md")
     private Resource promptResource;
 
-    public JsonNode structure(SearchIntentStructureRequest request) {
-        JsonNode cached = cache.get(request, promptVersion, model, schemaVersion);
+    public SearchInterpretation interpret(SearchIntentStructureRequest request) {
+        String cacheKey = request.getRawQuery() + "|" + request.getSelectedMode() + "|" + request.getLanguage();
+        SearchInterpretation cached = cache.getInterpretation(cacheKey, promptVersion, model, schemaVersion);
         if (cached != null) {
             return cached;
         }
@@ -55,12 +60,59 @@ public class DeepSeekSearchIntentStructurer {
             throw new ValidationException(ErrorCode.AI_SEARCH_API_KEY_MISSING);
         }
         JsonNode result = callDeepSeek(request);
-        cache.put(request, promptVersion, model, schemaVersion, result);
-        return result;
+        SearchInterpretation interpretation = parseInterpretation(result, request);
+        cache.putInterpretation(cacheKey, promptVersion, model, schemaVersion, interpretation);
+        return interpretation;
     }
 
     public Boolean isAvailable() {
         return StringUtils.hasText(apiKey);
+    }
+
+    private SearchInterpretation parseInterpretation(JsonNode result, SearchIntentStructureRequest request) {
+        JsonNode semantic = result.path("semantic");
+        String normalizedQuery = semantic.path("semantic_query").asText(request.getRawQuery());
+        JsonNode constraints = result.path("constraints");
+        BigDecimal inferredMinPrice = parseDecimal(constraints.path("min_price").asText(null));
+        BigDecimal inferredMaxPrice = parseDecimal(constraints.path("max_price").asText(null));
+        String inferredCity = normalize(constraints.path("city").asText(null));
+        String ambiguity = semantic.path("ambiguity").asText("LOW").trim().toUpperCase(Locale.ROOT);
+        if (!List.of("LOW", "MEDIUM", "HIGH").contains(ambiguity)) {
+            ambiguity = "LOW";
+        }
+        List<String> suggestions = new ArrayList<>();
+        JsonNode suggestionNodes = result.path("clarification").path("suggestions");
+        if (suggestionNodes.isArray()) {
+            suggestionNodes.forEach(node -> {
+                String text = normalize(node.asText(""));
+                if (!text.isBlank() && suggestions.size() < 6) {
+                    suggestions.add(text);
+                }
+            });
+        }
+        return SearchInterpretation.builder()
+                .normalizedQuery(normalizedQuery)
+                .inferredMinPrice(inferredMinPrice)
+                .inferredMaxPrice(inferredMaxPrice)
+                .inferredCity(inferredCity)
+                .ambiguity(ambiguity)
+                .suggestions(suggestions)
+                .build();
+    }
+
+    private BigDecimal parseDecimal(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private JsonNode callDeepSeek(SearchIntentStructureRequest request) {
@@ -104,10 +156,6 @@ public class DeepSeekSearchIntentStructurer {
         if (!StringUtils.hasText(outputText)) {
             throw new ExternalServiceException(ErrorCode.AI_INTENT_STRUCTURE_FAILED);
         }
-        JsonNode structured = objectMapper.readTree(outputText);
-        if (!StringUtils.hasText(structured.path("request_type").asText(""))) {
-            throw new ExternalServiceException(ErrorCode.AI_INTENT_STRUCTURE_FAILED);
-        }
-        return structured;
+        return objectMapper.readTree(outputText);
     }
 }

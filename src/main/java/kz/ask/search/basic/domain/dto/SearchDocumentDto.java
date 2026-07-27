@@ -1,7 +1,6 @@
 package kz.ask.search.basic.domain.dto;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,20 +34,8 @@ public class SearchDocumentDto {
     private String country;
     private Boolean openNow;
     private List<String> tokens;
-    private String aliases;
-    private List<String> conceptIds;
-    private List<String> useCases;
-    private String semanticSummary;
     private String embeddingText;
-    private BigDecimal semanticConfidence;
-    private List<String> semanticEvidence;
-    private String semanticModelVersion;
-    private String semanticSchemaVersion;
-    private String semanticSourceHash;
-    private String semanticMetadataSourceHash;
-    private Instant semanticGeneratedAt;
     private Map<String, Object> verifiedAttributes;
-    private Map<String, Object> aiAttributes;
     private String source;
     private SearchAvailabilityStatus availabilityStatus;
     private SearchAvailabilitySource availabilitySource;

@@ -1,6 +1,6 @@
 # Unified Search
 
-ASK search returns only Item or Service results. The customer explicitly selects `ITEM` or `SERVICE`; deterministic or AI-assisted interpretation cannot change that mode.
+ASK search returns only Item or Service results. The customer explicitly selects `ITEM` or `SERVICE`; AI interpretation cannot change that mode.
 
 ## Write path
 
@@ -14,31 +14,31 @@ The worker prepares the exact desired action/version in a short transaction, cal
 
 `projectionVersion > indexedVersion` is dirty. `indexedAt` records confirmation time only and is not a version.
 
-## Semantic metadata
+## Embedding
 
-`SearchDocument` owns derived aliases, controlled concept IDs, use cases, semantic summary, embedding text, confidence, evidence, model/schema versions, source hash, and generation time. Canonical Item and Service fields never store these search-only values.
-
-Every projection mutation invalidates the previous semantic passport by changing its source hash. The outbox delivery path enriches the projection outside the canonical write transaction, persists the new version atomically with a replacement outbox event, and then indexes it. DeepSeek is optional: the controlled ontology produces a deterministic passport when AI is unavailable.
+`embeddingText` is built deterministically from canonical fields: title + description + category + tags + businessName. No AI enrichment at index time. Meilisearch's native HuggingFace embedder generates vectors from `embeddingText` using the configured `documentTemplate`.
 
 ## Read path
 
-Meilisearch performs three bounded retrieval lanes:
+Meilisearch performs a single native hybrid search (`semanticRatio=0.5`) combining keyword and semantic matching in one API call. DeepSeek provides optional query interpretation (price range, city inference, ambiguity detection) that feeds into Meilisearch filters and post-retrieval ranking adjustments. When DeepSeek is unavailable, a regex-based fallback extracts price ranges from the raw query.
 
-1. complete normalized raw query;
-2. one combined expanded query containing approved aliases, synonyms, category terms, and related terms.
-3. one pure semantic request using the configured multilingual embedder.
+PostgreSQL hydrates Meilisearch results via `SearchDocumentService.findSearchableByAggregateIds`. There is no PostgreSQL full-text fallback or dirty overlay.
 
-The three rankings use Reciprocal Rank Fusion. Retrieval preserves each lane rank, each reciprocal-rank contribution, and the final fusion score in `SearchCandidateDto` instead of collapsing the result to aggregate IDs. A semantic-lane failure degrades to the two lexical lanes. PostgreSQL fallback uses the complete raw/expanded query rather than one first term. `SearchDocumentService` owns entity hydration and returns DTOs to the application layer. A query-relevant dirty overlay provides read-your-writes behavior.
+## Ranking
 
-Weighted lexical expansions, weighted controlled concepts, ambiguity, clarification suggestions, and intent hypotheses remain structured through retrieval and ranking. Deterministic ranking records its retrieval, text, attribute, distance, constraint, and active-offer signals. High-ambiguity results are diversified across hypotheses before pagination; no generative model selects a business.
+Three ASK-specific signals adjust the native Meilisearch `_rankingScore`:
 
-Only explicit filters eliminate candidates. Category, city, country, price, radius, and open-now filters pass through the search plan. Interpreted prices, cities, qualifiers, package sizes, `mustHave`, and `notWanted` values are ranking signals. Coordinates affect ranking only for explicit distance sorting or an explicit radius filter.
+1. **Price penalty**: documents outside explicit or inferred price range are penalized
+2. **City penalty**: documents in a different city than the inferred city are penalized
+3. **Unique offer boost**: active unique offers receive a fixed score boost
+
+There is no deterministic term matching, attribute scoring, weighted concepts, hypothesis diversification, or multi-signal scoring. Ranking is Meilisearch relevance first, with lightweight ASK-specific adjustments.
 
 ## Result presentation
 
 Each result is an Item or Service row with business logo/name, short Item/Service information, price when known, and a chat action. Opening the row presents the full Item/Service description plus the public Business profile: logo, cover, description, phone, email, Instagram, Telegram, and website. `resultId` is the canonical Item/Service aggregate ID.
 
-UniqueOffers may boost or decorate linked results but are never standalone search documents, scopes, or cards.
+Results are sectioned into "exact" (no warnings) and "alternatives" (price or city mismatch). UniqueOffers may boost or decorate linked results but are never standalone search documents, scopes, or cards.
 
 ## Import and enrichment
 
@@ -46,4 +46,4 @@ Import approval creates canonical Items/Services, complete projections, and outb
 
 The current import approval is one transaction for every valid row in the in-memory preview. It is all-or-nothing but can hold a transaction too long for large files; bounded chunking requires a separately approved partial-success contract.
 
-AI extraction runs outside database transactions. A short mutation transaction reloads current entities, applies additive enrichment, rebuilds each still-searchable projection, and publishes the returned sequence version. Inactive or hidden records receive a durable DELETE desired state.
+Platform AI enrichment updates Item/Service/UniqueOffer fields (description, attributes, tags) via `PlatformAiEnrichmentProcessor`. It does not enrich the search projection with semantic metadata.

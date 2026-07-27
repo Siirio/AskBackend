@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.search.basic.domain.AttributeKeys;
-import kz.ask.search.basic.domain.enums.SearchConcept;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ExternalServiceException;
 import lombok.Builder;
@@ -147,9 +146,8 @@ public class DeepSeekAttributeExtractor {
                         .distinct()
                         .toList())
                 .conceptIds(raw.conceptIds == null ? List.of() : raw.conceptIds.stream()
-                        .map(SearchConcept::resolve)
-                        .flatMap(java.util.Optional::stream)
-                        .map(SearchConcept::name)
+                        .filter(StringUtils::hasText)
+                        .map(String::trim)
                         .distinct()
                         .toList())
                 .useCases(raw.useCases == null ? List.of() : raw.useCases.stream()

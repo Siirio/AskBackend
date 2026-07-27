@@ -2,7 +2,6 @@ package kz.ask.search.basic.domain;
 
 import java.util.Optional;
 import kz.ask.search.basic.application.processor.SearchDeliveryConfirmationProcessor;
-import kz.ask.search.basic.application.processor.SearchSemanticEnrichmentProcessor;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.dto.SearchOutboxEventDto;
 import kz.ask.search.basic.domain.enums.SearchAggregateType;
@@ -22,7 +21,6 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
     private final MeilisearchIndexGateway meilisearchIndexGateway;
     private final MeilisearchDocumentMapper documentMapper;
     private final SearchDeliveryConfirmationProcessor confirmationProcessor;
-    private final SearchSemanticEnrichmentProcessor semanticEnrichmentProcessor;
 
     @Override
     public String deliver(SearchOutboxEventDto event) {
@@ -36,9 +34,6 @@ public class SearchIndexDeliveryServiceImpl implements SearchIndexDeliveryServic
             return SearchProjectionAction.STALE.name();
         }
         if (action == SearchProjectionAction.INDEX) {
-            if (semanticEnrichmentProcessor.enrichIfRequired(prepared.get())) {
-                return "SEMANTIC_ENRICHMENT";
-            }
             meilisearchIndexGateway.index(documentMapper.toIndexDocument(prepared.get()));
         } else {
             meilisearchIndexGateway.delete(event.getAggregateId());

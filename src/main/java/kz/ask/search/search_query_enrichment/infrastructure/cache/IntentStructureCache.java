@@ -1,12 +1,11 @@
 package kz.ask.search.search_query_enrichment.infrastructure.cache;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
+import kz.ask.search.basic.application.processor.SearchInterpretation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +17,9 @@ public class IntentStructureCache {
 
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public JsonNode get(SearchIntentStructureRequest request, String promptVersion,
-                        String modelVersion, String schemaVersion) {
-        String key = cacheKey(request, promptVersion, modelVersion, schemaVersion);
+    public SearchInterpretation getInterpretation(String queryKey, String promptVersion,
+                                                   String modelVersion, String schemaVersion) {
+        String key = cacheKey(queryKey, promptVersion, modelVersion, schemaVersion);
         CacheEntry entry = cache.get(key);
         if (entry == null) {
             return null;
@@ -30,13 +29,14 @@ public class IntentStructureCache {
             return null;
         }
         log.debug("Cache hit for query: {}", key);
-        return entry.data;
+        return entry.interpretation;
     }
 
-    public void put(SearchIntentStructureRequest request, String promptVersion,
-                    String modelVersion, String schemaVersion, JsonNode data) {
-        String key = cacheKey(request, promptVersion, modelVersion, schemaVersion);
-        cache.put(key, new CacheEntry(data, Instant.now().plusSeconds(TTL_SECONDS)));
+    public void putInterpretation(String queryKey, String promptVersion,
+                                   String modelVersion, String schemaVersion,
+                                   SearchInterpretation interpretation) {
+        String key = cacheKey(queryKey, promptVersion, modelVersion, schemaVersion);
+        cache.put(key, new CacheEntry(interpretation, Instant.now().plusSeconds(TTL_SECONDS)));
         evictIfNeeded();
     }
 
@@ -53,37 +53,18 @@ public class IntentStructureCache {
         }
     }
 
-    private String normalizeKey(String rawQuery) {
-        if (rawQuery == null) {
-            return "";
-        }
-        return rawQuery.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-    }
-
-    private String cacheKey(SearchIntentStructureRequest request, String promptVersion,
+    private String cacheKey(String queryKey, String promptVersion,
                             String modelVersion, String schemaVersion) {
         return String.join("|",
-                normalizeKey(request.getRawQuery()),
-                value(request.getSelectedMode()),
-                value(request.getLanguage()),
-                value(request.getCity()),
-                value(request.getCountry()),
-                value(request.getSelectedCategory()),
-                value(request.getExplicitMinPrice()),
-                value(request.getExplicitMaxPrice()),
-                value(request.getOpenNow()),
-                value(request.getRadiusMeters()),
-                value(request.getSort()),
-                request.getUserLocation() == null ? "" : value(request.getUserLocation().getLat()),
-                request.getUserLocation() == null ? "" : value(request.getUserLocation().getLng()),
-                value(promptVersion),
-                value(modelVersion),
-                value(schemaVersion));
+                normalize(queryKey),
+                normalize(promptVersion),
+                normalize(modelVersion),
+                normalize(schemaVersion));
     }
 
-    private String value(Object value) {
-        return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private record CacheEntry(JsonNode data, Instant expiresAt) {}
+    private record CacheEntry(SearchInterpretation interpretation, Instant expiresAt) {}
 }
