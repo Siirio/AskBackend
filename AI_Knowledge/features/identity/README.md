@@ -11,6 +11,9 @@ Customer and business authentication: email-based login/registration, Google OAu
 - Customer registration collects legal acceptance only after email verification and role choice. Customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 - Exactly one primary login identifier required. Password stored only as hash.
 - Verification codes: 6 digits, stored hashed.
+- Authenticated password changes and two-factor setting changes use purpose-bound email challenges. Requesting a replacement invalidates only the previous pending challenge for the same user and purpose.
+- A password change keeps the current session active and revokes every other session. Two-factor login applies to every account role and does not create a session or update `lastLoginAt` until its code is confirmed.
+- Invalid verification attempts and terminal challenge status changes commit independently so an outer authentication transaction cannot reset the configured attempt limit.
 - Access tokens are HS256 JWTs signed with `auth.jwt.secret`. The `sid` claim points to a hashed, revocable server-side session so logout and expiry remain enforceable.
 - Remember-me extends session TTL via backend config.
 - Successful OTP, password, and Google logins update `lastLoginAt`.

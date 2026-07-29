@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -37,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -105,7 +107,7 @@ public class IdentityServiceImpl implements IdentityService {
                                             String registrationData) {
         AppUser user = userId != null ? appUserRepository.getReferenceById(userId) : null;
         if (user != null) {
-            expireUserPendingChallenges(user);
+            expireUserPendingChallenges(user, purpose);
         }
         String code = generateCode();
         Verification verification = verificationMapper.toVerificationEntity(
@@ -118,10 +120,19 @@ public class IdentityServiceImpl implements IdentityService {
     }
 
     @Override
-    @Transactional
-    public VerificationDto verifyCode(UUID challengeId, String code) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = ValidationException.class)
+    public VerificationDto verifyCode(
+            UUID challengeId,
+            String code,
+            UUID expectedUserId,
+            VerificationPurpose... allowedPurposes) {
         Verification verification = verificationRepository.findByIdAndStatus(challengeId, VerificationStatus.PENDING)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CHALLENGE_NOT_FOUND, challengeId));
+        if ((expectedUserId != null
+                && (verification.getUser() == null || !expectedUserId.equals(verification.getUser().getId())))
+                || Arrays.stream(allowedPurposes).noneMatch(purpose -> purpose == verification.getPurpose())) {
+            throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challengeId);
+        }
         if (verification.getExpiresAt().isBefore(Instant.now())) {
             verification.setStatus(VerificationStatus.EXPIRED);
             throw new ValidationException(ErrorCode.CHALLENGE_EXPIRED, challengeId);
@@ -367,9 +378,22 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public void toggleTwoFactor(UUID userId) {
+    public void changePasswordHash(UUID userId, String passwordHash) {
         AppUser user = appUserRepository.getReferenceById(userId);
-        user.setIsTwoFactorEnabled(!Boolean.TRUE.equals(user.getIsTwoFactorEnabled()));
+        user.setPasswordHash(passwordHash);
+    }
+
+    @Override
+    @Transactional
+    public void revokeOtherSessions(UUID userId, UUID currentSessionId) {
+        authSessionRepository.revokeOtherSessions(userId, currentSessionId, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public void setTwoFactorEnabled(UUID userId, Boolean enabled) {
+        AppUser user = appUserRepository.getReferenceById(userId);
+        user.setIsTwoFactorEnabled(Boolean.TRUE.equals(enabled));
     }
 
     @Override
@@ -445,10 +469,11 @@ public class IdentityServiceImpl implements IdentityService {
         return remembered ? businessRememberedSessionTtlSeconds : businessSessionTtlSeconds;
     }
 
-    private void expireUserPendingChallenges(AppUser user) {
+    private void expireUserPendingChallenges(AppUser user, VerificationPurpose purpose) {
         if (user == null) return;
-        verificationRepository.expirePendingChallenges(
-                Instant.now(),
+        verificationRepository.expirePendingChallengesForUser(
+                user.getId(),
+                purpose,
                 VerificationStatus.EXPIRED,
                 VerificationStatus.PENDING);
     }
@@ -459,6 +484,11 @@ public class IdentityServiceImpl implements IdentityService {
 
     public Boolean verifyPassword(String rawPassword, String encodedPassword) {
         return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+
+    @Override
+    public String encodePassword(String password) {
+        return hashPassword(password);
     }
 
     private String blankToNull(String s) {

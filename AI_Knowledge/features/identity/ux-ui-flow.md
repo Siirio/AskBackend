@@ -39,3 +39,7 @@
 - PATCH /api/v1/auth/profile: partial update (only non-null fields changed)
 - Can update displayName, email, phone independently
 - Profile settings expose account deletion but no account-data export action.
+- Password change opens a dedicated two-step dialog: current/new/confirmation → email code → confirmed change.
+- Two-factor enable and disable use a separate two-step dialog with an explicit target state and email code.
+- Both verification inputs accept exactly 6 digits, support resend, disable duplicate submissions, and clear locally held passwords and codes when closed.
+- `AuthSessionResponse.isTwoFactorEnabled` is the source of truth for the current setting. `requiresTwoFactor` remains a login-challenge signal, not the persisted setting.

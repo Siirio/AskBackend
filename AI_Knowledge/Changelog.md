@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-29 | Replaced direct authenticated password and 2FA mutations with purpose-bound request/confirm email challenges; password confirmation now preserves the current session and revokes the others, while 2FA login creates no session before code confirmation | identity API, verification lifecycle, auth sessions, profile security
+
 2026-07-29 | Restored the two-migration fresh-deploy baseline by moving AppUser.phone into V1 DDL and removing the standalone V3; V2 remains reference-data inserts only | V1__init.sql, V2__reference_data.sql, removed V3__app_user_phone.sql
 
 2026-07-29 | Corrected AuthSessionResponse.allRoles to include the personal AppUser role together with every active business and platform membership role while retaining membership objects as the authorization source for each context | identity session capabilities, login responses, frontend auth contract
