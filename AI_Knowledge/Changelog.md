@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-29 | Restored the two-migration fresh-deploy baseline by moving AppUser.phone into V1 DDL and removing the standalone V3; V2 remains reference-data inserts only | V1__init.sql, V2__reference_data.sql, removed V3__app_user_phone.sql
+
 2026-07-29 | Corrected AuthSessionResponse.allRoles to include the personal AppUser role together with every active business and platform membership role while retaining membership objects as the authorization source for each context | identity session capabilities, login responses, frontend auth contract
 
 2026-07-27 | Replaced the former branch-only delivery assumption with a seller-supplied BusinessProfile fulfilment policy because online businesses may have no branch. Seller onboarding now persists delivery coverage, selected cities, and pickup availability; OWNER/MANAGER may edit the same fields later | seller onboarding, BusinessProfile, V1 baseline, frontend business profile

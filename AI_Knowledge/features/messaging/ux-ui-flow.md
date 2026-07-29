@@ -12,6 +12,7 @@
 - "Chats" tab appears in customer UI only after real chat interaction
 - Business sees conversations in Activity tab
 - Unread badges per conversation
+- Customer messages use the customer accent and business messages use the business accent. The current participant's messages align right; the counterpart's messages align left across the customer page, contextual drawers, and business inbox.
 - Own messages show sent and read states derived from `readAt`; customer, business, support, and managed-import drawers use the same receipt semantics.
 - System messages (confirmations, time changes) rendered with distinct style from user messages
 

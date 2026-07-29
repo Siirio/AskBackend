@@ -1,2 +1,0 @@
-ALTER TABLE app_user
-    ADD COLUMN phone VARCHAR(32);

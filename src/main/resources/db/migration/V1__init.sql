@@ -16,6 +16,7 @@ CREATE TABLE app_user (
     created_at              TIMESTAMPTZ NOT NULL,
     updated_at              TIMESTAMPTZ NOT NULL,
     email                   VARCHAR(255),
+    phone                   VARCHAR(32),
     display_name            VARCHAR(255) NOT NULL,
     password_hash           VARCHAR(255) NOT NULL,
     role                    VARCHAR(50)  NOT NULL,
