@@ -27,7 +27,7 @@
 
 ## Key DTOs
 - VerificationResponse: verificationId, role, purpose, channel, maskedDestination, expiresAt
-- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, verificationId, suggestRoleExpansion
+- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, isTwoFactorEnabled, verificationId, suggestRoleExpansion
 - AuthUserResponse: userId, displayName, email, phone, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
 - `allRoles` contains the deduplicated union of the AppUser role, all active `businessMemberships[].role` values, and `platformMembership.role` when present.
@@ -38,9 +38,13 @@
 |--------|------|------|---------|
 | POST | /api/v1/auth/select-role | No | Select role when account has multiple roles |
 | POST | /api/v1/auth/switch-role | Bearer | Switch active role between sessions |
-| POST | /api/v1/auth/change-password | Bearer | Change the authenticated identity password (`currentPassword`, `newPassword`) |
-| POST | /api/v1/auth/toggle-2fa | Bearer | Enable/disable two-factor auth |
+| POST | /api/v1/auth/password-change/request | Bearer | Validate `currentPassword`, `newPassword`, and `passwordConfirmation`; send a purpose-bound email code |
+| POST | /api/v1/auth/password-change/confirm | Bearer | Verify `verificationId` + 6-digit `code`, apply the staged password hash, preserve the current session, and revoke all other sessions |
+| POST | /api/v1/auth/two-factor/request | Bearer | Request an email challenge for the explicit `enabled` target state |
+| POST | /api/v1/auth/two-factor/confirm | Bearer | Verify `verificationId` + 6-digit `code` and apply the challenge-bound target state |
 | GET | /api/v1/auth/email-info | No | Get email provider info for login hint |
+
+Password and two-factor challenges are authenticated, owner-bound, and purpose-bound. The public `/api/v1/auth/verify` endpoint accepts only `LOGIN` and `REGISTER`; it cannot consume security-setting challenges. Resending replaces only a pending challenge with the same user and purpose.
 
 ## JSON Wire Format
 All API responses and requests use **snake_case** property naming. Jackson is configured with `SNAKE_CASE` in `application.yml` (`spring.jackson.property-naming-strategy: SNAKE_CASE`).

@@ -17,6 +17,7 @@ import kz.ask.identity.api.dto.CustomerRegisterRequest;
 import kz.ask.identity.api.dto.LoginRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
 import kz.ask.identity.api.dto.RequestEmailChangeRequest;
+import kz.ask.identity.api.dto.TwoFactorChangeRequest;
 import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.application.AuthProcessor;
@@ -132,18 +133,39 @@ public class AuthController {
         return ResponseEntity.ok(authProcessor.confirmEmailChange(principal, req));
     }
 
-    @Operation(summary = "Change password", description = "Changes password for a specific role of the authenticated user")
+    @Operation(summary = "Request password change", description = "Validates the current password and sends a verification code")
     @SecurityRequirement(name = "bearerAuth")
-    @PostMapping("/change-password")
-    public ResponseEntity<AuthSessionResponse> changePassword(@AuthenticationPrincipal AskPrincipal principal,
-                                                               @Valid @RequestBody ChangePasswordRequest req) {
-        return ResponseEntity.ok(authProcessor.changePassword(principal, req));
+    @PostMapping("/password-change/request")
+    public ResponseEntity<VerificationResponse> requestPasswordChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest req) {
+        return ResponseEntity.ok(authProcessor.requestPasswordChange(principal, req));
     }
 
-    @Operation(summary = "Toggle 2FA", description = "Toggles two-factor authentication for the current user")
+    @Operation(summary = "Confirm password change", description = "Consumes the email challenge and changes the password")
     @SecurityRequirement(name = "bearerAuth")
-    @PostMapping("/toggle-2fa")
-    public ResponseEntity<AuthSessionResponse> toggleTwoFactor(@AuthenticationPrincipal AskPrincipal principal) {
-        return ResponseEntity.ok(authProcessor.toggleTwoFactor(principal));
+    @PostMapping("/password-change/confirm")
+    public ResponseEntity<AuthSessionResponse> confirmPasswordChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody VerifyCodeRequest req) {
+        return ResponseEntity.ok(authProcessor.confirmPasswordChange(principal, req));
+    }
+
+    @Operation(summary = "Request two-factor change", description = "Sends a code before enabling or disabling two-factor authentication")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/two-factor/request")
+    public ResponseEntity<VerificationResponse> requestTwoFactorChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody TwoFactorChangeRequest req) {
+        return ResponseEntity.ok(authProcessor.requestTwoFactorChange(principal, req));
+    }
+
+    @Operation(summary = "Confirm two-factor change", description = "Consumes the email challenge and applies the requested state")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/two-factor/confirm")
+    public ResponseEntity<AuthSessionResponse> confirmTwoFactorChange(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @Valid @RequestBody VerifyCodeRequest req) {
+        return ResponseEntity.ok(authProcessor.confirmTwoFactorChange(principal, req));
     }
 }

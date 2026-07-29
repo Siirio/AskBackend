@@ -23,6 +23,7 @@ import kz.ask.identity.api.dto.CustomerLoginStartRequest;
 import kz.ask.identity.api.dto.CustomerRegisterRequest;
 import kz.ask.identity.api.dto.LogoutResponse;
 import kz.ask.identity.api.dto.RequestEmailChangeRequest;
+import kz.ask.identity.api.dto.TwoFactorChangeRequest;
 import kz.ask.identity.api.dto.UpdateProfileRequest;
 import kz.ask.identity.api.dto.VerifyCodeRequest;
 import kz.ask.identity.domain.IdentityService;
@@ -159,8 +160,14 @@ public class AuthProcessor {
 
     @Transactional
     public AuthSessionResponse verifyCode(VerifyCodeRequest req) {
-        VerificationDto challenge = identityService.verifyCode(req.getVerificationId(), req.getCode());
-        if (challenge.getPurpose() == VerificationPurpose.EMAIL_CHANGE) {
+        VerificationDto challenge = identityService.verifyCode(
+                req.getVerificationId(),
+                req.getCode(),
+                null,
+                VerificationPurpose.LOGIN,
+                VerificationPurpose.REGISTER);
+        if (challenge.getPurpose() != VerificationPurpose.LOGIN
+                && challenge.getPurpose() != VerificationPurpose.REGISTER) {
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
         }
 
@@ -237,7 +244,11 @@ public class AuthProcessor {
 
     @Transactional
     public AuthSessionResponse confirmEmailChange(AskPrincipal principal, VerifyCodeRequest req) {
-        VerificationDto challenge = identityService.verifyCode(req.getVerificationId(), req.getCode());
+        VerificationDto challenge = identityService.verifyCode(
+                req.getVerificationId(),
+                req.getCode(),
+                principal.getUserId(),
+                VerificationPurpose.EMAIL_CHANGE);
         if (challenge.getPurpose() != VerificationPurpose.EMAIL_CHANGE
                 || !principal.getUserId().equals(challenge.getUserId())) {
             throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
@@ -262,32 +273,126 @@ public class AuthProcessor {
     }
 
     @Transactional
-    public AuthSessionResponse changePassword(AskPrincipal principal, ChangePasswordRequest req) {
+    public VerificationResponse requestPasswordChange(AskPrincipal principal, ChangePasswordRequest req) {
+        if (!req.getNewPassword().equals(req.getPasswordConfirmation())) {
+            throw new ValidationException(ErrorCode.PASSWORDS_DO_NOT_MATCH);
+        }
         AppUserDto user = identityService.findById(principal.getUserId());
         if (!identityService.verifyPassword(req.getCurrentPassword(), user.getPasswordHash())) {
             throw new AuthException(ErrorCode.INVALID_CREDENTIALS);
         }
+        VerificationDto challenge = identityService.createVerification(
+                user.getId(),
+                user.getEmail(),
+                VerificationChannel.EMAIL,
+                VerificationPurpose.PASSWORD_CHANGE,
+                false,
+                identityService.encodePassword(req.getNewPassword()));
+        if (Boolean.TRUE.equals(testMode)) {
+            return buildChallengeResponse(challenge, user.getEmail(), user.getRole().name(), challenge.getCodePlain());
+        }
+        emailSender.sendCode(user.getEmail(), challenge.getCodePlain());
+        return buildChallengeResponse(
+                challenge,
+                identityService.maskEmail(user.getEmail()),
+                user.getRole().name(),
+                null);
+    }
 
-        identityService.changePassword(user.getId(), req.getNewPassword());
-        identityService.logout(user.getId());
-        identityService.recordLogin(user.getId());
+    @Transactional
+    public AuthSessionResponse confirmPasswordChange(AskPrincipal principal, VerifyCodeRequest req) {
+        VerificationDto challenge = verifyAuthenticatedChallenge(
+                principal,
+                req,
+                VerificationPurpose.PASSWORD_CHANGE);
+        if (challenge.getRegistrationData() == null || challenge.getRegistrationData().isBlank()) {
+            throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
+        }
+        identityService.changePasswordHash(principal.getUserId(), challenge.getRegistrationData());
+        identityService.revokeOtherSessions(principal.getUserId(), principal.getSessionId());
+        identityService.clearChallengeRegistrationData(challenge.getId());
+        return currentSession(principal);
+    }
 
-        BusinessRegistrationResult bizResult = resolveBusinessContext(user);
+    @Transactional
+    public VerificationResponse requestTwoFactorChange(AskPrincipal principal, TwoFactorChangeRequest req) {
+        AppUserDto user = identityService.findById(principal.getUserId());
+        boolean enabled = Boolean.TRUE.equals(req.getEnabled());
+        if (Boolean.TRUE.equals(user.getIsTwoFactorEnabled()) == enabled) {
+            throw new ValidationException(ErrorCode.TWO_FACTOR_STATE_CHANGED);
+        }
+        VerificationPurpose purpose = enabled
+                ? VerificationPurpose.TWO_FACTOR_ENABLE
+                : VerificationPurpose.TWO_FACTOR_DISABLE;
+        VerificationDto challenge = identityService.createVerification(
+                user.getId(),
+                user.getEmail(),
+                VerificationChannel.EMAIL,
+                purpose,
+                false,
+                Boolean.toString(enabled));
+        if (Boolean.TRUE.equals(testMode)) {
+            return buildChallengeResponse(challenge, user.getEmail(), user.getRole().name(), challenge.getCodePlain());
+        }
+        emailSender.sendCode(user.getEmail(), challenge.getCodePlain());
+        return buildChallengeResponse(
+                challenge,
+                identityService.maskEmail(user.getEmail()),
+                user.getRole().name(),
+                null);
+    }
 
-        String authority = authorityForSession(user, bizResult);
-        AuthSessionDto session = identityService.createSession(user.getId(), authority, false);
-        return buildSessionResponse(session, user, bizResult);
+    @Transactional
+    public AuthSessionResponse confirmTwoFactorChange(AskPrincipal principal, VerifyCodeRequest req) {
+        VerificationDto challenge = identityService.verifyCode(
+                req.getVerificationId(),
+                req.getCode(),
+                principal.getUserId(),
+                VerificationPurpose.TWO_FACTOR_ENABLE,
+                VerificationPurpose.TWO_FACTOR_DISABLE);
+        if (!"true".equals(challenge.getRegistrationData())
+                && !"false".equals(challenge.getRegistrationData())) {
+            throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
+        }
+        boolean enabled = Boolean.parseBoolean(challenge.getRegistrationData());
+        VerificationPurpose expectedPurpose = enabled
+                ? VerificationPurpose.TWO_FACTOR_ENABLE
+                : VerificationPurpose.TWO_FACTOR_DISABLE;
+        validateAuthenticatedChallenge(principal, challenge, expectedPurpose);
+        if (identityService.isTwoFactorEnabled(principal.getUserId()) == enabled) {
+            throw new ValidationException(ErrorCode.TWO_FACTOR_STATE_CHANGED);
+        }
+        identityService.setTwoFactorEnabled(principal.getUserId(), enabled);
+        identityService.clearChallengeRegistrationData(challenge.getId());
+        return currentSession(principal);
+    }
+
+    private VerificationDto verifyAuthenticatedChallenge(
+            AskPrincipal principal,
+            VerifyCodeRequest req,
+            VerificationPurpose purpose) {
+        VerificationDto challenge = identityService.verifyCode(
+                req.getVerificationId(),
+                req.getCode(),
+                principal.getUserId(),
+                purpose);
+        validateAuthenticatedChallenge(principal, challenge, purpose);
+        return challenge;
+    }
+
+    private void validateAuthenticatedChallenge(
+            AskPrincipal principal,
+            VerificationDto challenge,
+            VerificationPurpose purpose) {
+        if (challenge.getPurpose() != purpose
+                || !principal.getUserId().equals(challenge.getUserId())) {
+            throw new ValidationException(ErrorCode.CHALLENGE_INVALID_CODE, challenge.getId());
+        }
     }
 
     @Transactional
     public void cancelVerification(CancelVerificationRequest req) {
         identityService.cancelVerification(req.getVerificationId());
-    }
-
-    @Transactional
-    public AuthSessionResponse toggleTwoFactor(AskPrincipal principal) {
-        identityService.toggleTwoFactor(principal.getUserId());
-        return currentSession(principal);
     }
 
     private VerificationResponse createLoginChallenge(UUID userId, String email, Boolean rememberMe) {
@@ -411,6 +516,7 @@ public class AuthProcessor {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
                 .requiresRoleSelection(false)
+                .isTwoFactorEnabled(Boolean.TRUE.equals(user.getIsTwoFactorEnabled()))
                 .user(buildUserResponse(user));
 
         if (session != null) {

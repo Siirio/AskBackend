@@ -21,7 +21,11 @@ public interface IdentityService {
                                      Boolean rememberMe,
                                      String registrationData);
 
-    VerificationDto verifyCode(UUID challengeId, String code);
+    VerificationDto verifyCode(
+            UUID challengeId,
+            String code,
+            UUID expectedUserId,
+            VerificationPurpose... allowedPurposes);
 
     void cancelVerification(UUID challengeId);
 
@@ -59,6 +63,8 @@ public interface IdentityService {
 
     Boolean verifyPassword(String rawPassword, String encodedPassword);
 
+    String encodePassword(String password);
+
     String maskEmail(String email);
 
     Long staffSessionTtl(Boolean remembered);
@@ -73,7 +79,11 @@ public interface IdentityService {
 
     void changePassword(UUID userId, String newPassword);
 
-    void toggleTwoFactor(UUID userId);
+    void changePasswordHash(UUID userId, String passwordHash);
+
+    void revokeOtherSessions(UUID userId, UUID currentSessionId);
+
+    void setTwoFactorEnabled(UUID userId, Boolean enabled);
 
     Boolean isTwoFactorEnabled(UUID userId);
 

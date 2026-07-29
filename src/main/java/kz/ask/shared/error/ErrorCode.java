@@ -13,6 +13,7 @@ public enum ErrorCode {
     SESSION_INVALID("Сессия недействительна"),
     PASSWORD_CHANGE_NOT_REQUIRED("Смена пароля не требуется"),
     PASSWORDS_DO_NOT_MATCH("Пароли не совпадают"),
+    TWO_FACTOR_STATE_CHANGED("Настройка двухфакторной защиты уже изменилась"),
     CHALLENGE_EXPIRED("Код подтверждения истек: %s"),
     CHALLENGE_MAX_ATTEMPTS("Превышено количество попыток: %s"),
     CHALLENGE_INVALID_CODE("Неверный код подтверждения: %s"),

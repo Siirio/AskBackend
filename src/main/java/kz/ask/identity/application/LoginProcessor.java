@@ -15,7 +15,6 @@ import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.identity.domain.dto.VerificationDto;
 import kz.ask.identity.domain.dto.AuthSessionDto;
 import kz.ask.identity.authorization.domain.enums.Role;
-import kz.ask.identity.authorization.domain.enums.RoleGroup;
 import kz.ask.identity.domain.enums.VerificationChannel;
 import kz.ask.identity.domain.enums.VerificationPurpose;
 import kz.ask.identity.domain.enums.UserStatus;
@@ -62,19 +61,16 @@ public class LoginProcessor {
     }
 
     private AuthSessionResponse loginSingleRole(AppUserDto user) {
-        identityService.recordLogin(user.getId());
-
         BusinessRegistrationResult bizResult = resolveBusiness(user);
 
         if (user.getIsPasswordChangeRequired()) {
+            identityService.recordLogin(user.getId());
             Long ttl = identityService.staffActivationSessionTtl();
             AuthSessionDto session = identityService.createSession(user.getId(), "ROLE_USER", false, ttl, true);
             return buildSessionResponse(session, user, bizResult);
         }
 
-        boolean isPlatformRole = user.getRole().getGroup() == RoleGroup.PLATFORM;
-
-        if (!isPlatformRole && Boolean.TRUE.equals(user.getIsTwoFactorEnabled())) {
+        if (Boolean.TRUE.equals(user.getIsTwoFactorEnabled())) {
             VerificationDto challenge = identityService.createVerification(
                     user.getId(), user.getEmail(),
                     VerificationChannel.EMAIL, VerificationPurpose.LOGIN,
@@ -88,6 +84,7 @@ public class LoginProcessor {
                     .build();
         }
 
+        identityService.recordLogin(user.getId());
         String authority = resolveAuthority(user.getRole());
         AuthSessionDto session = identityService.createSession(user.getId(), authority, false);
         return buildSessionResponse(session, user, bizResult);
@@ -133,6 +130,7 @@ public class LoginProcessor {
                                                       BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
+                .isTwoFactorEnabled(Boolean.TRUE.equals(user.getIsTwoFactorEnabled()))
                 .accessToken(jwtTokenService.issue(
                         new AskPrincipal(user.getId(), session.getId(), user.getDisplayName(), session.getAuthority()),
                         session.getExpiresAt()))
