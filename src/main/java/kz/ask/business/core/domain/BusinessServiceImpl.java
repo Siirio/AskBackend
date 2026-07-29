@@ -101,7 +101,8 @@ public class BusinessServiceImpl implements BusinessService {
                                               String contactEmail,
                                               DeliveryCoverage deliveryCoverage,
                                               List<String> deliveryCities,
-                                              Boolean pickupAvailable) {
+                                              Boolean pickupAvailable,
+                                              boolean hasPhysicalBranches) {
         if (businessScope == null) {
             throw new ValidationException(ErrorCode.BUSINESS_SCOPE_REQUIRED);
         }
@@ -119,7 +120,7 @@ public class BusinessServiceImpl implements BusinessService {
         String normalizedIdentifier = legalIdentifier == null || legalIdentifier.isBlank()
                 ? null : legalIdentifier.trim();
         Business business = businessRepository.save(businessMapper.toBusinessEntity(
-                businessName.trim(), category, businessScope, countryCode, true, legalForm,
+                businessName.trim(), category, businessScope, countryCode, !hasPhysicalBranches, legalForm,
                 normalizedIdentifier, legalName == null || legalName.isBlank() ? null : legalName.trim()));
         UUID businessId = business.getId();
         BusinessMemberDto memberDto = businessMemberService.createOwner(businessId, ownerId);

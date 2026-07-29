@@ -2,7 +2,7 @@
 
 ## Business cabinet
 - Offers tab: create and manage promotional offers
-- Create form: name, description, type (DISCOUNT/NEW_COLLECTION/etc.), discount value, dates, cover image, linked products/services/branches
+- Create form: name, description, type (DISCOUNT/NEW_COLLECTION/etc.), dates, uploaded cover image, linked items/services/branches. Discount percent and amount are optional and appear only for `DISCOUNT`.
 - Toggle enabled/disabled independently from edit
 - Offer card shows: status (UPCOMING/ACTIVE/ENDED/CANCELLED), linked item count, dates
 

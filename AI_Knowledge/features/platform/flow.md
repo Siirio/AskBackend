@@ -1,5 +1,7 @@
 # Platform flow
 
+Normal Item/Service mutation -> synchronous publication -> automated safety check -> no event for safe content OR owning-section moderation event for suspicious content -> platform review -> BLOCK/UNBLOCK/REJECT decision.
+
 ```mermaid
 flowchart LR
     SA[Configured super-admin bootstrap] --> PM[Platform membership]

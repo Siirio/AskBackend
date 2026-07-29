@@ -12,6 +12,7 @@ LOCKED | Worker never holds a database transaction during Meilisearch calls | Ex
 LOCKED | Delivery confirmation requeues the newest desired action/version after any interleaving mutation | Old UPSERT/DELETE may not remain final in Meilisearch | SearchDeliveryConfirmationProcessor
 LOCKED | Explicit filters are hard; interpreted query signals are soft | AI/text inference may be wrong | SearchPlan, StructuredSearchProcessor
 LOCKED | Distance affects rank only for explicit distance sorting | Coordinates alone are not location intent | StructuredSearchProcessor
+LOCKED | Results Filter & Sort V1 only reorders or removes cards from the currently loaded page | UI refinement must not change the search request, retrieval, ranking, or pagination contract | ResultsPage, SearchFilterSort
 LOCKED | Public resultId equals aggregateId | SearchDocument UUID is internal projection identity | SearchCardResponse
 LOCKED | A single native Meilisearch hybrid search executes per query (semanticRatio=0.5) | Simpler, faster, no fusion complexity | MeilisearchIndexGatewayImpl
 LOCKED | Generative AI does not rank businesses; it provides optional query interpretation only | Query understanding may be probabilistic while ranking remains deterministic | SearchPlan, StructuredSearchProcessor

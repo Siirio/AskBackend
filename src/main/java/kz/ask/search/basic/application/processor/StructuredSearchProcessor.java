@@ -152,7 +152,7 @@ public class StructuredSearchProcessor {
 
                     Integer distanceMeters = null;
                     String distanceText = null;
-                    if ("distance".equals(plan.getSort()) && userLocation != null
+                    if (userLocation != null
                             && doc.getLatitude() != null && doc.getLongitude() != null) {
                         distanceMeters = DistanceCalculator.meters(
                                 userLocation.getLat(), userLocation.getLng(),
@@ -385,6 +385,9 @@ public class StructuredSearchProcessor {
                 .matchReasons(matchReasons(ranked, language))
                 .badges(resolveBadges(brandProfile, doc, ranked.activeOfferLabel))
                 .distanceMeters(ranked.distanceMeters)
+                .latitude(doc.getLatitude())
+                .longitude(doc.getLongitude())
+                .hasActiveOffer(ranked.activeOfferLabel != null && !ranked.activeOfferLabel.isBlank())
                 .branchName(doc.getBranchName())
                 .branchAddress(doc.getBranchAddress())
                 .branchCity(doc.getCity())

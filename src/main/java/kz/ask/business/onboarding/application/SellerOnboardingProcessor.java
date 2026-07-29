@@ -1,5 +1,9 @@
 package kz.ask.business.onboarding.application;
 
+import java.util.List;
+import java.util.UUID;
+import kz.ask.business.branch.api.dto.CreateBranchRequest;
+import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.core.domain.BusinessService;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.onboarding.api.dto.CatalogSetupMode;
@@ -18,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerOnboardingProcessor {
 
     private final BusinessService businessService;
+    private final BusinessBranchService businessBranchService;
     private final BusinessVerificationService businessVerificationService;
 
     @Transactional
@@ -28,7 +33,8 @@ public class SellerOnboardingProcessor {
                 request.getLegalForm(), request.getLegalIdentifier(), request.getLegalName(),
                 request.getCountryCode(), request.getCorporateEmail(),
                 request.getDeliveryCoverage(), request.getDeliveryCities(),
-                request.getPickupAvailable());
+                request.getPickupAvailable(), !pickupBranches(request).isEmpty());
+        pickupBranches(request).forEach(branch -> createBranch(registration.getBusiness().getId(), branch));
         businessVerificationService.create(registration.getBusiness().getId(),
                 verification(request));
         return SellerOnboardingResponse.builder()
@@ -37,6 +43,17 @@ public class SellerOnboardingProcessor {
                 .startRoute(request.getCatalogSetupMode() == CatalogSetupMode.ASK_MANAGED_IMPORT
                         ? "MANAGED_IMPORT" : "BUSINESS_CABINET")
                 .build();
+    }
+
+    private List<CreateBranchRequest> pickupBranches(SellerOnboardingRequest request) {
+        return request.getPickupBranches() == null ? List.of() : request.getPickupBranches();
+    }
+
+    private void createBranch(UUID businessId, CreateBranchRequest branch) {
+        businessBranchService.create(
+                businessId, branch.getCityId(), branch.getName(), branch.getAddress(),
+                branch.getAddressDetails(), branch.getLatitude(), branch.getLongitude(),
+                branch.getTimeZoneId(), branch.getWeeklyHours(), branch.getSpecialHours(), true);
     }
 
     private BusinessVerificationDto verification(SellerOnboardingRequest request) {

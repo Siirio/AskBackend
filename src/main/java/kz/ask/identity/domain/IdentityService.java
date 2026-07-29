@@ -67,7 +67,7 @@ public interface IdentityService {
 
     void updatePendingUserCredentials(UUID userId, String email, String displayName, String password);
 
-    void updateProfile(UUID userId, String displayName, String email);
+    void updateProfile(UUID userId, String displayName, String email, String phone);
 
     void updateEmail(UUID userId, String email);
 

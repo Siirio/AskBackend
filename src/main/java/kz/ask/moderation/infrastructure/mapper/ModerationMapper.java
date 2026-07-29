@@ -44,10 +44,26 @@ public class ModerationMapper {
                 .targetId(entity.getTargetId())
                 .reasonCode(entity.getReasonCode())
                 .details(entity.getDetails())
+                .severity(resolveSeverity(entity.getReasonCode()))
                 .status(entity.getModerationStatus().name())
                 .note(entity.getNote())
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    private String resolveSeverity(String reasonCode) {
+        if (reasonCode == null) {
+            return "REVIEW";
+        }
+        String normalized = reasonCode.toUpperCase();
+        return normalized.contains("CRITICAL")
+                || normalized.contains("ILLEGAL")
+                || normalized.contains("FRAUD")
+                || normalized.contains("THREAT")
+                || normalized.contains("VIOLENCE")
+                || normalized.contains("CHILD")
+                ? "CRITICAL"
+                : "REVIEW";
     }
 
     public ModerationActionResponse toModerationActionResponse(ModerationAction entity) {

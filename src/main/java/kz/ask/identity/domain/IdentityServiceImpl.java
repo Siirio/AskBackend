@@ -345,9 +345,10 @@ public class IdentityServiceImpl implements IdentityService {
 
     @Override
     @Transactional
-    public void updateProfile(UUID userId, String displayName, String email) {
+    public void updateProfile(UUID userId, String displayName, String email, String phone) {
         AppUser user = appUserRepository.getReferenceById(userId);
         if (displayName != null) user.setDisplayName(displayName);
+        if (phone != null) user.setPhone(blankToNull(phone));
     }
 
     @Override

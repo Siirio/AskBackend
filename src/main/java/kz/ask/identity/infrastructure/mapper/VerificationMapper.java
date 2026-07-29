@@ -79,6 +79,7 @@ public class VerificationMapper {
         return AppUserDto.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
+                .phone(entity.getPhone())
                 .displayName(entity.getDisplayName())
                 .passwordHash(entity.getPasswordHash())
                 .role(entity.getRole())

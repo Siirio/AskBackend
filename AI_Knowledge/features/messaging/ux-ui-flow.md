@@ -12,6 +12,7 @@
 - "Chats" tab appears in customer UI only after real chat interaction
 - Business sees conversations in Activity tab
 - Unread badges per conversation
+- Own messages show sent and read states derived from `readAt`; customer, business, support, and managed-import drawers use the same receipt semantics.
 - System messages (confirmations, time changes) rendered with distinct style from user messages
 
 ## Contact actions
@@ -19,3 +20,4 @@
 - Action types: REDIRECT, DISPLAY, DEEP_LINK, CHAT
 - Never raw phone/username exposed to frontend
 - Managed-import participants can exchange text, external contact links, and uploaded files during the seven-day access window.
+- A pending managed-import request without a conversation ID renders a request-sent confirmation when its chat is opened.

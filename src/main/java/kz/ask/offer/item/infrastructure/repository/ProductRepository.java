@@ -19,13 +19,19 @@ public interface ProductRepository extends JpaRepository<Item, UUID> {
 
     Page<Item> findByBusinessId(UUID businessId, Pageable pageable);
 
+    List<Item> findAllByBusinessId(UUID businessId);
+
     Page<Item> findByModerationStatusOrderByCreatedAtAsc(ProductModerationStatus moderationStatus, Pageable pageable);
 
     Long countByBusinessId(UUID businessId);
 
+    Long countByIsActive(Boolean isActive);
+
     Long countByIdInAndBusinessId(List<UUID> ids, UUID businessId);
 
     Long countByModerationStatus(ProductModerationStatus moderationStatus);
+
+    Boolean existsByBusinessIdAndModerationStatus(UUID businessId, ProductModerationStatus moderationStatus);
 
     @Query("SELECT p FROM Item p WHERE p.branch.id = :branchId AND LOWER(p.name) LIKE LOWER(:query)")
     Page<Item> searchByBranchAndName(UUID branchId, String query, Pageable pageable);

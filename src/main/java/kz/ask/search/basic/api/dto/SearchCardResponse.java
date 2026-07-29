@@ -28,6 +28,9 @@ public class SearchCardResponse {
     private List<String> matchReasons;
     private List<String> badges;
     private Integer distanceMeters;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
+    private Boolean hasActiveOffer;
     private String branchName;
     private String branchAddress;
     private String branchCity;

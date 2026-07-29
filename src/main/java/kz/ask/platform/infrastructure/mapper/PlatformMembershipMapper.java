@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlatformMembershipMapper {
 
+    private static final String ACTIVE_STATUS = "ACTIVE";
+
     public PlatformMembershipDto toDto(PlatformMembership entity) {
         return PlatformMembershipDto.builder()
                 .id(entity.getId())
@@ -16,6 +18,7 @@ public class PlatformMembershipMapper {
                 .email(entity.getUser().getEmail())
                 .displayName(entity.getUser().getDisplayName())
                 .role(entity.getRole())
+                .status(ACTIVE_STATUS)
                 .permissions(new LinkedHashSet<>(entity.getPermissions()))
                 .build();
     }

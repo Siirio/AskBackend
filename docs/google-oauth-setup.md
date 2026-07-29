@@ -27,7 +27,7 @@ Local:
 ```dotenv
 OAUTH2_GOOGLE_CLIENT_ID=your-web-client-id
 OAUTH2_GOOGLE_CLIENT_SECRET=your-web-client-secret
-OAUTH2_FRONTEND_REDIRECT_URI=http://localhost:3000/oauth/callback
+OAUTH2_FRONTEND_REDIRECT_URI=http://localhost:5173/oauth/callback
 ```
 
 VPS deployment variables:
@@ -39,7 +39,7 @@ OAUTH2_STAGE_GOOGLE_CLIENT_ID=...
 OAUTH2_STAGE_GOOGLE_CLIENT_SECRET=...
 ```
 
-Never commit the real client secret. When either the client ID or secret is empty, Google OAuth remains disabled and the backend does not expose the authorization endpoint.
+Never commit the real client secret. The local profile imports the ignored `AskBackend/.env` file, so local credentials can be configured without adding them to git. When either the client ID or secret is empty, Google OAuth remains disabled and the backend does not expose the authorization endpoint.
 
 ## Frontend flow
 

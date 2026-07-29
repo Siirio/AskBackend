@@ -36,7 +36,8 @@ public interface BusinessService {
                                        String contactEmail,
                                        DeliveryCoverage deliveryCoverage,
                                        List<String> deliveryCities,
-                                       Boolean pickupAvailable);
+                                       Boolean pickupAvailable,
+                                       boolean hasPhysicalBranches);
 
     BusinessRegistrationResult findByOwner(UUID userId);
 

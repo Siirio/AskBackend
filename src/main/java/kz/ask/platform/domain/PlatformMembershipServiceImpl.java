@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PlatformMembershipServiceImpl implements PlatformMembershipService {
 
+    private static final String INACTIVE_STATUS = "INACTIVE";
+
     private final PlatformMembershipRepository platformMembershipRepository;
     private final PlatformMembershipMapper platformMembershipMapper;
     private final AppUserRepository appUserRepository;
@@ -78,8 +80,10 @@ public class PlatformMembershipServiceImpl implements PlatformMembershipService 
     public PlatformMembershipDto deactivate(UUID membershipId) {
         PlatformMembership membership = platformMembershipRepository.findById(membershipId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PLATFORM_MEMBERSHIP_NOT_FOUND));
+        PlatformMembershipDto response = platformMembershipMapper.toDto(membership);
+        response.setStatus(INACTIVE_STATUS);
         platformMembershipRepository.delete(membership);
-        return platformMembershipMapper.toDto(membership);
+        return response;
     }
 
     @Override

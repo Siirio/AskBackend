@@ -8,11 +8,15 @@ import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.member.domain.BranchMemberService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.domain.ManagedImportService;
+import kz.ask.moderation.application.ModerationProcessor;
+import kz.ask.moderation.domain.ModerationAssessment;
+import kz.ask.moderation.domain.ModerationKeywords;
 import kz.ask.offer.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.offer.service.api.dto.BusinessServiceListResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.offer.service.domain.ServiceService;
+import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
@@ -45,6 +49,7 @@ public class BusinessServiceProcessor {
     private final SearchDocumentService searchDocumentService;
     private final SearchProjectionComposer searchProjectionComposer;
     private final ManagedImportService managedImportService;
+    private final ModerationProcessor moderationProcessor;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID businessId, UUID branchId,
@@ -70,7 +75,18 @@ public class BusinessServiceProcessor {
     public BusinessServiceRowResponse createService(AskPrincipal principal, UUID businessId,
                                                      BusinessServiceCreateRequest req) {
         requireAnyAccess(principal.getUserId(), businessId, req.getBranchId());
+        ModerationAssessment assessment = assess(
+                req.getName(),
+                req.getDescription(),
+                req.getCategoryName(),
+                req.getScheduleText(),
+                req.getAttributes());
+        if (assessment.requiresAction()) {
+            req.setIsActive(Boolean.FALSE);
+        }
         ServiceOfferingDto dto = serviceService.createService(businessId, req);
+        moderationProcessor.flagAutomated(
+                principal, ModerationTargetType.SERVICE, dto.getId(), assessment);
         syncSearchProjection(dto);
         return toRowResponse(dto);
     }
@@ -81,7 +97,18 @@ public class BusinessServiceProcessor {
         ServiceOfferingDto current = serviceService.findById(businessId, serviceOfferingId);
         requireAnyAccess(principal.getUserId(), businessId,
                 req.getBranchId() != null ? req.getBranchId() : current.getBranchId());
+        ModerationAssessment assessment = assess(
+                req.getName() == null ? current.getName() : req.getName(),
+                req.getDescription() == null ? current.getDescription() : req.getDescription(),
+                req.getCategoryName() == null ? current.getCategoryLabel() : req.getCategoryName(),
+                req.getScheduleText() == null ? current.getScheduleText() : req.getScheduleText(),
+                req.getAttributes() == null ? current.getAttributes() : req.getAttributes());
+        if (assessment.requiresAction()) {
+            req.setIsActive(Boolean.FALSE);
+        }
         ServiceOfferingDto updated = serviceService.updateService(businessId, serviceOfferingId, req);
+        moderationProcessor.flagAutomated(
+                principal, ModerationTargetType.SERVICE, updated.getId(), assessment);
         syncSearchProjection(updated);
         return toRowResponse(updated);
     }
@@ -156,5 +183,19 @@ public class BusinessServiceProcessor {
     private boolean hasPlatformServiceAccess(UUID userId, UUID businessId) {
         BusinessScope scope = managedImportService.activeScope(businessId, userId);
         return scope == BusinessScope.SERVICE || scope == BusinessScope.BOTH;
+    }
+
+    private ModerationAssessment assess(
+            String name,
+            String description,
+            String category,
+            String schedule,
+            java.util.Map<String, Object> attributes) {
+        return ModerationKeywords.assess(
+                name,
+                description,
+                category,
+                schedule,
+                attributes == null ? null : attributes.toString());
     }
 }

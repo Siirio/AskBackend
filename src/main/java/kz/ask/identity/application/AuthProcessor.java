@@ -175,12 +175,6 @@ public class AuthProcessor {
         identityService.recordLogin(user.getId());
         user = identityService.findById(user.getId());
 
-        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(u -> u.getRole().name())
-                .distinct()
-                .toList();
-
         BusinessRegistrationResult bizResult = null;
         BusinessRegistrationPayload registrationPayload = deserializeRegistrationPayload(
                 challenge.getRegistrationData());
@@ -195,9 +189,7 @@ public class AuthProcessor {
         String authority = authorityForSession(user, bizResult);
         AuthSessionDto session = identityService.createSession(user.getId(), authority, challenge.getIsRememberMe());
 
-        AuthSessionResponse response = buildSessionResponse(session, user, bizResult);
-        response.setAllRoles(allRoles);
-        return response;
+        return buildSessionResponse(session, user, bizResult);
     }
 
     public AuthSessionResponse currentSession(AskPrincipal principal) {
@@ -209,26 +201,19 @@ public class AuthProcessor {
         if (session == null) {
             throw new UnauthorizedException(ErrorCode.SESSION_INVALID);
         }
-        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(u -> u.getRole().name())
-                .distinct()
-                .toList();
-
         BusinessRegistrationResult bizResult = resolveBusinessContext(user);
         AuthSessionResponse resp = buildSessionResponse(null, user, bizResult);
         resp.setAccessToken(jwtTokenService.issue(principal, session.getExpiresAt()));
         resp.setTokenType("Bearer");
         resp.setExpiresAt(session.getExpiresAt());
         resp.setExpiresIn(Math.max(0L, Duration.between(Instant.now(), session.getExpiresAt()).getSeconds()));
-        resp.setAllRoles(allRoles);
         return resp;
     }
 
     @Transactional
     public AuthSessionResponse updateProfile(AskPrincipal principal, UpdateProfileRequest req) {
         identityService.updateProfile(principal.getUserId(),
-                req.getDisplayName(), null);
+                req.getDisplayName(), null, req.getPhone());
         return currentSession(principal);
     }
 
@@ -291,13 +276,7 @@ public class AuthProcessor {
 
         String authority = authorityForSession(user, bizResult);
         AuthSessionDto session = identityService.createSession(user.getId(), authority, false);
-        AuthSessionResponse response = buildSessionResponse(session, user, bizResult);
-        response.setAllRoles(identityService.findAllByEmail(user.getEmail()).stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(u -> u.getRole().name())
-                .distinct()
-                .toList());
-        return response;
+        return buildSessionResponse(session, user, bizResult);
     }
 
     @Transactional
@@ -462,6 +441,7 @@ public class AuthProcessor {
                 .userId(user.getId())
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
+                .phone(user.getPhone())
                 .status(user.getStatus().name())
                 .build();
     }

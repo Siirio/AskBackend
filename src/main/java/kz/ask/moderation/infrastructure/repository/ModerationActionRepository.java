@@ -16,4 +16,14 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
             kz.ask.platform.domain.enums.ModerationTargetType targetType, UUID targetId);
 
     Long countByModerationStatus(ModerationStatus moderationStatus);
+
+    boolean existsByTargetTypeAndTargetIdAndModerationStatus(
+            kz.ask.platform.domain.enums.ModerationTargetType targetType,
+            UUID targetId,
+            ModerationStatus moderationStatus);
+
+    List<ModerationAction> findByTargetTypeAndTargetIdAndModerationStatus(
+            kz.ask.platform.domain.enums.ModerationTargetType targetType,
+            UUID targetId,
+            ModerationStatus moderationStatus);
 }

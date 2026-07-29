@@ -1,5 +1,6 @@
 package kz.ask.business.onboarding.api.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
+import kz.ask.business.branch.api.dto.CreateBranchRequest;
 import kz.ask.business.core.domain.enums.BusinessLegalForm;
 import kz.ask.business.core.domain.enums.BusinessScope;
 import kz.ask.business.profile.domain.enums.DeliveryCoverage;
@@ -51,6 +53,9 @@ public class SellerOnboardingRequest {
 
     @NotNull
     private Boolean pickupAvailable;
+
+    @Size(max = 50)
+    private List<@Valid CreateBranchRequest> pickupBranches;
 
     @Pattern(regexp = OPTIONAL_HTTP_URL)
     private String twoGisUrl;
@@ -106,6 +111,12 @@ public class SellerOnboardingRequest {
         return deliveryCoverage == null
                 || deliveryCoverage != DeliveryCoverage.SELECTED_CITIES
                 || deliveryCities != null && deliveryCities.stream().anyMatch(this::hasText);
+    }
+
+    @AssertTrue(message = "At least one pickup branch is required when pickup is enabled")
+    public boolean isPickupConfigurationValid() {
+        return !Boolean.TRUE.equals(pickupAvailable)
+                || pickupBranches != null && !pickupBranches.isEmpty();
     }
 
     private boolean hasText(String value) {

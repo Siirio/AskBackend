@@ -33,6 +33,11 @@ customer. It requires `businessName`, a selected or free-text `categoryId` or `c
 `deliveryCoverage`, and `pickupAvailable`. `deliveryCities` is required when
 `deliveryCoverage` is `SELECTED_CITIES`.
 
+When `pickupAvailable` is true, `pickupBranches` contains at least one valid branch request with
+name and map-derived coordinates. Business, profile, owner membership, verification, and all
+pickup branches are created in one transaction. A business with onboarding branches is not
+`onlineOnly`, and the branches are immediately returned by the Organization branch list.
+
 - For `KZ_IP`, `legalIdentifier` (IIN) and `legalName` are required; the IIN is persisted as `iin`.
 - For `KZ_TOO`, `legalIdentifier` (BIN) and `legalName` are required; the BIN is persisted as `bin`.
 - For `NONE`, at least one valid `http://` or `https://` verification link is required. The client

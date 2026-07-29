@@ -2,6 +2,7 @@ package kz.ask.business.profile.application;
 
 import java.util.UUID;
 import kz.ask.business.core.domain.BusinessService;
+import kz.ask.business.core.domain.dto.BusinessDto;
 import kz.ask.business.profile.api.dto.BusinessProfileRequest;
 import kz.ask.business.profile.api.dto.BusinessProfileResponse;
 import kz.ask.business.profile.domain.BusinessProfileService;
@@ -9,6 +10,7 @@ import kz.ask.business.profile.domain.dto.BusinessProfileDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
+import kz.ask.shared.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +22,18 @@ public class BusinessProfileProcessor {
     private final BusinessProfileService businessProfileService;
 
     public BusinessProfileResponse get(UUID businessId) {
-        return toResponse(businessProfileService.findByBusinessId(businessId));
+        BusinessProfileDto dto = businessProfileService.findByBusinessId(businessId);
+        if (dto != null) {
+            return toResponse(dto);
+        }
+        BusinessDto business = businessService.findById(businessId);
+        if (business == null) {
+            throw new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND);
+        }
+        return BusinessProfileResponse.builder()
+                .businessId(business.getId())
+                .businessName(business.getName())
+                .build();
     }
 
     public BusinessProfileResponse update(

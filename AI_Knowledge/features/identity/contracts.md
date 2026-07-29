@@ -28,8 +28,9 @@
 ## Key DTOs
 - VerificationResponse: verificationId, role, purpose, channel, maskedDestination, expiresAt
 - AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, verificationId, suggestRoleExpansion
-- AuthUserResponse: userId, displayName, email, status
+- AuthUserResponse: userId, displayName, email, phone, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
+- `allRoles` contains the deduplicated union of the AppUser role, all active `businessMemberships[].role` values, and `platformMembership.role` when present.
 - `startRoute` is `CLIENT_SEARCH` after normal login, including for users with business memberships. `businessMemberships` exposes the separate cabinets they may open explicitly.
 
 ## Additional Endpoints

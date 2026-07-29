@@ -10,13 +10,18 @@ import kz.ask.business.uniqueoffer.api.dto.UniqueOfferResponse;
 import kz.ask.business.uniqueoffer.domain.UniqueOfferService;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferDto;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.moderation.application.ModerationProcessor;
+import kz.ask.moderation.domain.ModerationAssessment;
+import kz.ask.moderation.domain.ModerationKeywords;
 import kz.ask.offer.item.domain.ItemService;
 import kz.ask.offer.service.domain.ServiceService;
+import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -27,6 +32,7 @@ public class UniqueOfferProcessor {
     private final ItemService itemService;
     private final ServiceService serviceService;
     private final UniqueOfferService uniqueOfferService;
+    private final ModerationProcessor moderationProcessor;
 
     public List<UniqueOfferResponse> list(UUID businessId) {
         return uniqueOfferService.listPublic(businessId).stream()
@@ -34,26 +40,42 @@ public class UniqueOfferProcessor {
                 .toList();
     }
 
+    @Transactional
     public UniqueOfferResponse create(
             AskPrincipal principal,
             UUID businessId,
             UniqueOfferRequest request) {
         requireOwner(principal, businessId);
         validateCreate(request);
+        ModerationAssessment assessment = assess(request);
+        if (assessment.requiresAction()) {
+            request.setIsActive(Boolean.FALSE);
+        }
         UniqueOfferDto input = toDto(request, true);
         validateRelations(businessId, input);
-        return toResponse(uniqueOfferService.create(businessId, input));
+        UniqueOfferDto created = uniqueOfferService.create(businessId, input);
+        moderationProcessor.flagAutomated(
+                principal, ModerationTargetType.UNIQUE_OFFER, created.getId(), assessment);
+        return toResponse(created);
     }
 
+    @Transactional
     public UniqueOfferResponse update(
             AskPrincipal principal,
             UUID offerId,
             UniqueOfferRequest request) {
         UniqueOfferDto current = uniqueOfferService.findById(offerId);
         requireOwner(principal, current.getBusinessId());
+        ModerationAssessment assessment = assess(request, current);
+        if (assessment.requiresAction()) {
+            request.setIsActive(Boolean.FALSE);
+        }
         UniqueOfferDto input = toDto(request, false);
         validateRelations(current.getBusinessId(), input);
-        return toResponse(uniqueOfferService.update(offerId, input));
+        UniqueOfferDto updated = uniqueOfferService.update(offerId, input);
+        moderationProcessor.flagAutomated(
+                principal, ModerationTargetType.UNIQUE_OFFER, updated.getId(), assessment);
+        return toResponse(updated);
     }
 
     public void toggle(AskPrincipal principal, UUID offerId) {
@@ -110,6 +132,24 @@ public class UniqueOfferProcessor {
             return Boolean.TRUE.equals(create) ? List.of() : null;
         }
         return List.copyOf(new LinkedHashSet<>(values));
+    }
+
+    private ModerationAssessment assess(UniqueOfferRequest request) {
+        return ModerationKeywords.assess(
+                request.getName(),
+                request.getDescription(),
+                request.getTags() == null ? null : String.join(" ", request.getTags()),
+                request.getType() == null ? null : request.getType().name());
+    }
+
+    private ModerationAssessment assess(UniqueOfferRequest request, UniqueOfferDto current) {
+        return ModerationKeywords.assess(
+                request.getName() == null ? current.getName() : request.getName(),
+                request.getDescription() == null ? current.getDescription() : request.getDescription(),
+                request.getTags() == null
+                        ? current.getTags() == null ? null : String.join(" ", current.getTags())
+                        : String.join(" ", request.getTags()),
+                request.getType() == null ? current.getType() : request.getType().name());
     }
 
     private UniqueOfferResponse toResponse(UniqueOfferDto dto) {

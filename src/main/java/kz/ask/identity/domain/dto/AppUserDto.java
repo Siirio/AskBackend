@@ -15,6 +15,7 @@ public class AppUserDto {
 
     private UUID id;
     private String email;
+    private String phone;
     private String displayName;
     private String passwordHash;
     private Role role;

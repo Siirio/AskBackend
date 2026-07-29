@@ -23,6 +23,9 @@ public class AppUser extends BaseUuidV7Entity {
 
     private String email;
 
+    @Column(length = 32)
+    private String phone;
+
     @Column(nullable = false)
     private String displayName;
 

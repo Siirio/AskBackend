@@ -69,7 +69,7 @@ auth:
     google:
       client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
       client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
-    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://127.0.0.1:5173/oauth/callback}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth/callback}
   cookie:
     name: ${AUTH_COOKIE_NAME:ASK_SESSION}
     path: /
@@ -104,8 +104,8 @@ ask:
   platform:
     super-admin-email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL}
     superadmins:
-      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL}
-        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD}
+      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:superadmin@ask.com}
+        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD:ultramegasecretp@$$wOrd}
         display-name: Superadmin
   ai:
     search:

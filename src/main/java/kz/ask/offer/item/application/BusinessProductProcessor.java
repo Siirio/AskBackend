@@ -14,6 +14,9 @@ import kz.ask.business.member.domain.BranchMemberService;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.managedimport.domain.ManagedImportService;
 import kz.ask.moderation.domain.ModerationKeywords;
+import kz.ask.moderation.domain.ModerationAssessment;
+import kz.ask.moderation.application.ModerationProcessor;
+import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.offer.item.api.dto.BusinessProductCreateRequest;
 import kz.ask.offer.item.api.dto.BusinessProductListResponse;
 import kz.ask.offer.item.api.dto.BusinessProductRowResponse;
@@ -52,6 +55,7 @@ public class BusinessProductProcessor {
     private final BranchMemberService branchMemberService;
     private final CategoryService categoryService;
     private final ManagedImportService managedImportService;
+    private final ModerationProcessor moderationProcessor;
     private final ProductRepository productRepository;
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
@@ -109,8 +113,9 @@ public class BusinessProductProcessor {
                 branchId == null ? null : businessBranchRepository.getReferenceById(branchId),
                 resolveCategory(req.getCategoryId(), req.getCategoryName()),
                 req);
-        applyAutoModeration(item);
+        ModerationAssessment assessment = applyAutoModeration(item, false);
         Item saved = productRepository.save(item);
+        flagCriticalAssessment(principal, saved.getId(), assessment);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
         syncSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
@@ -136,7 +141,9 @@ public class BusinessProductProcessor {
             branch = businessBranchRepository.getReferenceById(req.getBranchId());
         }
         itemMapper.applyUpdateFields(item, req, branch, category);
+        ModerationAssessment assessment = applyAutoModeration(item, true);
         Item saved = productRepository.save(item);
+        flagCriticalAssessment(principal, saved.getId(), assessment);
         ProductOfferDto dto = itemMapper.toProductOfferDto(saved);
         syncSearchProjection(saved, dto);
         return itemMapper.toBusinessProductRowResponse(dto);
@@ -212,13 +219,36 @@ public class BusinessProductProcessor {
         return "%" + query.trim().toLowerCase() + "%";
     }
 
-    private void applyAutoModeration(Item item) {
-        String prohibited = ModerationKeywords.prohibitedMatch(item.getName());
-        if (prohibited != null) {
+    private ModerationAssessment applyAutoModeration(Item item, boolean update) {
+        ModerationAssessment assessment = ModerationKeywords.assess(
+                item.getName(),
+                item.getDescription(),
+                item.getCategoryLabel(),
+                item.getTags() == null ? null : String.join(" ", item.getTags()),
+                item.getAttributes() == null ? null : item.getAttributes().toString());
+        if (assessment.decision() == ModerationAssessment.Decision.BLOCK) {
             item.setModerationStatus(ProductModerationStatus.REJECTED);
-            item.setModerationNote("Auto-rejected: prohibited category — " + prohibited);
-            return;
+            item.setModerationNote(assessment.reasonCode() + ": " + assessment.matchedSignal());
+        } else if (assessment.decision() == ModerationAssessment.Decision.REVIEW) {
+            item.setModerationStatus(ProductModerationStatus.PENDING);
+            item.setModerationNote(assessment.reasonCode() + ": " + assessment.matchedSignal());
+        } else if (!update || item.getModerationStatus() == ProductModerationStatus.APPROVED) {
+            item.setModerationStatus(ProductModerationStatus.APPROVED);
+            item.setModerationNote(null);
+        } else {
+            item.setModerationStatus(ProductModerationStatus.PENDING);
+            item.setModerationNote("CONTENT_CHANGED_AFTER_MODERATION");
         }
-        item.setModerationStatus(ProductModerationStatus.APPROVED);
+        return assessment;
+    }
+
+    private void flagCriticalAssessment(
+            AskPrincipal principal,
+            UUID itemId,
+            ModerationAssessment assessment) {
+        if (assessment.decision() == ModerationAssessment.Decision.BLOCK) {
+            moderationProcessor.flagAutomated(
+                    principal, ModerationTargetType.PRODUCT, itemId, assessment);
+        }
     }
 }

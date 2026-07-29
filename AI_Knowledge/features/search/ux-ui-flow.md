@@ -11,3 +11,5 @@ The Business profile area may show business name, logo, cover, public descriptio
 The personal login account and Business profile are distinct. Email/password/2FA belong to the person’s account; brand and public contact links belong to the Business profile.
 
 Branch address, city, and distance appear only when canonical branch/location data exists. Distance changes ranking only when the user explicitly selects distance sorting.
+
+Filter & Sort V1 operates on the cards already loaded for the current results page. Relevance preserves their server order. Distance, ascending/descending cost, and active unique-offer ordering are client-side reorderings and do not issue another search request. Price, company, city, radius up to 100 km, and visible map-area filters only remove cards from that loaded set. Company choices and counts are derived from the same loaded cards.

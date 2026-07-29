@@ -1,6 +1,9 @@
 # Platform — Locks
 
+LOCKED | Normal active Items and Services publish immediately and only suspicious autocheck results enter moderation | The moderation queue must stay an exception queue; legal form NONE does not delay publication | Item/Service creation, search projection, autocheck, platform moderation queue
 LOCKED | Permission checks test PlatformPermission sets, never PlatformRole, except AI enrichment | Role is a base profile only; permissions are the authority except where a more specific approved lock says otherwise | all platform-gated processors except PlatformAiEnrichmentProcessor
 LOCKED | AI enrichment is available to every active platform member, not a separate permission | Platform membership is the approved entitlement for this internal tool | PlatformAiEnrichmentProcessor, /api/v1/platform/ai-enrichment, platform catalog UI
 LOCKED | Platform support staff may inspect customer↔business and platform-support conversations | `MANAGE_SUPPORT_CHATS` authorizes GENERAL_SUPPORT and PLATFORM_SUPPORT; MANAGED_IMPORT still requires its own permission and assigned active grant | PlatformChatProcessor
 LOCKED | Managed-import activation grants catalog access per platform member and Business for seven days | The assigned active grant and matching ITEM/SERVICE/BOTH scope are the authority; no global edit permission opens arbitrary businesses | managed-import access and Item/Service processors
+LOCKED | Automated checks cover Item, Service, and UniqueOffer without total premoderation | Clear content publishes immediately; only matched critical or review signals create moderation work | ModerationKeywords, catalog create/update processors, platform moderation queue
+LOCKED | Platform soft-delete is superadmin-only | Admins and moderators may block or restore within their target permissions, but `SOFT_DELETE` requires SUPER_ADMIN | ModerationProcessor, platform catalog destructive actions

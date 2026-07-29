@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-29 | Corrected AuthSessionResponse.allRoles to include the personal AppUser role together with every active business and platform membership role while retaining membership objects as the authorization source for each context | identity session capabilities, login responses, frontend auth contract
+
 2026-07-27 | Replaced the former branch-only delivery assumption with a seller-supplied BusinessProfile fulfilment policy because online businesses may have no branch. Seller onboarding now persists delivery coverage, selected cities, and pickup availability; OWNER/MANAGER may edit the same fields later | seller onboarding, BusinessProfile, V1 baseline, frontend business profile
 
 2026-07-26 | Fixed catalog rows disappearing after reload: Item and Service cabinet lists now sort by createdAt descending, normal Items are synchronously auto-approved with no pending gate, prohibited alcohol/weapon keywords auto-reject while preserving the Item in the cabinet, and active Services publish immediately | item, service, moderation, AskFrontend business cabinet

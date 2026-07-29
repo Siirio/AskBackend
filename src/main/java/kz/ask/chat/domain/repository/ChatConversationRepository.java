@@ -41,4 +41,6 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
             Pageable pageable);
 
     Long countByConversationStatusAndConversationType(ConversationStatus status, ConversationType type);
+
+    Long countByConversationStatusIn(List<ConversationStatus> statuses);
 }

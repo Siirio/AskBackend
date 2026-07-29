@@ -5,9 +5,16 @@ import java.util.Map;
 import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
+import kz.ask.business.core.infrastructure.repository.BusinessRepository;
+import kz.ask.business.uniqueoffer.domain.entity.UniqueOffer;
+import kz.ask.business.uniqueoffer.infrastructure.repository.UniqueOfferRepository;
+import kz.ask.identity.domain.entity.AppUser;
+import kz.ask.identity.domain.enums.UserStatus;
 import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
+import kz.ask.offer.service.domain.entity.Service;
+import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.identity.infrastructure.repository.AppUserRepository;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
@@ -16,6 +23,7 @@ import kz.ask.moderation.api.dto.ModerationActionRequest;
 import kz.ask.moderation.api.dto.ModerationActionResponse;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.moderation.api.dto.RejectProductRequest;
+import kz.ask.moderation.domain.ModerationAssessment;
 import kz.ask.moderation.infrastructure.mapper.ModerationMapper;
 import kz.ask.moderation.infrastructure.repository.ModerationActionRepository;
 import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
@@ -26,6 +34,7 @@ import kz.ask.platform.domain.enums.ModerationActionType;
 import kz.ask.platform.domain.enums.ModerationStatus;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.identity.authorization.domain.enums.Permission;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
@@ -51,7 +60,10 @@ public class ModerationProcessor {
     private final ModerationActionRepository moderationActionRepository;
     private final AppUserRepository appUserRepository;
     private final PlatformMembershipService platformMembershipService;
+    private final BusinessRepository businessRepository;
     private final ProductRepository productRepository;
+    private final ServiceOfferingRepository serviceOfferingRepository;
+    private final UniqueOfferRepository uniqueOfferRepository;
     private final SearchDocumentService searchDocumentService;
     private final SearchOutboxService searchOutboxService;
     private final SearchProjectionComposer searchProjectionComposer;
@@ -179,12 +191,118 @@ public class ModerationProcessor {
     public ModerationActionResponse executeModerationAction(AskPrincipal principal, ModerationActionRequest request) {
         Permission requiredPermission = resolvePermission(request.getTargetType());
         requirePermission(principal, requiredPermission);
+        if ("SOFT_DELETE".equals(request.getReasonCode())) {
+            requireRole(principal, Role.SUPER_ADMIN);
+        }
+        applyTargetState(request);
+        resolveOpenAutomatedFlags(principal, request);
         ModerationAction action = new ModerationAction();
         moderationMapper.applyCreateFields(action, request.getTargetType(), request.getTargetId(),
                 request.getAction(), toModerationStatus(request.getAction()),
                 request.getReasonCode(), null, request.getNote(), request.getExpiresAt(),
                 appUserRepository.getReferenceById(principal.getUserId()));
         return moderationMapper.toModerationActionResponse(moderationActionRepository.save(action));
+    }
+
+    @Transactional
+    public void flagAutomated(
+            AskPrincipal principal,
+            ModerationTargetType targetType,
+            UUID targetId,
+            ModerationAssessment assessment) {
+        if (!assessment.requiresAction()
+                || moderationActionRepository.existsByTargetTypeAndTargetIdAndModerationStatus(
+                        targetType, targetId, ModerationStatus.BEING_DISCUSSED)) {
+            return;
+        }
+        ModerationAction action = new ModerationAction();
+        moderationMapper.applyCreateFields(
+                action,
+                targetType,
+                targetId,
+                ModerationActionType.FLAG,
+                ModerationStatus.BEING_DISCUSSED,
+                assessment.reasonCode(),
+                assessment.matchedSignal(),
+                null,
+                null,
+                appUserRepository.getReferenceById(principal.getUserId()));
+        moderationActionRepository.save(action);
+    }
+
+    private void resolveOpenAutomatedFlags(
+            AskPrincipal principal,
+            ModerationActionRequest request) {
+        ModerationStatus status = toModerationStatus(request.getAction());
+        if (status == ModerationStatus.BEING_DISCUSSED) {
+            return;
+        }
+        AppUser performedBy = appUserRepository.getReferenceById(principal.getUserId());
+        moderationActionRepository
+                .findByTargetTypeAndTargetIdAndModerationStatus(
+                        request.getTargetType(),
+                        request.getTargetId(),
+                        ModerationStatus.BEING_DISCUSSED)
+                .forEach(action -> moderationMapper.applyResolveFields(
+                        action,
+                        status,
+                        request.getAction(),
+                        performedBy,
+                        request.getNote()));
+    }
+
+    private void applyTargetState(ModerationActionRequest request) {
+        boolean blocked = request.getAction() == ModerationActionType.BLOCK
+                || request.getAction() == ModerationActionType.REJECT;
+        switch (request.getTargetType()) {
+            case PRODUCT -> {
+                Item item = productRepository.findById(request.getTargetId())
+                        .orElseThrow(() -> new NotFoundException(
+                                ErrorCode.PRODUCT_NOT_FOUND, request.getTargetId()));
+                item.setIsActive(!blocked);
+                item.setModerationStatus(blocked
+                        ? ProductModerationStatus.REJECTED
+                        : ProductModerationStatus.APPROVED);
+                if (blocked) {
+                    item.setModerationNote(request.getNote());
+                }
+                productRepository.save(item);
+                syncSearchProjection(item, item.getModerationStatus());
+            }
+            case SERVICE -> {
+                Service service = serviceOfferingRepository.findById(request.getTargetId())
+                        .orElseThrow(() -> new NotFoundException(
+                                ErrorCode.REQUEST_NOT_FOUND, request.getTargetId()));
+                service.setIsActive(!blocked);
+                serviceOfferingRepository.save(service);
+                syncServiceProjection(service);
+            }
+            case UNIQUE_OFFER -> {
+                UniqueOffer offer = uniqueOfferRepository.findById(request.getTargetId())
+                        .orElseThrow(() -> new NotFoundException(
+                                ErrorCode.DROP_NOT_FOUND, request.getTargetId()));
+                offer.setIsActive(!blocked);
+                offer.setStatus(blocked
+                        ? kz.ask.business.uniqueoffer.domain.enums.UniqueOfferStatus.CANCELLED
+                        : kz.ask.business.uniqueoffer.domain.enums.UniqueOfferStatus.ACTIVE);
+                uniqueOfferRepository.save(offer);
+            }
+            case BUSINESS -> {
+                if (!businessRepository.existsById(request.getTargetId())) {
+                    throw new NotFoundException(ErrorCode.BUSINESS_NOT_FOUND, request.getTargetId());
+                }
+                syncBusinessSearch(request.getTargetId(), blocked);
+            }
+            case USER -> {
+                AppUser user = appUserRepository.findById(request.getTargetId())
+                        .orElseThrow(() -> new NotFoundException(
+                                ErrorCode.USER_NOT_FOUND, request.getTargetId()));
+                user.setStatus(blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE);
+                appUserRepository.save(user);
+            }
+            case MESSAGE -> {
+            }
+        }
     }
 
     private void syncSearchProjection(Item item, ProductModerationStatus newStatus) {
@@ -217,6 +335,54 @@ public class ModerationProcessor {
         }
     }
 
+    private void syncServiceProjection(Service service) {
+        UUID aggregateId = service.getId();
+        if (Boolean.TRUE.equals(service.getIsActive())) {
+            SearchDocumentDto projection = searchProjectionComposer.composeService(
+                    aggregateId,
+                    service.getBusiness().getId(),
+                    service.getBranch() != null ? service.getBranch().getId() : null,
+                    service.getName(),
+                    service.getDescription(),
+                    service.getCategoryLabel(),
+                    service.getBusiness().getName(),
+                    service.getBranch() != null ? service.getBranch().getName() : null,
+                    service.getBasePrice(),
+                    service.getBusiness().getCurrency(),
+                    service.getAttributes(),
+                    service.getBranch() != null ? service.getBranch().getLatitude() : null,
+                    service.getBranch() != null ? service.getBranch().getLongitude() : null);
+            Long version = searchDocumentService.upsert(projection);
+            searchOutboxService.publish(SearchAggregateType.SERVICE, aggregateId,
+                    SearchEventType.UPSERT, version);
+        } else {
+            Long version = searchDocumentService.delete(SearchDocumentType.SERVICE, aggregateId);
+            searchOutboxService.publish(SearchAggregateType.SERVICE, aggregateId,
+                    SearchEventType.DELETE, version);
+        }
+    }
+
+    private void syncBusinessSearch(UUID businessId, boolean blocked) {
+        for (Item item : productRepository.findAllByBusinessId(businessId)) {
+            if (blocked) {
+                Long version = searchDocumentService.delete(SearchDocumentType.ITEM, item.getId());
+                searchOutboxService.publish(SearchAggregateType.ITEM, item.getId(),
+                        SearchEventType.DELETE, version);
+            } else {
+                syncSearchProjection(item, item.getModerationStatus());
+            }
+        }
+        for (Service service : serviceOfferingRepository.findAllByBusinessId(businessId)) {
+            if (blocked) {
+                Long version = searchDocumentService.delete(SearchDocumentType.SERVICE, service.getId());
+                searchOutboxService.publish(SearchAggregateType.SERVICE, service.getId(),
+                        SearchEventType.DELETE, version);
+            } else {
+                syncServiceProjection(service);
+            }
+        }
+    }
+
     private void requirePermission(AskPrincipal principal, Permission permission) {
         PlatformMembershipDto membership =
                 platformMembershipService.findActiveByUser(principal.getUserId());
@@ -225,10 +391,19 @@ public class ModerationProcessor {
         }
     }
 
+    private void requireRole(AskPrincipal principal, Role role) {
+        PlatformMembershipDto membership =
+                platformMembershipService.findActiveByUser(principal.getUserId());
+        if (membership == null || membership.getRole() != role) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
     private Permission resolvePermission(ModerationTargetType targetType) {
         return switch (targetType) {
             case PRODUCT -> Permission.MODERATE_ITEMS;
             case SERVICE -> Permission.MODERATE_SERVICES;
+            case UNIQUE_OFFER -> Permission.MODERATE_UNIQUE_OFFERS;
             case BUSINESS -> Permission.MODERATE_BUSINESSES;
             case USER -> Permission.MODERATE_APP_USERS;
             case MESSAGE -> Permission.MODERATE_CHATS;

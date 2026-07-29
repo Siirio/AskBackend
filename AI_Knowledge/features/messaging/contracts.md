@@ -17,6 +17,7 @@
 | POST | /api/v1/business-admin/chats/{conversationId}/read | BUSINESS | Mark as read |
 
 ## Platform Chat
+`MODERATE_CHATS` authorizes moderation actions with target type `MESSAGE`. Message severity is backend-authored as `REVIEW` or `CRITICAL`; the platform client never derives it from message text.
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | /api/v1/platform/chat/conversations | MANAGE_MANAGED_IMPORTS or MANAGE_SUPPORT_CHATS | List conversations allowed by type and grant |
@@ -64,3 +65,10 @@ New conversations are persisted with `PENDING` status and zero unread counters b
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/chat/support | Bearer | Return the existing permanent `PLATFORM_SUPPORT` conversation or create it. Optional `businessId` opens business-to-platform context after membership validation |
+
+## Platform access to ordinary conversations
+
+- `GENERAL_SUPPORT` conversations between a customer and a Business are read-only for platform staff.
+- Platform staff cannot send Messages or close these conversations.
+- Platform staff may inspect history, resolve a report as valid, or block a reported Message.
+- Platform replies remain available only for `PLATFORM_SUPPORT` and authorized `MANAGED_IMPORT` conversations.

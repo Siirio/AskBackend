@@ -4,6 +4,7 @@ public enum ModerationTargetType {
     BUSINESS,
     PRODUCT,
     SERVICE,
+    UNIQUE_OFFER,
     USER,
     MESSAGE
 }

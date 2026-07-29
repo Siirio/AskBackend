@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.moderation.api.dto.ContentReportResponse;
-import kz.ask.moderation.api.dto.ContentReportResponse;
 import kz.ask.moderation.api.dto.CreateContentReportRequest;
 import kz.ask.moderation.api.dto.ModerateProductRequest;
 import kz.ask.moderation.api.dto.ModerationActionRequest;

@@ -14,6 +14,7 @@ public class ContentReportResponse {
     private UUID targetId;
     private String reasonCode;
     private String details;
+    private String severity;
     private String status;
     private String note;
     private Instant createdAt;

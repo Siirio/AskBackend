@@ -45,7 +45,7 @@ public class PlatformChatProcessor {
 
     @Transactional
     public ChatMessageDto sendMessage(AskPrincipal principal, UUID conversationId, SendMessageRequest request) {
-        requireConversationAccess(principal, conversationId);
+        requireWritableConversation(principal, conversationId);
         return chatService.sendMessage(conversationId, principal.getUserId(), PLATFORM_SENDER, request);
     }
 
@@ -58,14 +58,22 @@ public class PlatformChatProcessor {
     @Transactional
     public ChatConversationDto closeConversation(AskPrincipal principal, UUID conversationId) {
         requireAnyPermission(principal, Permission.MANAGE_SUPPORT_CHATS);
-        requireConversationAccess(principal, conversationId);
+        requireWritableConversation(principal, conversationId);
         return chatService.closeConversation(conversationId);
     }
 
-    private void requireConversationAccess(AskPrincipal principal, UUID conversationId) {
+    private ChatConversationDto requireConversationAccess(AskPrincipal principal, UUID conversationId) {
         ChatConversationDto conversation = chatService.getConversation(conversationId);
         PlatformMembershipDto membership = requireMembership(principal);
         if (!canAccess(principal.getUserId(), membership, conversation)) {
+            throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
+        }
+        return conversation;
+    }
+
+    private void requireWritableConversation(AskPrincipal principal, UUID conversationId) {
+        ChatConversationDto conversation = requireConversationAccess(principal, conversationId);
+        if (ConversationType.GENERAL_SUPPORT.name().equals(conversation.getConversationType())) {
             throw new ForbiddenException(ErrorCode.ACCESS_DENIED);
         }
     }

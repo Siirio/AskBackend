@@ -109,7 +109,7 @@ public class BusinessMapper {
                     .filter(city -> city != null && !city.isBlank())
                     .map(String::trim)
                     .distinct()
-                    .toList());
+                    .collect(Collectors.toList()));
         }
         if (pickupAvailable != null) profile.setPickupAvailable(pickupAvailable);
     }
@@ -190,7 +190,8 @@ public class BusinessMapper {
                 .telegramUrl(entity.getTelegramUrl())
                 .websiteUrl(entity.getWebsiteUrl())
                 .deliveryCoverage(entity.getDeliveryCoverage())
-                .deliveryCities(entity.getDeliveryCities())
+                .deliveryCities(entity.getDeliveryCities() != null
+                        ? List.copyOf(entity.getDeliveryCities()) : null)
                 .pickupAvailable(entity.getPickupAvailable())
                 .build();
     }

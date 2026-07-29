@@ -17,8 +17,9 @@
 6. Choosing no specified legal form requires at least one valid verification link before the owner can continue.
 7. The managed-import request dialog asks only how the Ask team should make contact and validates the contact against the selected channel. It does not ask for onboarding sources or service acceptance again.
 8. Seller onboarding has four steps: business details, catalog setup, delivery and pickup, and final confirmation. Delivery is the penultimate screen.
-9. The owner selects no delivery, selected cities, all Kazakhstan, or worldwide coverage and separately enables or disables pickup. Selected-city coverage requires at least one city.
+9. The owner selects no delivery, selected cities, all Kazakhstan, or worldwide coverage and separately enables or disables pickup. Selected-city coverage requires at least one preset city. Pickup requires at least one map-selected branch before onboarding can finish.
 10. Delivery coverage, selected cities, and pickup availability are editable later in the Business profile by OWNER or MANAGER.
+11. Pickup branches drafted during onboarding are submitted with onboarding and appear immediately in Business cabinet → Organization after the transaction succeeds.
 
 ## Staff management flow
 1. Owner opens branch → Staff tab → "Add Staff"

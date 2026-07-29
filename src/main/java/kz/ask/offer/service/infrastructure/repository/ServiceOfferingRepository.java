@@ -17,9 +17,13 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
 
     Long countByBusinessId(UUID businessId);
 
+    Long countByIsActive(Boolean isActive);
+
     Long countByIdInAndBusinessId(List<UUID> ids, UUID businessId);
 
     Page<Service> findByBusinessId(UUID businessId, Pageable pageable);
+
+    List<Service> findAllByBusinessId(UUID businessId);
 
     @Query("""
         SELECT so FROM Service so

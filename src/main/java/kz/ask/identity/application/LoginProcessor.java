@@ -58,13 +58,10 @@ public class LoginProcessor {
             throw new AuthException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        return loginSingleRole(passwordMatch, activeUsers.stream()
-                .map(user -> user.getRole().name())
-                .distinct()
-                .toList());
+        return loginSingleRole(passwordMatch);
     }
 
-    private AuthSessionResponse loginSingleRole(AppUserDto user, List<String> allRoles) {
+    private AuthSessionResponse loginSingleRole(AppUserDto user) {
         identityService.recordLogin(user.getId());
 
         BusinessRegistrationResult bizResult = resolveBusiness(user);
@@ -72,7 +69,7 @@ public class LoginProcessor {
         if (user.getIsPasswordChangeRequired()) {
             Long ttl = identityService.staffActivationSessionTtl();
             AuthSessionDto session = identityService.createSession(user.getId(), "ROLE_USER", false, ttl, true);
-            return buildSessionResponse(session, user, bizResult, allRoles);
+            return buildSessionResponse(session, user, bizResult);
         }
 
         boolean isPlatformRole = user.getRole().getGroup() == RoleGroup.PLATFORM;
@@ -87,13 +84,13 @@ public class LoginProcessor {
                     .requiresTwoFactor(true)
                     .verificationId(challenge.getId())
                     .user(buildUserResponse(user))
-                    .allRoles(allRoles)
+                    .allRoles(sessionCapabilitiesProcessor.resolveAllRoles(user))
                     .build();
         }
 
         String authority = resolveAuthority(user.getRole());
         AuthSessionDto session = identityService.createSession(user.getId(), authority, false);
-        return buildSessionResponse(session, user, bizResult, allRoles);
+        return buildSessionResponse(session, user, bizResult);
     }
 
     private String resolveAuthority(Role role) {
@@ -129,16 +126,11 @@ public class LoginProcessor {
 
         AuthSessionDto session = identityService.createSession(user.getId(), "ROLE_USER", false);
         BusinessRegistrationResult bizResult = resolveBusiness(user);
-        List<String> allRoles = identityService.findAllByEmail(user.getEmail()).stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .map(u -> u.getRole().name())
-                .distinct()
-                .toList();
-        return buildSessionResponse(session, user, bizResult, allRoles);
+        return buildSessionResponse(session, user, bizResult);
     }
 
     private AuthSessionResponse buildSessionResponse(AuthSessionDto session, AppUserDto user,
-                                                      BusinessRegistrationResult bizResult, List<String> allRoles) {
+                                                      BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
                 .accessToken(jwtTokenService.issue(
@@ -150,8 +142,7 @@ public class LoginProcessor {
                 .isActivationRequired(session.getIsActivationRequired())
                 .role(session.getAuthority())
                 .startRoute(resolveStartRoute())
-                .user(buildUserResponse(user))
-                .allRoles(allRoles);
+                .user(buildUserResponse(user));
         sessionCapabilitiesProcessor.apply(builder, user);
 
         if (bizResult != null) {
@@ -178,6 +169,7 @@ public class LoginProcessor {
                 .userId(user.getId())
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
+                .phone(user.getPhone())
                 .status(user.getStatus().name())
                 .build();
     }

@@ -44,7 +44,7 @@ Removed fields: `scope`, `selected_category`, top-level `city`, `filters.scope`,
 - `result_id` is the canonical Item/Service ID.
 - `result_type` is `ITEM` or `SERVICE`.
 - `component` is exactly `ItemCard` or `ServiceCard`.
-- Each card includes short and full Item/Service text, price/currency, Business identity, public Business profile, optional branch context, availability truth, match reasons, and badges.
+- Each card includes short and full Item/Service text, price/currency, Business identity, public Business profile, optional branch context, availability truth, match reasons, badges, optional canonical coordinates, optional distance, and `has_active_offer`.
 - `business_profile` contains public logo, cover, description, number, email, Instagram, Telegram, and website values.
 - Public responses contain no engine, fallback, latency, exception, or infrastructure diagnostics. Operational details remain in server logs.
 - `ambiguity` is `LOW`, `MEDIUM`, or `HIGH`.

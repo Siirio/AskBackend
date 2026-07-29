@@ -2,6 +2,7 @@ package kz.ask.identity.application;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import kz.ask.audit.domain.SignificantEventService;
 import kz.ask.audit.domain.enums.SignificantEventType;
 import kz.ask.business.member.domain.entity.BusinessMember;
@@ -40,9 +41,20 @@ public class AccountLifecycleProcessor {
 
     @Transactional
     public LogoutResponse delete(AskPrincipal principal) {
-        AppUserDto user = identityService.findById(principal.getUserId());
+        deleteAccount(principal.getUserId(), principal.getUserId(), null);
+        return LogoutResponse.builder().success(true).build();
+    }
+
+    @Transactional
+    public void deleteByPlatform(UUID actorUserId, UUID targetUserId, String reason) {
+        deleteAccount(actorUserId, targetUserId, reason);
+    }
+
+    private void deleteAccount(UUID actorUserId, UUID targetUserId, String reason) {
+        AppUserDto user = identityService.findById(targetUserId);
         significantEventService.record(
-                user.getId(), SignificantEventType.ACCOUNT_DELETION_REQUESTED, null, user.getId(), Map.of());
+                actorUserId, SignificantEventType.ACCOUNT_DELETION_REQUESTED,
+                null, user.getId(), auditMetadata(reason));
         List<BusinessMember> memberships =
                 businessMemberRepository.findByUserId(user.getId());
         for (BusinessMember membership : memberships) {
@@ -61,8 +73,8 @@ public class AccountLifecycleProcessor {
         chatService.deleteCustomerConversations(user.getId());
         identityService.anonymizeAccount(user.getId());
         significantEventService.record(
-                user.getId(), SignificantEventType.ACCOUNT_DELETED, null, user.getId(), Map.of());
-        return LogoutResponse.builder().success(true).build();
+                actorUserId, SignificantEventType.ACCOUNT_DELETED,
+                null, user.getId(), auditMetadata(reason));
     }
 
     private boolean isSoleOwner(BusinessMember membership) {
@@ -77,4 +89,7 @@ public class AccountLifecycleProcessor {
         profile.setIconFileId(null);
     }
 
+    private Map<String, Object> auditMetadata(String reason) {
+        return reason == null || reason.isBlank() ? Map.of() : Map.of("reason", reason);
+    }
 }
