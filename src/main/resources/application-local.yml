@@ -1,8 +1,10 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
     url: jdbc:postgresql://localhost:5432/ask
-    username: ask_app
-    password: 59wUTwwqJnYkWdGLo2zvpTJP8If75vb8
+    username: postgres
+    password: admin
   jpa:
     show-sql: true
   mail:
@@ -10,7 +12,7 @@ spring:
     password: local-test-password
 
 server:
-  port: 9090
+  port: 2020
 
 management:
   health:
@@ -20,23 +22,24 @@ management:
 auth:
   jwt:
     secret: local-development-secret-key-at-least-256-bits-long
+  staff:
+    temp-password-key: local-temp-password-key-32chr-len
   verification:
-    email:
-      enabled: false
-    sms:
-      enabled: false
+    test-mode: true
     staging-bypass: true
 
 ask:
-  cors:
-    allowed-origins: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
   ai:
+    meilisearch:
+      host-url: http://localhost:7701
     search:
       api-key: ${DEEPSEEK_API_KEY:}
     autodump:
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}
+  cors:
+    allowed-origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
 
 springdoc:
   swagger-ui:

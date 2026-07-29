@@ -42,6 +42,10 @@ nano .env
 
 Fill every empty secret before starting services.
 
+Deploy only from a clean checkout of the intended commit and set `BUILD_SHA` in `.env` to
+the exact output of `git rev-parse HEAD`. Compose tags the backend image with this value and
+the application exposes it through `/actuator/info`.
+
 ## Start or update
 
 Run on the VPS from `AskBackend/deploy/vps`:

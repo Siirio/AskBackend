@@ -3,6 +3,7 @@ package kz.ask.identity.domain.entity;
 import lombok.Getter;
 import lombok.Setter;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -20,7 +21,6 @@ public class CustomerProfile extends BaseUuidV7Entity {
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
 
-    private String displayName;
-
-    private String phone;
+    @Column(name = "icon_file_id")
+    private String iconFileId;
 }

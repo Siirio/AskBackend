@@ -2,7 +2,7 @@ package kz.ask.identity.domain.dto;
 
 import java.time.Instant;
 import java.util.UUID;
-import kz.ask.identity.domain.enums.AppRole;
+import kz.ask.identity.authorization.domain.enums.Role;
 import kz.ask.identity.domain.enums.UserStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,9 +18,11 @@ public class AppUserDto {
     private String phone;
     private String displayName;
     private String passwordHash;
-    private AppRole role;
+    private Role role;
     private UserStatus status;
-    private Boolean mustChangePassword;
+    private Boolean isPasswordChangeRequired;
+    private Boolean isTwoFactorEnabled;
     private String tempPasswordEncrypted;
     private Instant activatedAt;
+    private Instant lastLoginAt;
 }

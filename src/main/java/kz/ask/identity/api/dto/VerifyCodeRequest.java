@@ -19,7 +19,7 @@ import lombok.Setter;
 public class VerifyCodeRequest {
 
     @NotNull
-    private UUID authChallengeId;
+    private UUID verificationId;
     @NotBlank
     @Size(min = 6, max = 6)
     @Pattern(regexp = "\\d{6}")

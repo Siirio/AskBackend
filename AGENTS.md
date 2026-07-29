@@ -1,112 +1,199 @@
-# AskBackend Agent Rules
+# Project: ASK Backend
 
-These are the nearest project instructions for AskBackend. Read this file before changing code or project structure.
+## Requirements Authority
+- The user's current instructions together with applicable `AI_Knowledge` documentation are the source of truth for product behavior and implementation decisions.
+- Existing code is not evidence of approved behavior unless the relevant behavior is explicitly `LOCKED` as working or is documented as approved.
+- Before diagnosing, reviewing, implementing, extending, preserving, or deleting behavior, compare the user's instruction with the applicable `AI_Knowledge` feature documentation and locks.
+- If the user's instruction conflicts with documentation, a lock, or leaves a material behavior, data, or authorization decision under-specified, stop and ask the user. Do not resolve the conflict by treating existing code as authoritative.
 
-## First Session
+## Entity Authority
+- Runtime entity definitions are the source of truth for persisted domain fields. Do not add, restore, or rename entity fields merely to satisfy stale callers, DTOs, migrations, or compilation errors; trace and remove or update the stale behavior instead.
+- Use entity names and enum values unchanged across DTOs, endpoints, frontend state, and documentation because synonym mappings create contract drift; `BusinessScope` is always `ITEM`, `SERVICE`, or `BOTH`.
+- Business-profile logos and covers and Unique Offer covers are uploaded image files managed by ASK; clients never submit media URLs.
+- URL inputs are reserved for external destinations such as websites, Instagram, Telegram, WhatsApp, and similar links.
 
-If this is the first Codex session in this repository, read:
+REST API backend for the ASK platform — local item/service search with an anti-marketplace intent layer. Routes qualified demand to brands without commoditizing them.
 
-1. `AI_Knowledge/first_steps/FIRST_READ_THIS.md`
-2. `codex/CODEX_INFRASTRUCTURE.md`
-3. `AI_Knowledge/CODE_RULES.md`
+## Tech Stack
+- Java 17+, Spring Boot 3.x, Spring Data JPA
+- PostgreSQL (source of truth, projection hydration, and lexical fallback)
+- Meilisearch (primary bounded lexical candidate retrieval)
+- Redis (sessions/cache)
+- DeepSeek AI (query structuring, NOT result selection)
+- REST APIs consumed by ASK Frontend (Next.js App Router, Vertical Slice Architecture)
 
-For later sessions, read only the documents relevant to the task, plus any file you are about to edit.
+## Runtime Constraints
+- Never commit or push. User controls all version control.
+- Never run Maven, Gradle, or any build tool unless user explicitly says "run" or "build."
+- Flyway has exactly two migrations: `V1__init.sql` contains all DDL and `V2__reference_data.sql` contains only reference-data inserts.
+- AI_Knowledge/ must be committed — it IS the shared truth. Never add to .gitignore.
 
-## Agent Workflow
+## Session Start — MANDATORY
 
-- Search before creating files, endpoints, DTOs, services, configs, or docs.
-- Read `AI_Knowledge/CODE_RULES.md` before backend code changes.
-- Read `AI_Knowledge/data_architecture/PRODUCT_SERVICE_FOUNDATION_ERD.md` before changing entities, migrations, repositories, catalog, services, booking, messaging, search, or fallback request behavior.
-- Read `AI_Knowledge/client_contracts/UX_UI_BACKEND_CONTRACT.md` before changing request/response statuses, customer request flow, supplier response flow, chat, contact actions, or API DTOs used by clients.
-- If changing entities, migrations, DTO contracts, auth flow, search flow, product/service visibility, request statuses, or onboarding rules, update `AI_Knowledge/CHANGELOG_FOUNDATION.md` and the matching architecture/client-contract docs in the same turn.
-- If backend behavior depends on UX and docs disagree, refresh backend docs from `AskFrontend/AI_Knowledge/product_ux/EXPECTED_UX_UI_FLOW.md` before generating or changing backend tasks.
-- Keep changes scoped to the current task.
-- Do not run `git commit` or `git push` unless the user explicitly asks in the current turn.
-- Do not create or write tests unless the user explicitly reverses this project rule.
-- Do not run Maven commands unless the user explicitly asks.
-- Do not copy secrets, local Codex configs, auth files, sqlite state, generated caches, plugin caches, runtime binaries, or machine-specific paths into this repository.
+At EVERY session start. Run commands yourself via Bash. Do NOT tell the developer.
 
-## Task Routing
+### 1. Machine bootstrap check
+Check if `.claude/machine-bootstrap.lock` exists. If NOT → run Machine Bootstrap below FIRST.
+(This file is gitignored — tracks per-machine install. Every new developer re-runs this.)
 
-- Use simple shell and file review for local docs or code inspection.
-- Use current documentation lookup only when library, SDK, CLI, framework, cloud, or provider behavior may have changed.
-- Use browser or Playwright only for visible frontend behavior.
-- Use Render, Supabase, GitHub, OpenAI, and other provider tools only when authenticated and in scope.
-- Use Dashboard or lifecycle tooling only for substantial starts, architectural pivots, and completion records.
-- If a likely Codex tool is not visible, use `tool_search` before assuming it is unavailable.
+### 2. Workspace discovery
+```
+ls -d ../*/CLAUDE.md 2>/dev/null
+```
+For each found: read its first project line. If `ASK Frontend` is missing from `../Ask_Frontend/CLAUDE.md` → flag it. If present → note its slices and locks.
 
-## Search Infrastructure
+### 3. Knowledge scan
+Read `AI_Knowledge/ProductVision.md`, `CodeRules.md`, `Locks.md`. Scan `features/` directories. Report: "{N} features tracked, {M} locks active."
 
-- **PostgreSQL = source of truth**: businesses, branches, products, services, contacts, drops, storefronts, raw imports, approvals.
-- **Meilisearch = fast search projection**: denormalized search index for typo-tolerant, faceted, geo-aware, hybrid (full-text + semantic) search.
-- **AI = query structuring helper**: understands raw query, produces SearchPlan JSON. AI never selects businesses or invents availability.
-- **Backend Search Orchestrator**: validates SearchPlan, queries Meilisearch, hydrates from PostgreSQL, applies hard gates/ranking, creates snapshot.
-- Meilisearch index is rebuildable from PostgreSQL at any time. PostgreSQL is never bypassed for authority.
+### 4. Self-maintenance
+Run system-maintainer protocol: compress bloated docs, migrate misplaced content, archive dead features, flag stale docs, deduplicate locks.
 
-## SearchPlan JSON Contract
+## Deletion-first cleanup
+- Unused means not justified by an active product vision, feature README, API contract, UX flow, or lock. A Java/frontend reference proves only dependency, not that the behavior belongs in the product.
+- Before deletion, trace callers and data contracts. Delete a self-contained flow when no active documented use case owns it; if documentation is absent or conflicts, ask the user before choosing its behavior.
+- A domain service has a one-to-one name with its entity: `Item` uses `ItemService`, `Business` uses `BusinessService`. A differently named `*Service` is not a domain service and must be deleted unless an active document explicitly defines it as another allowed component.
+- DTOs are only transport `*Request`, transport `*Response`, or one-to-one `{Entity}Dto` domain copies. Composite/workflow DTOs are deletion or refactor candidates, never a fourth category.
 
-AI returns structured plan, not final results:
+## Machine Bootstrap (runs ONCE per machine — NOT committed)
 
-```json
-{
-  "scope": "PRODUCT",
-  "rawQuery": "винтажные levi's джинсы 90s рядом",
-  "mustHave": ["джинсы", "levis"],
-  "softSignals": ["винтаж", "90s", "рядом"],
-  "categoryHints": ["clothing", "second_hand"],
-  "attributeHints": { "brand": ["Levi's"], "style": ["vintage", "90s"] },
-  "locationIntent": { "nearMe": true },
-  "rankingHints": ["intent_match", "distance", "fresh_drop"]
-}
+`.claude/machine-bootstrap.lock` must be in `.gitignore`. It tracks whether THIS machine has plugins, MCPs, and related repos installed. Every new developer re-runs this.
+
+If `.claude/machine-bootstrap.lock` does NOT exist, execute every step. Run commands yourself.
+
+### A. Install superpowers plugin
+Check: does `Skill` tool list `capability-router`?
+If NOT — run:
+```
+claude plugins install superpowers
 ```
 
-Backend validates, queries Meilisearch, hydrates from PostgreSQL, applies hard gates and ranking.
+### B. Install MCP servers
+For each, check if available in MCP tool list. If missing → install:
+```
+claude mcp add context7
+claude mcp add playwright
+claude mcp add dashboard
+claude mcp add notebooklm
+claude mcp add figma-console
+```
+Report each: installed / already present / failed. Continue on failure.
 
-## Contact Privacy
+### C. Clone ASK Frontend
+Check if `../Ask_Frontend/CLAUDE.md` exists. If NOT:
+```
+git clone https://github.com/Siirio/AskFrontend.git ../Ask_Frontend
+```
+If clone succeeds: verify it has CLAUDE.md. If not → flag to user.
 
-- `contact_hash` / HMAC — for dedupe and safe matching only. Hash is never reversible.
-- Encrypted contact value or public URL — for actual contact resolution.
-- Frontend receives `contactActionId`, not raw phone/username.
-- Backend resolves `contactActionId` → redirect/deep-link or returns safe display value.
-- `BusinessExternalLink`: provider=`2GIS/INSTAGRAM/TELEGRAM/SITE/WHATSAPP`, publicUrl/deepLink, source, confidence, visibility.
+### D. Add to .gitignore
+Ensure `.gitignore` contains this line:
+```
+.claude/machine-bootstrap.lock
+```
 
-## Product Guardrails
+### E. Create machine lock
+```
+echo "machine-bootstrapped: $(date)" > .claude/machine-bootstrap.lock
+```
+Report: "Machine ready. Installed: {plugins}, {MCPs}. Cloned: {repos}."
 
-- AskBackend is one backend for Android, iOS, and future web clients.
-- Ask is search-first: return known products and services from businesses before creating fallback requests.
-- Fallback requests exist only when product/service results are missing or the customer wants business confirmation.
-- Do not invent stock, delivery, logistics, schedules, slots, booking, or availability facts without supplier input or trusted integration data.
-- Services are not products. Scheduled service logic, booking, and on-demand service logic must stay explicit.
-- Concrete product variations are separate `Product` entities in MVP. Do not add product variant tables unless a real business case requires them.
-- Current MVP search has only product search and service search. Do not create a separate business search flow unless the product direction changes.
-- New task contracts describe product visibility through enabled/disabled/deleted actions and service visibility through active/inactive actions. Do not model separate availability scoring, inventory-count tracking, or freshness tracking in MVP docs.
-- Chat is always available from product, service, request, booking, and business-context screens through contextual contact actions.
-- Business onboarding is production-facing: registration creates a real branch/store profile and its real products/services must persist in the real database. Do not design it as mock-only onboarding.
-- Drops/events are searchable index signals. If a user searches for something covered by a drop, results show product/drop cards.
+## Knowledge Architecture
 
-## Anti-Marketplace Guardrails (2026-07-01)
+### Always loaded (Tier 1 — session start)
+| File | Max | Purpose |
+|------|-----|---------|
+| `AI_Knowledge/ProductVision.md` | 60 | What ASK is, who uses it, core constraints |
+| `AI_Knowledge/CodeRules.md` | 100 | Java/Spring conventions: naming, patterns, anti-patterns |
+| `AI_Knowledge/Locks.md` | 40 | Backend invariants. If violated → STOP and ASK |
 
-Ask is NOT a marketplace. It is an **intent layer** that routes qualified demand to brands without commoditizing them.
+### Domain touch (Tier 2 — loaded when feature is touched, cached for session)
+| File | Purpose |
+|------|---------|
+| `AI_Knowledge/features/{name}/README.md` | Why this feature exists, key decisions |
+| `AI_Knowledge/features/{name}/contracts.md` | REST API contracts: endpoints, DTOs, error codes |
+| `AI_Knowledge/features/{name}/ux-ui-flow.md` | How the frontend expects this feature to behave |
+| `AI_Knowledge/features/{name}/locks.md` | Feature-level invariants |
 
-- **Default search sort is intent_match, never price_asc.** Price is a filter factor, not the ranking king.
-- **No buy-box logic.** Never collapse different brands into one SKU comparison. Always show WHY this brand matches this specific intent.
-- **No uniform commodity cards.** Every result card has a standardized decision layer (price, availability, branch, pickup) AND a brand expression layer (style, tone, photos, story).
-- **No public "rating" score.** Visible signals are badges: data freshness, confirmation speed, card quality, business activity. Internal ranking signals are separate.
-- **Auto-reply does NOT count as confirmation.** Only real business confirmation advances status.
-- **Brand profile data model:** BrandProfile (color, logo, cover, tone, links), BrandPageBlock (ordered storefront blocks), BrandKit within Business aggregate.
-- **Drops are brand events, not discounts.** Drop types: NEW_COLLECTION, LIMITED_RELEASE, RESTOCK, CAPSULE, SEASONAL, COLLAB, PREORDER.
-- **User preference profile is optional and transparent.** Sizes, style, budget, city, favorite brands — editable, not creepy tracking.
-- **Chat: open for extension, closed for core chaos.** Brands can add links, quick replies, FAQs, AI assistant. Cannot break user flow, spam, or change system statuses.
-- **Standardize decision data, preserve brand identity.** Availability, price, branch, confirmation = standardized. Style, visual, tone, story, drops = brand-owned.
+### On demand (Tier 3)
+| Source | Use for |
+|--------|---------|
+| graphify | Cross-feature concept links |
+| NotebookLM | Large reference docs (external API specs, legal docs) |
+| context7 | Current Spring/Boot/Java library docs |
 
-## When To Challenge
+## Before ANY Code Change
+1. Load `AI_Knowledge/Locks.md` + `AI_Knowledge/features/{domain}/locks.md`
+2. If ANY lock would be violated → STOP. ASK the user. Do not proceed until answered.
+3. Search the codebase for existing patterns that solve the same problem. Reuse.
 
-Flag the risk before editing if a request would:
+## After ANY Code Change
+1. Behavior changed? → Update `features/{name}/README.md`
+2. API endpoint, DTO, or error code changed? → Update `features/{name}/contracts.md`
+3. This change affects how the frontend works? → Update `features/{name}/ux-ui-flow.md`
+4. Non-obvious design decision? → Append `AI_Knowledge/Changelog.md`: date, rationale, affected files
+5. New invariant discovered? → Add to appropriate `locks.md`
+6. Did this change make a doc entry wrong? → Fix it NOW. Stale docs = broken system.
 
-- turn Ask into only a broadcast app;
-- make search secondary to manual request routing;
-- hardcode one city, language, supplier type, provider, frontend, or file format;
-- make old browser prototype behavior a backend requirement;
-- invent unavailable data truth;
-- create incompatible frontend/backend contracts;
-- bypass the backend API as the product boundary.
+### Cross-project awareness
+
+**The frontend's feature folders are named after ITS slices, not our modules.** `messaging/` → `chats/`, `service/` → `services/`, `request/` → `requests/`, `identity/` → `auth/` AND `profile/`, `offers/` → `business-cabinet/`, `import/` → `catalog/`. Never guess the path — use the **Frontend slice** column in the Feature Index below.
+
+- If you change an API that ASK Frontend consumes → open `../Ask_Frontend/AI_Knowledge/features/{frontend-slice}/contracts.md`
+- Update that contracts.md too. The frontend's copy of a contract is downstream of ours — backend wins for DATA.
+- If the frontend has a lock that would be violated → STOP and ASK
+- If a change REMOVES a field the frontend renders → say so explicitly. Their rules forbid faking it client-side, so a silent removal breaks a screen.
+
+## Lock System
+
+Format: `LOCKED | {what} | {why} | {scope: files/endpoints/tables}`
+
+Project-level: `AI_Knowledge/Locks.md`
+Feature-level: `AI_Knowledge/features/{name}/locks.md`
+
+Breaking a lock requires: (1) explicit user approval, (2) proof that surrounding extension is insufficient.
+
+## Tool Routing
+| When | Use | Missing? |
+|------|-----|----------|
+| Code change complete | `code-rules-checker` skill | Manual check against CodeRules.md |
+| Docs need update | `documentation-updater` skill | Direct file edit |
+| Knowledge cleanup | `system-maintainer` skill | Manual maintenance |
+| Spring/Java docs needed | context7 MCP | `claude mcp add context7` |
+| Need to verify frontend | playwright MCP | `claude mcp add playwright` |
+| Large reference docs | NotebookLM MCP | `claude mcp add notebooklm` |
+| Cross-feature discovery | graphify | Comes with superpowers |
+| Task tracking | dashboard MCP | `claude mcp add dashboard` |
+
+If a tool is missing AND install fails: do the work manually. Never skip.
+
+## Self-Maintenance
+
+Run at session start:
+1. **Compress**: File over max-lines? Remove outdated, merge duplicates, tighten prose. Never compress Locks.md.
+2. **Migrate**: Feature-specific info in project-level file? Move to feature folder. Pattern across 3+ features? Promote to CodeRules.md.
+3. **Archive**: Code deleted but docs remain? Move to `features/_archived/`. NEVER delete.
+4. **Stale flag**: Doc untouched 30+ days while corresponding code changed? Flag to user. Do NOT auto-delete.
+5. **Deduplicate**: Same lock in two files? Keep most specific, remove duplicate.
+
+## Related Projects
+| Project | Clone URL | Expected at | Relationship |
+|---------|-----------|-------------|-------------|
+| ASK Frontend | https://github.com/Siirio/AskFrontend.git | ../Ask_Frontend/ | Next.js (App Router), Vertical Slice Architecture. Consumes this API. Its slices mirror our module names — see the Feature Index. |
+
+## Feature Index
+
+The **Frontend slice** column is the cross-repo lookup key: our `AI_Knowledge/features/{folder}/` maps to their `../Ask_Frontend/AI_Knowledge/features/{slice}/`. The names differ — always use this table, never guess.
+
+| Feature | Folder | Has API | Frontend slice |
+|---------|--------|---------|----------------|
+| Identity & Auth | identity/ | Yes | `auth/` (session, roles) **and** `profile/` (settings, sign out) |
+| Business & Branches | business/ | Yes | `business-cabinet/` |
+| Items | item/ | Yes | `catalog/` |
+| Services | service/ | Yes | `services/` — plural |
+| Unified Search | search/ | Yes | `search/` |
+| Fallback Requests | request/ | Yes | `requests/` — plural |
+| Chat/Messaging | messaging/ | Yes | `chats/` — our folder is `messaging/`, theirs is `chats/` |
+| Unique Offers | offers/ | Yes | `business-cabinet/` (Unique Offers tab) |
+| Shipping | shipping/ | Yes | — no V1 surface yet |
+| Excel Import | import/ | Yes | `catalog/` (Products → Import) |
+| Autodump | (no folder) | Yes | — no V1 surface yet |

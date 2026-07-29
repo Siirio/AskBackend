@@ -1,6 +1,7 @@
 package kz.ask.identity.application;
 
 import java.util.UUID;
+import kz.ask.business.core.domain.enums.BusinessScope;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,14 +9,15 @@ import lombok.Setter;
 @Setter
 public class BusinessRegistrationPayload {
 
-    private String displayName;
-    private String password;
-    private String role;
     private String businessName;
     private String branchName;
     private UUID branchCityId;
     private String branchAddress;
     private Boolean onlineOnly;
+    private UUID businessCategoryId;
+    private String businessCategoryName;
+    private BusinessScope businessScope;
     private String email;
-    private String phone;
+    private String countryCode;
+    private String locale;
 }

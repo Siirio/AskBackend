@@ -10,19 +10,39 @@ server:
 auth:
   jwt:
     secret: ${AUTH_JWT_SECRET}
+  staff:
+    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY}
   verification:
     test-mode: ${AUTH_VERIFICATION_TEST_MODE:false}
+    staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
+  oauth2:
+    google:
+      client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
+      client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:https://ask.com.kz/oauth/callback}
+  cookie:
+    name: ${AUTH_COOKIE_NAME:ASK_SESSION}
+    path: /
+    same-site: ${AUTH_COOKIE_SAME_SITE:None}
+    secure: ${AUTH_COOKIE_SECURE:true}
 
 ask:
   cors:
-    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173}
+    allowed-origins: ${ASK_CORS_ORIGINS:https://ask.com.kz,https://stage.ask.com.kz,https://ask-frontend-stage-ask7.vercel.app}
   contact:
     hmac-secret: ${ASK_CONTACT_HMAC_SECRET}
     encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY}
     action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
 
 management:
+  info:
+    env:
+      enabled: true
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
+
+info:
+  build:
+    commit: ${BUILD_SHA}

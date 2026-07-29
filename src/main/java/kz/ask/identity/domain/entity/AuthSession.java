@@ -30,10 +30,10 @@ public class AuthSession extends BaseUuidV7Entity {
     private String authority;
 
     @Column(nullable = false)
-    private Boolean remembered;
+    private Boolean isRemembered;
 
     @Column(nullable = false)
-    private Boolean activationRequired;
+    private Boolean isActivationRequired;
 
     @Column(nullable = false)
     private Instant expiresAt;

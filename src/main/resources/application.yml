@@ -8,9 +8,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   datasource:
-    url: ${ASK_DB_URL:jdbc:postgresql://localhost:5432/ask}
-    username: ${ASK_DB_USERNAME:postgres}
-    password: ${ASK_DB_PASSWORD:admin}
+    url: ${ASK_DB_URL}
+    username: ${ASK_DB_USERNAME}
+    password: ${ASK_DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -28,20 +28,22 @@ spring:
       mail.smtp.starttls.enable: true
 
 server:
-  port: ${ASK_SERVER_PORT:8080}
+  port: ${ASK_SERVER_PORT:2020}
 
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: false
 
 auth:
   challenge:
     ttl: ${AUTH_CHALLENGE_TTL:300}
     code-length: ${AUTH_CHALLENGE_CODE_LENGTH:6}
     max-attempts: ${AUTH_CHALLENGE_MAX_ATTEMPTS:5}
+    retention: ${AUTH_CHALLENGE_RETENTION:P1D}
+    retention-interval: ${AUTH_CHALLENGE_RETENTION_INTERVAL:PT1H}
   customer:
     session:
       ttl: ${AUTH_CUSTOMER_SESSION_TTL:86400}
@@ -59,29 +61,101 @@ auth:
       ttl: ${AUTH_STAFF_REMEMBERED_SESSION_TTL:2592000}
     activation-session:
       ttl: ${AUTH_STAFF_ACTIVATION_SESSION_TTL:300}
-    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY:change-me-in-production-32chr}
+    temp-password-key: ${AUTH_STAFF_TEMP_PASSWORD_KEY}
   verification:
-    test-mode: ${AUTH_VERIFICATION_TEST_MODE:true}
+    test-mode: ${AUTH_VERIFICATION_TEST_MODE:false}
+    staging-bypass: ${AUTH_VERIFICATION_STAGING_BYPASS:false}
+  oauth2:
+    google:
+      client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
+      client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth/callback}
+  cookie:
+    name: ${AUTH_COOKIE_NAME:ASK_SESSION}
+    path: /
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    secure: ${AUTH_COOKIE_SECURE:false}
   jwt:
-    secret: ${AUTH_JWT_SECRET:change-me-in-production-use-at-least-256-bits}
+    secret: ${AUTH_JWT_SECRET}
   email:
     from: ${AUTH_EMAIL_FROM:noreply@ask.kz}
+  account:
+    deleted-display-name: ${AUTH_DELETED_DISPLAY_NAME:Deleted user}
 
 ask:
+  frontend:
+    base-url: ${ASK_FRONTEND_BASE_URL:http://localhost:3000}
   cors:
-    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    allowed-origins: ${ASK_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,https://ask.com.kz,https://stage.ask.com.kz,https://ask-frontend-stage-ask7.vercel.app}
   contact:
-    hmac-secret: ${ASK_CONTACT_HMAC_SECRET:change-me-contact-hmac-secret-32chr}
-    encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY:change-me-contact-encryption-key-32chr}
+    hmac-secret: ${ASK_CONTACT_HMAC_SECRET}
+    encryption-key: ${ASK_CONTACT_ENCRYPTION_KEY}
     action-token-ttl: ${ASK_CONTACT_ACTION_TOKEN_TTL:30m}
+  chat:
+    upload-dir: ${ASK_CHAT_UPLOAD_DIR:uploads/chat}
+    max-file-size: ${ASK_CHAT_MAX_FILE_SIZE:10485760}
+    allowed-extensions: ${ASK_CHAT_ALLOWED_EXTENSIONS:png,jpg,jpeg,pdf,txt,md,csv,xlsx}
+    allowed-content-types: ${ASK_CHAT_ALLOWED_CONTENT_TYPES:image/png,image/jpeg,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
+  business-media:
+    upload-dir: ${ASK_BUSINESS_MEDIA_UPLOAD_DIR:uploads/business-media}
+    max-file-size: ${ASK_BUSINESS_MEDIA_MAX_FILE_SIZE:5242880}
+    allowed-extensions: ${ASK_BUSINESS_MEDIA_ALLOWED_EXTENSIONS:png,jpg,jpeg,webp}
+    allowed-content-types: ${ASK_BUSINESS_MEDIA_ALLOWED_CONTENT_TYPES:image/png,image/jpeg,image/webp}
+  platform:
+    super-admin-email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL}
+    superadmins:
+      - email: ${ASK_PLATFORM_SUPER_ADMIN_EMAIL:superadmin@ask.com}
+        password: ${ASK_PLATFORM_SUPER_ADMIN_PASSWORD:ultramegasecretp@$$wOrd}
+        display-name: Superadmin
   ai:
     search:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_SEARCH_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_SEARCH_MAX_TOKENS:1800}
+      prompt-version: ${DEEPSEEK_SEARCH_PROMPT_VERSION:1}
+      schema-version: ${DEEPSEEK_SEARCH_SCHEMA_VERSION:1}
+      connect-timeout: ${DEEPSEEK_SEARCH_CONNECT_TIMEOUT:PT2S}
+      read-timeout: ${DEEPSEEK_SEARCH_READ_TIMEOUT:PT4S}
     autodump:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
       api-key: ${DEEPSEEK_API_KEY:}
       model: ${DEEPSEEK_AUTODUMP_MODEL:deepseek-v4-flash}
       max-tokens: ${DEEPSEEK_AUTODUMP_MAX_TOKENS:4000}
+    meilisearch:
+      host-url: ${MEILISEARCH_HOST_URL:http://localhost:7700}
+      api-key: ${MEILISEARCH_API_KEY:}
+      index-name: ${MEILISEARCH_INDEX_NAME:search_documents_v1}
+      semantic-enabled: ${MEILISEARCH_SEMANTIC_ENABLED:true}
+      semantic-embedder-name: ${MEILISEARCH_SEMANTIC_EMBEDDER_NAME:ask_multilingual}
+      semantic-embedder-model: ${MEILISEARCH_SEMANTIC_EMBEDDER_MODEL:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+    indexer:
+      interval-ms: ${ASK_INDEXER_INTERVAL_MS:60000}
+  search:
+    outbox:
+      batch-size: ${ASK_SEARCH_OUTBOX_BATCH_SIZE:50}
+      poll-interval: ${ASK_SEARCH_OUTBOX_POLL_INTERVAL:PT1S}
+      max-attempts: ${ASK_SEARCH_OUTBOX_MAX_ATTEMPTS:8}
+      retry-base-delay: ${ASK_SEARCH_OUTBOX_RETRY_BASE_DELAY:PT5S}
+      retry-max-delay: ${ASK_SEARCH_OUTBOX_RETRY_MAX_DELAY:PT10M}
+      processing-timeout: ${ASK_SEARCH_OUTBOX_PROCESSING_TIMEOUT:PT5M}
+      retention: ${ASK_SEARCH_OUTBOX_RETENTION:P3D}
+      retention-interval: ${ASK_SEARCH_OUTBOX_RETENTION_INTERVAL:PT1H}
+    reindex:
+      batch-size: ${ASK_SEARCH_REINDEX_BATCH_SIZE:250}
+      on-startup: ${ASK_SEARCH_REINDEX_ON_STARTUP:false}
+    reconciliation:
+      enabled: ${ASK_SEARCH_RECONCILIATION_ENABLED:false}
+      repair: ${ASK_SEARCH_RECONCILIATION_REPAIR:true}
+      batch-size: ${ASK_SEARCH_RECONCILIATION_BATCH_SIZE:250}
+      interval: ${ASK_SEARCH_RECONCILIATION_INTERVAL:PT30S}
+
+business:
+  item-import:
+    default-category-name: ${ASK_ITEM_IMPORT_DEFAULT_CATEGORY_NAME:Общее}
+  managed-import:
+    chat-subject: ${MANAGED_IMPORT_CHAT_SUBJECT:Items and services import}
+    initial-message: ${MANAGED_IMPORT_INITIAL_MESSAGE:Your managed items and services import request was sent. An Ask team member will join this chat and help prepare the data.}
+  invitation:
+    ttl-seconds: ${ASK_BUSINESS_INVITATION_TTL_SECONDS:604800}
+    token-bytes: ${ASK_BUSINESS_INVITATION_TOKEN_BYTES:32}

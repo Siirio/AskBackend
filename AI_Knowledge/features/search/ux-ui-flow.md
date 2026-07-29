@@ -1,0 +1,15 @@
+# Search — Frontend UX Expectations
+
+1. Customer selects `ITEM` or `SERVICE` and enters a natural-language query.
+2. Results render as compact rows, never standalone Business or UniqueOffer cards.
+3. The left side shows the Business logo and the most relevant short Item/Service information.
+4. The right side shows price when known; the far-right chat button opens/resumes the Business conversation.
+5. Clicking the row outside the chat action opens a modal with the full Item/Service description and public Business profile.
+
+The Business profile area may show business name, logo, cover, public description, phone, email, website, Instagram, and Telegram. It never shows legal identifiers, private account credentials, two-factor-authentication state, moderation facts, or other private account data.
+
+The personal login account and Business profile are distinct. Email/password/2FA belong to the person’s account; brand and public contact links belong to the Business profile.
+
+Branch address, city, and distance appear only when canonical branch/location data exists. Distance changes ranking only when the user explicitly selects distance sorting.
+
+Filter & Sort V1 operates on the cards already loaded for the current results page. Relevance preserves their server order. Distance, ascending/descending cost, and active unique-offer ordering are client-side reorderings and do not issue another search request. Price, company, city, radius up to 100 km, and visible map-area filters only remove cards from that loaded set. Company choices and counts are derived from the same loaded cards.

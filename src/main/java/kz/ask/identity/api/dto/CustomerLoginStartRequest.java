@@ -1,7 +1,7 @@
 package kz.ask.identity.api.dto;
 
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,13 +15,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CustomerLoginStartRequest {
 
+    @NotBlank
     @Email
     private String email;
-    private String phone;
-    private Boolean rememberMe;
-
-    @AssertTrue(message = "Exactly one of email or phone must be provided")
-    public boolean hasSingleContact() {
-        return (email != null && !email.isBlank()) ^ (phone != null && !phone.isBlank());
-    }
+    private Boolean isRememberMe;
 }

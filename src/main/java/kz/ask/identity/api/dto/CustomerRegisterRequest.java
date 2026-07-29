@@ -18,29 +18,20 @@ import lombok.Setter;
 public class CustomerRegisterRequest {
 
     private String displayName;
+    @NotBlank
     @Email
     private String email;
-    private String phone;
     @NotBlank
     @Size(min = 8, max = 128)
     private String password;
     @NotBlank
     private String passwordConfirmation;
-    private Boolean acceptedUserAgreement;
-    private Boolean rememberMe;
-
-    @AssertTrue(message = "Exactly one of email or phone must be provided")
-    public boolean hasSingleContact() {
-        return (email != null && !email.isBlank()) ^ (phone != null && !phone.isBlank());
-    }
+    private Boolean isRememberMe;
+    private String countryCode = "KZ";
+    private String locale = "ru";
 
     @AssertTrue(message = "Password and confirmation must match")
     public boolean passwordsMatch() {
         return password != null && password.equals(passwordConfirmation);
-    }
-
-    @AssertTrue(message = "User agreement must be accepted")
-    public boolean agreementAccepted() {
-        return acceptedUserAgreement != null && acceptedUserAgreement;
     }
 }

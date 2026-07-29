@@ -16,8 +16,8 @@ public class AuthSessionDto {
     private String userDisplayName;
     private String tokenHash;
     private String authority;
-    private Boolean remembered;
-    private Boolean activationRequired;
+    private Boolean isRemembered;
+    private Boolean isActivationRequired;
     private Instant expiresAt;
     private Instant revokedAt;
     private String plainToken;
