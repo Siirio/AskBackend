@@ -81,6 +81,10 @@ docker compose --env-file .env -f compose.yml logs -f app-prod
 docker compose --env-file .env -f compose.yml logs -f app-stage
 ```
 
+Both backend containers use `/actuator/health` for their Docker healthcheck. Public
+`GET /actuator/health` and `GET /actuator/info` remain unauthenticated so deployment
+gates and external monitoring can verify service health and the deployed commit SHA.
+
 ## Public URLs
 
 - Production API: `https://api.ask.com.kz`

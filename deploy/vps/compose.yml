@@ -4,6 +4,12 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+x-app-healthcheck: &app-healthcheck
+  test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+  interval: 10s
+  timeout: 5s
+  retries: 10
+
 services:
   caddy:
     image: caddy:2-alpine
@@ -101,6 +107,7 @@ services:
         APP_JAR: ask-prod-app.jar
     restart: unless-stopped
     logging: *default-logging
+    healthcheck: *app-healthcheck
     depends_on:
       db-prod:
         condition: service_healthy
@@ -154,6 +161,7 @@ services:
         APP_JAR: ask-stage-app.jar
     restart: unless-stopped
     logging: *default-logging
+    healthcheck: *app-healthcheck
     depends_on:
       db-stage:
         condition: service_healthy
