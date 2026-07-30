@@ -45,7 +45,7 @@ The queue contains only suspicious Item, Service, Message, Business, or AppUser 
 - 400 PLATFORM_MEMBERSHIP_EXISTS — user already has an ACTIVE membership
 
 ## Config
-- ask.platform.super-admin-email / ASK_PLATFORM_SUPER_ADMIN_EMAIL — bootstrap SUPER_ADMIN on startup
+- ask.platform.super-admin-email / ASK_PLATFORM_SUPER_ADMIN_EMAIL — create a missing SUPER_ADMIN identity and membership on startup without changing an existing identity's password
 
 ## Role Permissions
 - SUPER_ADMIN, ADMIN: all permissions except EDIT_ITEMS_SERVICES_DURING_IMPORT

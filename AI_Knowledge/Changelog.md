@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-30 | Made super-admin bootstrap idempotent for existing identities so application restarts never rotate a live administrator password; bootstrap still creates a missing identity or membership | PlatformSuperAdminBootstrap, platform documentation, production deployment safety
+
 2026-07-30 | Exposed the deployed BUILD_SHA as actuator `release.commit` because Spring Boot's generated build-info contributor owns the `build` object and otherwise hides a custom `build.commit` value | production configuration, deployment runtime-SHA gate
 
 2026-07-30 | Rejected repeated customer registration for every active normalized email with 409 EMAIL_ALREADY_REGISTERED so an existing account cannot receive a registration challenge or enter verification with silently discarded credentials | AuthProcessor.registerCustomer, identity registration contract and UX

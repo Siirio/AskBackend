@@ -2,7 +2,6 @@ package kz.ask.platform.infrastructure.config;
 
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import kz.ask.identity.domain.IdentityService;
@@ -57,18 +56,17 @@ public class PlatformSuperAdminBootstrap implements ApplicationRunner {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private void bootstrapSuperadmin(SuperAdminProperties.SuperAdmin sa) {
-        String password = resolvePassword(sa);
         List<AppUserDto> users = identityService.findAllActiveByEmail(sa.getEmail());
         AppUserDto user;
         if (users.isEmpty()) {
+            String password = resolvePassword(sa);
             user = identityService.createUser(
                     sa.getEmail(), sa.getDisplayName(), password, Role.SUPER_ADMIN);
             identityService.activateUser(user.getId());
             log.info("Created PLATFORM_SUPER_ADMIN user: {}", sa.getEmail());
         } else {
             user = users.get(0);
-            identityService.changePassword(user.getId(), password);
-            log.info("Updated PLATFORM_SUPER_ADMIN password for existing user: {}", sa.getEmail());
+            log.info("Found existing PLATFORM_SUPER_ADMIN user: {}", sa.getEmail());
         }
 
         if (platformMembershipService.findActiveByUser(user.getId()) != null) {
