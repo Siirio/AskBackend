@@ -42,17 +42,36 @@ nano .env
 
 Fill every empty secret before starting services.
 
-Deploy only from a clean checkout of the intended commit and set `BUILD_SHA` in `.env` to
-the exact output of `git rev-parse HEAD`. Compose tags the backend image with this value and
-the application exposes it through `/actuator/info`.
+Build only from a clean checkout of the intended commit. Set `BUILD_STAGE_SHA` to the exact
+backend `dev` commit deployed to staging and `BUILD_PROD_SHA` to the exact backend `master`
+commit deployed to production. Compose tags each backend image independently and the
+application exposes the selected value as `release.commit` through `/actuator/info`.
+
+The server-local `.env` is never committed. Back it up before every deployment, keep mode
+`600`, and validate required values without printing secrets.
 
 ## Start or update
+
+Build the Java 21 JAR locally and upload it as `/opt/ask/AskBackend/ask-stage-app.jar` or
+`/opt/ask/AskBackend/ask-prod-app.jar`. The committed `Dockerfile.runtime` packages that
+artifact without compiling source code on the VPS.
 
 Run on the VPS from `AskBackend/deploy/vps`:
 
 ```sh
 docker compose --env-file .env -f compose.yml up -d --build
 ```
+
+For a normal release, target only the intended application:
+
+```sh
+docker compose --env-file .env -f compose.yml up -d --build app-stage
+docker compose --env-file .env -f compose.yml up -d --build app-prod
+```
+
+Staging runs with mock six-digit verification (`test-mode=true`,
+`staging-bypass=true`). Production fixes both flags to `false` and requires real mail
+configuration. Deployment must not edit PostgreSQL data, schema, volumes, or Flyway history.
 
 Check services:
 
@@ -61,6 +80,10 @@ docker compose --env-file .env -f compose.yml ps
 docker compose --env-file .env -f compose.yml logs -f app-prod
 docker compose --env-file .env -f compose.yml logs -f app-stage
 ```
+
+Both backend containers use `/actuator/health` for their Docker healthcheck. Public
+`GET /actuator/health` and `GET /actuator/info` remain unauthenticated so deployment
+gates and external monitoring can verify service health and the deployed commit SHA.
 
 ## Public URLs
 

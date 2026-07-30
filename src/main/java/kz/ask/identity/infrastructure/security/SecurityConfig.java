@@ -84,6 +84,8 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
+                    "/actuator/health",
+                    "/actuator/info",
                     "/api/v1/search",
                     "/api/v1/cities/resolve",
                     "/api/v1/cities",

@@ -87,10 +87,7 @@ public class AuthProcessor {
                 .findFirst()
                 .orElse(null);
         if (existingUser != null) {
-            String registrationData = serializeRegistrationAcceptance(req);
-            return createRegisterChallenge(
-                    existingUser.getId(), Role.CUSTOMER, req.getEmail(),
-                    req.getIsRememberMe(), registrationData);
+            throw new ConflictException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         AppUserDto pendingCustomer = usersWithEmail.stream()
                 .filter(user -> user.getStatus() == UserStatus.PENDING)
@@ -515,7 +512,6 @@ public class AuthProcessor {
     private AuthSessionResponse buildSessionResponse(AuthSessionDto session, AppUserDto user, BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
-                .requiresRoleSelection(false)
                 .isTwoFactorEnabled(Boolean.TRUE.equals(user.getIsTwoFactorEnabled()))
                 .user(buildUserResponse(user));
 

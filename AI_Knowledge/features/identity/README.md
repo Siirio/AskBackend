@@ -5,8 +5,9 @@ Customer and business authentication: email-based login/registration, Google OAu
 ## Key decisions
 - Email is the real MVP verification channel. SMS disabled until real provider connected.
 - Customer and business registration/login both use email (phone optional).
+- Customer registration rejects an email belonging to any active identity with `409 EMAIL_ALREADY_REGISTERED`; an existing account must use the unified login flow and never receives a registration challenge.
 - Google OAuth accepts only Google-verified email and reuses the single AppUser for that email. A first-time Google login creates a CUSTOMER identity.
-- OAuth uses the backend authorization-code callback, writes a short-lived bridge cookie, and redirects to the configured frontend callback. `GET /auth/session` exchanges that cookie for a signed JWT and clears it.
+- OAuth uses the backend authorization-code callback, writes a short-lived bridge cookie, and redirects to the configured frontend callback. A newly created OAuth identity receives `registration=1` on that callback so the client completes role-specific legal acceptance. `GET /auth/session` exchanges the cookie for a signed JWT and clears it.
 - Local OAuth uses `localhost` for authorization, backend callback, frontend callback, and bridge-cookie exchange; mixing `localhost` with `127.0.0.1` loses the host-scoped bridge cookie.
 - Customer registration collects legal acceptance only after email verification and role choice. Customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 - Exactly one primary login identifier required. Password stored only as hash.
@@ -27,3 +28,4 @@ Customer and business authentication: email-based login/registration, Google OAu
 - Business membership hierarchy: OWNER > MANAGER > WORKER.
 - Account data export is not part of the profile or account lifecycle surface; permanent deletion remains available.
 - Email delivery switch is `AUTH_VERIFICATION_TEST_MODE` (true → LoggingEmailCodeSender/LocalBusinessInvitationEmailSender log instead of SMTP; AuthProcessor exposes test branches). The local profile sets `auth.verification.test-mode: true` directly and imports the ignored backend `.env` as a properties file for local secrets such as Google OAuth credentials. The dead `AUTH_VERIFICATION_EMAIL_ENABLED`/`AUTH_VERIFICATION_SMS_ENABLED` keys were removed from application-local.yml and compose.yml. `AUTH_VERIFICATION_STAGING_BYPASS` only skips code-hash comparison, it does NOT stop the send attempt.
+- VPS staging fixes `AUTH_VERIFICATION_TEST_MODE=true` together with `AUTH_VERIFICATION_STAGING_BYPASS=true`, so no real message is sent and any syntactically valid six-digit code passes. Production fixes both values to `false` and requires the real mail sender and generated code.

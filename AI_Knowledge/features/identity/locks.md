@@ -1,6 +1,7 @@
 # Identity — Feature Locks
 
 LOCKED | One identity per normalized email | Password/OTP and Google OAuth resolve the same AppUser. Business, branch, and platform access comes from memberships instead of duplicate role-specific users | identity domain, AuthChallenge, AppUser, Google OAuth
+LOCKED | Active identities cannot start customer registration again | Customer registration returns 409 EMAIL_ALREADY_REGISTERED and directs the account owner to unified login; it never creates a REGISTER challenge for an active identity | AuthProcessor.registerCustomer, POST /api/v1/auth/customer/register
 LOCKED | Staff do NOT self-register | No public /auth/staff/register. Staff created by owner, activated via login + password change | StaffManagementProcessor, AuthProcessor
 LOCKED | Temp password: BCrypt-hashed for login, AES-encrypted for authorized owner/manager visibility until change | Never store plain temporary password. Cleared on activation | IdentityServiceImpl, AppUser
 LOCKED | Unified login: POST /auth/login works for ALL roles | Single endpoint, not separate per-role login | LoginProcessor, AuthController

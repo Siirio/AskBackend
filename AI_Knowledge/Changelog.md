@@ -2,6 +2,16 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-30 | Exposed the deployed BUILD_SHA as actuator `release.commit` because Spring Boot's generated build-info contributor owns the `build` object and otherwise hides a custom `build.commit` value | production configuration, deployment runtime-SHA gate
+
+2026-07-30 | Rejected repeated customer registration for every active normalized email with 409 EMAIL_ALREADY_REGISTERED so an existing account cannot receive a registration challenge or enter verification with silently discarded credentials | AuthProcessor.registerCustomer, identity registration contract and UX
+
+2026-07-30 | Made actuator health and build-info endpoints publicly readable and added Docker healthchecks for both backend services so staging and production release gates can verify runtime readiness and commit identity | SecurityConfig, VPS Compose, deployment documentation
+
+2026-07-30 | Split staging and production deployment into guarded Codex skills, isolated their build SHAs and prebuilt JAR images, fixed staging to mock six-digit verification and production to real verification, and prohibited deployment-time production database repair | deploy-stage, deploy-prod, Dockerfile.runtime, VPS Compose and environment contract
+
+2026-07-30 | Replaced the permanently false multi-role session flags with an explicit first-registration marker on the Google OAuth callback, allowing the frontend to complete role-specific legal acceptance without a nonexistent role-selection API; synchronized the identity endpoint table with implemented email, password, and 2FA challenge routes | Google OAuth, AuthSessionResponse, identity contracts, frontend registration flow
+
 2026-07-29 | Replaced direct authenticated password and 2FA mutations with purpose-bound request/confirm email challenges; password confirmation now preserves the current session and revokes the others, while 2FA login creates no session before code confirmation | identity API, verification lifecycle, auth sessions, profile security
 
 2026-07-29 | Restored the two-migration fresh-deploy baseline by moving AppUser.phone into V1 DDL and removing the standalone V3; V2 remains reference-data inserts only | V1__init.sql, V2__reference_data.sql, removed V3__app_user_phone.sql

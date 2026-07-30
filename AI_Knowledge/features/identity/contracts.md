@@ -4,7 +4,7 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/auth/customer/login/start | No | Start customer login (email or phone) |
-| POST | /api/v1/auth/customer/register | No | Register customer |
+| POST | /api/v1/auth/customer/register | No | Register customer. Returns 409 `EMAIL_ALREADY_REGISTERED` when the normalized email belongs to an active identity |
 | POST | /api/v1/auth/verify | No | Verify 6-digit code → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | Unified login for ALL roles (email + password) |
 | GET | /oauth2/authorization/google | No | Start Google OAuth. Reuses the single identity for a verified email or creates a customer identity |
@@ -27,7 +27,7 @@
 
 ## Key DTOs
 - VerificationResponse: verificationId, role, purpose, channel, maskedDestination, expiresAt
-- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), requiresRoleSelection, availableRoles, allRoles, requiresTwoFactor, isTwoFactorEnabled, verificationId, suggestRoleExpansion
+- AuthSessionResponse: accessToken, tokenType, expiresIn, expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business (AuthBusinessContextResponse, optional), allRoles, requiresTwoFactor, isTwoFactorEnabled, verificationId, customerProfile, businessMemberships, platformMembership, pendingInvitationsCount
 - AuthUserResponse: userId, displayName, email, phone, status
 - AuthBusinessContextResponse: businessId, businessName, branchId, branchName, membershipId, memberRole
 - `allRoles` contains the deduplicated union of the AppUser role, all active `businessMemberships[].role` values, and `platformMembership.role` when present.
@@ -36,13 +36,12 @@
 ## Additional Endpoints
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | /api/v1/auth/select-role | No | Select role when account has multiple roles |
-| POST | /api/v1/auth/switch-role | Bearer | Switch active role between sessions |
+| POST | /api/v1/auth/email-change/request | Bearer | Validate an unused `newEmail` and send an owner-bound email code to it |
+| POST | /api/v1/auth/email-change/confirm | Bearer | Verify `verificationId` + 6-digit `code`, change the email, revoke old sessions, and return a replacement session |
 | POST | /api/v1/auth/password-change/request | Bearer | Validate `currentPassword`, `newPassword`, and `passwordConfirmation`; send a purpose-bound email code |
 | POST | /api/v1/auth/password-change/confirm | Bearer | Verify `verificationId` + 6-digit `code`, apply the staged password hash, preserve the current session, and revoke all other sessions |
 | POST | /api/v1/auth/two-factor/request | Bearer | Request an email challenge for the explicit `enabled` target state |
 | POST | /api/v1/auth/two-factor/confirm | Bearer | Verify `verificationId` + 6-digit `code` and apply the challenge-bound target state |
-| GET | /api/v1/auth/email-info | No | Get email provider info for login hint |
 
 Password and two-factor challenges are authenticated, owner-bound, and purpose-bound. The public `/api/v1/auth/verify` endpoint accepts only `LOGIN` and `REGISTER`; it cannot consume security-setting challenges. Resending replaces only a pending challenge with the same user and purpose.
 
@@ -53,7 +52,6 @@ Examples:
 - `accessToken` on the wire → `access_token`
 - `expiresIn` → `expires_in`
 - `verificationId` → `verification_id`
-- `requiresRoleSelection` → `requires_role_selection`
 - `businessId` → `business_id`
 
 DTO field names in this document use camelCase (Java convention). Always map to snake_case when integrating.

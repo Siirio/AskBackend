@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy ASK Production"
+  short_description: "Promote ASK dev to production"
+  default_prompt: "Promote verified ASK dev branches to master, deploy production, and verify the release."
