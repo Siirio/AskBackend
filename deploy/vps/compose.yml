@@ -93,10 +93,12 @@ services:
       - ask
 
   app-prod:
-    image: ask-backend:${BUILD_SHA:?BUILD_SHA must be set}
+    image: ask-backend:${BUILD_PROD_SHA:?BUILD_PROD_SHA must be set}
     build:
       context: ../..
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.runtime
+      args:
+        APP_JAR: ask-prod-app.jar
     restart: unless-stopped
     logging: *default-logging
     depends_on:
@@ -106,7 +108,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      BUILD_SHA: ${BUILD_SHA:?BUILD_SHA must be set}
+      BUILD_SHA: ${BUILD_PROD_SHA:?BUILD_PROD_SHA must be set}
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       ASK_DB_URL: jdbc:postgresql://db-prod:5432/ask_prod
       ASK_DB_USERNAME: ask_prod
@@ -144,10 +146,12 @@ services:
       - ask
 
   app-stage:
-    image: ask-backend:${BUILD_SHA:?BUILD_SHA must be set}
+    image: ask-backend:${BUILD_STAGE_SHA:?BUILD_STAGE_SHA must be set}
     build:
       context: ../..
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.runtime
+      args:
+        APP_JAR: ask-stage-app.jar
     restart: unless-stopped
     logging: *default-logging
     depends_on:
@@ -157,7 +161,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      BUILD_SHA: ${BUILD_SHA:?BUILD_SHA must be set}
+      BUILD_SHA: ${BUILD_STAGE_SHA:?BUILD_STAGE_SHA must be set}
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       ASK_DB_URL: jdbc:postgresql://db-stage:5432/ask_stage
       ASK_DB_USERNAME: ask_stage
@@ -167,8 +171,8 @@ services:
       AUTH_STAFF_TEMP_PASSWORD_KEY: ${AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY:?AUTH_STAGE_STAFF_TEMP_PASSWORD_KEY must be set}
       ASK_CONTACT_HMAC_SECRET: ${ASK_CONTACT_HMAC_SECRET:?ASK_CONTACT_HMAC_SECRET must be set}
       ASK_CONTACT_ENCRYPTION_KEY: ${ASK_CONTACT_ENCRYPTION_KEY:?ASK_CONTACT_ENCRYPTION_KEY must be set}
-      AUTH_VERIFICATION_TEST_MODE: "false"
-      AUTH_VERIFICATION_STAGING_BYPASS: "false"
+      AUTH_VERIFICATION_TEST_MODE: "true"
+      AUTH_VERIFICATION_STAGING_BYPASS: "true"
       OAUTH2_GOOGLE_CLIENT_ID: ${OAUTH2_STAGE_GOOGLE_CLIENT_ID:-}
       OAUTH2_GOOGLE_CLIENT_SECRET: ${OAUTH2_STAGE_GOOGLE_CLIENT_SECRET:-}
       OAUTH2_FRONTEND_REDIRECT_URI: https://stage.ask.com.kz/oauth/callback

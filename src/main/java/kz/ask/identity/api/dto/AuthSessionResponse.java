@@ -22,13 +22,10 @@ public class AuthSessionResponse {
     private String startRoute;
     private AuthUserResponse user;
     private AuthBusinessContextResponse business;
-    private Boolean requiresRoleSelection;
-    private List<RoleOption> availableRoles;
     private List<String> allRoles;
     private Boolean requiresTwoFactor;
     private Boolean isTwoFactorEnabled;
     private UUID verificationId;
-    private Boolean suggestRoleExpansion;
     private AuthCustomerProfileResponse customerProfile;
     private List<AuthBusinessMembershipResponse> businessMemberships;
     private AuthPlatformMembershipResponse platformMembership;

@@ -14,10 +14,10 @@
 
 ## Google OAuth bridge
 1. Google redirects to the backend callback.
-2. Backend creates a revocable session, writes `ASK_SESSION`, and redirects to `/oauth/callback`.
+2. Backend creates a revocable session, writes `ASK_SESSION`, and redirects to `/oauth/callback`; only a newly created identity receives `registration=1`.
 3. Frontend calls `GET /api/v1/auth/session` with credentials.
 4. Backend validates the cookie session, returns `access_token`, `token_type=Bearer`, and `expires_in`, then clears `ASK_SESSION`.
-5. A first-time OAuth user with no accepted role documents is redirected to the role-choice screen.
+5. The frontend keeps the new-registration signal in session storage until the user selects a role and the corresponding legal documents are accepted.
 6. All later API requests use the Bearer JWT without cookies.
 
 ## Staff activation

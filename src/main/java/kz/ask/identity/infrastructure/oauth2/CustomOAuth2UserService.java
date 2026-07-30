@@ -20,6 +20,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
+    static final String USER_ID_ATTRIBUTE = "ask_user_id";
+    static final String REGISTRATION_REQUIRED_ATTRIBUTE = "ask_registration_required";
+
     private final IdentityService identityService;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -40,6 +43,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         AppUserDto user = identityService.findAllByEmail(email).stream()
                 .findFirst()
                 .orElse(null);
+        boolean registrationRequired = user == null;
         if (user == null) {
             byte[] randomBytes = new byte[32];
             secureRandom.nextBytes(randomBytes);
@@ -56,7 +60,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         identityService.recordLogin(user.getId());
 
         Map<String, Object> attributes = new java.util.HashMap<>(oAuth2User.getAttributes());
-        attributes.put("ask_user_id", user.getId().toString());
+        attributes.put(USER_ID_ATTRIBUTE, user.getId().toString());
+        attributes.put(REGISTRATION_REQUIRED_ATTRIBUTE, registrationRequired);
 
         return new DefaultOAuth2User(
                 oAuth2User.getAuthorities(),

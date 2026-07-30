@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy ASK Stage"
+  short_description: "Release dev to ASK staging"
+  default_prompt: "Deploy ASK backend and frontend dev branches to staging and verify the release."

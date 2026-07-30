@@ -25,6 +25,7 @@ REST API backend for the ASK platform — local item/service search with an anti
 ## Runtime Constraints
 - Never commit or push. User controls all version control.
 - Never run Maven, Gradle, or any build tool unless user explicitly says "run" or "build."
+- Preserve the gitignored local `.env` file and its developer credentials; never delete it or replace it with the empty `.env.example`, because local OAuth and other integrations depend on that machine-specific configuration.
 - Flyway has exactly two migrations: `V1__init.sql` contains all DDL and `V2__reference_data.sql` contains only reference-data inserts.
 - AI_Knowledge/ must be committed — it IS the shared truth. Never add to .gitignore.
 

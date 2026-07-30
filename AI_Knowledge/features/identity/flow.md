@@ -19,7 +19,7 @@ flowchart LR
     X --> S
 ```
 
-The user sees a customer, business-owner, or staff entry path. The frontend receives a Bearer JWT and role/start-route context; it never receives a password hash or verification code.
+The user sees a customer, business-owner, or staff entry path. The frontend receives a Bearer JWT and role/start-route context; it never receives a password hash or verification code. A newly created Google identity is marked only on the frontend callback redirect so the client can complete role-specific legal acceptance without adding a dormant session-role contract.
 
 An authenticated password or two-factor change is never applied by its request call. The request stages the intent and sends a code; confirmation validates the authenticated owner, purpose, code, and staged payload before applying it. Password confirmation revokes other sessions but preserves the session that performed the change.
 

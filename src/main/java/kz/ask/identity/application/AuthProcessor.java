@@ -515,7 +515,6 @@ public class AuthProcessor {
     private AuthSessionResponse buildSessionResponse(AuthSessionDto session, AppUserDto user, BusinessRegistrationResult bizResult) {
         AuthSessionResponse.AuthSessionResponseBuilder builder = AuthSessionResponse.builder()
                 .tokenType("Bearer")
-                .requiresRoleSelection(false)
                 .isTwoFactorEnabled(Boolean.TRUE.equals(user.getIsTwoFactorEnabled()))
                 .user(buildUserResponse(user));
 
