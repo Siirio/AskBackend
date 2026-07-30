@@ -87,10 +87,7 @@ public class AuthProcessor {
                 .findFirst()
                 .orElse(null);
         if (existingUser != null) {
-            String registrationData = serializeRegistrationAcceptance(req);
-            return createRegisterChallenge(
-                    existingUser.getId(), Role.CUSTOMER, req.getEmail(),
-                    req.getIsRememberMe(), registrationData);
+            throw new ConflictException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         AppUserDto pendingCustomer = usersWithEmail.stream()
                 .filter(user -> user.getStatus() == UserStatus.PENDING)

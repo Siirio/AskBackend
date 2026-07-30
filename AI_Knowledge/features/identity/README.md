@@ -5,6 +5,7 @@ Customer and business authentication: email-based login/registration, Google OAu
 ## Key decisions
 - Email is the real MVP verification channel. SMS disabled until real provider connected.
 - Customer and business registration/login both use email (phone optional).
+- Customer registration rejects an email belonging to any active identity with `409 EMAIL_ALREADY_REGISTERED`; an existing account must use the unified login flow and never receives a registration challenge.
 - Google OAuth accepts only Google-verified email and reuses the single AppUser for that email. A first-time Google login creates a CUSTOMER identity.
 - OAuth uses the backend authorization-code callback, writes a short-lived bridge cookie, and redirects to the configured frontend callback. A newly created OAuth identity receives `registration=1` on that callback so the client completes role-specific legal acceptance. `GET /auth/session` exchanges the cookie for a signed JWT and clears it.
 - Local OAuth uses `localhost` for authorization, backend callback, frontend callback, and bridge-cookie exchange; mixing `localhost` with `127.0.0.1` loses the host-scoped bridge cookie.

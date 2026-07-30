@@ -29,6 +29,7 @@
 
 ## Registration
 - Customer registration form: displayName, email, password, passwordConfirmation
+- If the normalized email already belongs to an active identity, registration stops with `409 EMAIL_ALREADY_REGISTERED`; the client remains on the registration form, tells the user that the account already exists, and directs them to sign in.
 - After email verification, role choice is mandatory. Customer choice requires `USER_TERMS` and `PRIVACY_POLICY`; seller choice requires `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 - Seller onboarding is available only after the seller-role documents were accepted.
 - Business: email, password, businessName, branchName, branchCityId, branchAddress, onlineOnly, acceptedBusinessRules

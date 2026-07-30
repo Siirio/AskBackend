@@ -4,7 +4,7 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/auth/customer/login/start | No | Start customer login (email or phone) |
-| POST | /api/v1/auth/customer/register | No | Register customer |
+| POST | /api/v1/auth/customer/register | No | Register customer. Returns 409 `EMAIL_ALREADY_REGISTERED` when the normalized email belongs to an active identity |
 | POST | /api/v1/auth/verify | No | Verify 6-digit code → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | Unified login for ALL roles (email + password) |
 | GET | /oauth2/authorization/google | No | Start Google OAuth. Reuses the single identity for a verified email or creates a customer identity |
