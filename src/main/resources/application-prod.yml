@@ -44,5 +44,5 @@ management:
         include: health,info
 
 info:
-  build:
+  release:
     commit: ${BUILD_SHA}

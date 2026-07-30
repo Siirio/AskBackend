@@ -2,6 +2,8 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-30 | Exposed the deployed BUILD_SHA as actuator `release.commit` because Spring Boot's generated build-info contributor owns the `build` object and otherwise hides a custom `build.commit` value | production configuration, deployment runtime-SHA gate
+
 2026-07-30 | Rejected repeated customer registration for every active normalized email with 409 EMAIL_ALREADY_REGISTERED so an existing account cannot receive a registration challenge or enter verification with silently discarded credentials | AuthProcessor.registerCustomer, identity registration contract and UX
 
 2026-07-30 | Made actuator health and build-info endpoints publicly readable and added Docker healthchecks for both backend services so staging and production release gates can verify runtime readiness and commit identity | SecurityConfig, VPS Compose, deployment documentation

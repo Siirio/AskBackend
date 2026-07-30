@@ -45,7 +45,7 @@ Fill every empty secret before starting services.
 Build only from a clean checkout of the intended commit. Set `BUILD_STAGE_SHA` to the exact
 backend `dev` commit deployed to staging and `BUILD_PROD_SHA` to the exact backend `master`
 commit deployed to production. Compose tags each backend image independently and the
-application exposes the selected value through `/actuator/info`.
+application exposes the selected value as `release.commit` through `/actuator/info`.
 
 The server-local `.env` is never committed. Back it up before every deployment, keep mode
 `600`, and validate required values without printing secrets.
