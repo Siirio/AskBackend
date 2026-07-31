@@ -70,7 +70,14 @@ public class ItemMapper {
         if (req.getName() != null) entity.setName(req.getName().trim());
         if (req.getDescription() != null) entity.setDescription(req.getDescription());
         if (req.getDeepLink() != null) entity.setDeepLink(req.getDeepLink());
-        if (req.getTags() != null) entity.setTags(req.getTags());
+        if (req.getTags() != null) {
+            if (entity.getTags() == null) {
+                entity.setTags(new java.util.ArrayList<>(req.getTags()));
+            } else {
+                entity.getTags().clear();
+                entity.getTags().addAll(req.getTags());
+            }
+        }
         if (req.getAttributes() != null) entity.setAttributes(req.getAttributes());
         if (req.getPrice() != null) entity.setPrice(req.getPrice());
         if (req.getIsActive() != null) entity.setIsActive(req.getIsActive());

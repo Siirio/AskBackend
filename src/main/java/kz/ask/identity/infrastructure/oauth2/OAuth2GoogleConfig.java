@@ -31,6 +31,7 @@ public class OAuth2GoogleConfig {
                 .scope("openid", "email", "profile")
                 .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
                 .tokenUri("https://oauth2.googleapis.com/token")
+                .jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
                 .userInfoUri("https://openidconnect.googleapis.com/v1/userinfo")
                 .userNameAttributeName("sub")
                 .clientName("Google")

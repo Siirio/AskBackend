@@ -1,6 +1,7 @@
 package kz.ask.identity.infrastructure.security;
 
 import kz.ask.identity.infrastructure.oauth2.CustomOAuth2UserService;
+import kz.ask.identity.infrastructure.oauth2.CustomOidcUserService;
 import kz.ask.identity.infrastructure.oauth2.OAuth2AuthFailureHandler;
 import kz.ask.identity.infrastructure.oauth2.OAuth2AuthSuccessHandler;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -22,6 +24,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
     private final OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
 
@@ -39,10 +42,12 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomOAuth2UserService customOAuth2UserService,
+                          CustomOidcUserService customOidcUserService,
                           OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler,
                           OAuth2AuthFailureHandler oAuth2AuthFailureHandler) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.customOAuth2UserService = customOAuth2UserService;
+        this.customOidcUserService = customOidcUserService;
         this.oAuth2AuthSuccessHandler = oAuth2AuthSuccessHandler;
         this.oAuth2AuthFailureHandler = oAuth2AuthFailureHandler;
     }
@@ -70,7 +75,9 @@ public class SecurityConfig {
         if (oauth2GoogleClientId != null && !oauth2GoogleClientId.isBlank()
                 && oauth2GoogleClientSecret != null && !oauth2GoogleClientSecret.isBlank()) {
             http.oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService)
+                        .oidcUserService(customOidcUserService))
                 .successHandler(oAuth2AuthSuccessHandler)
                 .failureHandler(oAuth2AuthFailureHandler)
             );
@@ -107,8 +114,8 @@ public class SecurityConfig {
                     "/api/v1/auth/cancel-verification"
                 ).permitAll()
                 .requestMatchers(
-                    "/oauth2/**",
-                    "/login/oauth2/**"
+                    new AntPathRequestMatcher("/oauth2/**"),
+                    new AntPathRequestMatcher("/login/oauth2/**")
                 ).permitAll()
                 .requestMatchers("/api/v1/auth/change-temporary-password").authenticated()
                 .requestMatchers("/api/v1/auth/session").authenticated()
