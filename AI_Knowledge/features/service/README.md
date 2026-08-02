@@ -7,6 +7,7 @@ Services owned by a Business, optional branch-specific facts, and chat-first cus
 - ServiceOffering: business-owned service definition (name, description, category, status).
 - A Service can be created before any branch exists.
 - A Service has one flat `SERVICE` category selected from suggestions or explicitly created by a user.
+- A Service may list multiple labeled, seller-published customer destinations for booking or purchase. They belong to the Service, never to a branch.
 - A later branch association may hold location-specific price, schedule, or visibility.
 - Active Services publish immediately and business lists order new Services first.
 - Semantic aliases, controlled concepts, use cases, summaries, and embeddings are derived into `SearchDocument`; they are never stored as canonical Service attributes.

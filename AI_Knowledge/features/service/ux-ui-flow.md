@@ -4,6 +4,9 @@
 - Compact row: Business logo, Service name and short relevant information, price when known, and chat action
 - Clicking the row opens full Service description plus the public Business profile and optional branch context
 - Chat opens/resumes the durable Business conversation; search creates no booking or request
+- `Proceed to Purchase` opens a chooser modal containing every purchase or booking destination published for that Service. Destinations are Service-owned and are not grouped or selected by branch.
+- If the Service has no purchase destination, `Proceed to Purchase` opens the shared Business chat with an editable draft naming the Service; the customer explicitly sends it.
+- Until search returns this destination data, omit `Proceed to Purchase` rather than render an inert control.
 
 ## Service contact flow
 1. Customer finds a service offer and explicitly opens the business conversation.

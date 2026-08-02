@@ -16,6 +16,7 @@ ASK is a local search platform for Items and Services across businesses. It is a
 - AI (DeepSeek) structures queries — it never selects businesses or invents availability.
 - The frontend selects `ITEM` or `SERVICE`; AI cannot override that mode.
 - Business and UniqueOffer are context for Item/Service results, never standalone search modes or cards.
+- An Item or Service may publish multiple labeled customer purchase destinations. These destinations belong to that Item or Service, never to a branch; branch data remains location context. "Proceed to Purchase" lets the customer choose a destination, or opens the shared Business chat with an editable entity-specific draft when none exists.
 - Business logos and covers and Unique Offer covers are ASK-managed uploaded files; URL inputs are reserved for external websites and social/contact destinations.
 - Search is Item/Service retrieval only and never creates requests, supplier outreach, notifications, or chats.
 - Meilisearch is the retrieval engine with typo tolerance, Russian stemming, and synonyms. PostgreSQL is source of truth and hydration layer.
