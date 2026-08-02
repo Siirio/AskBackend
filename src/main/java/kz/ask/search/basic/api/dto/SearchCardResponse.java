@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import kz.ask.business.branch.api.dto.BranchOpeningSummaryResponse;
+import kz.ask.offer.media.CatalogImageResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,6 +20,7 @@ public class SearchCardResponse {
     private String brandLogoUrl;
     private String title;
     private String summary;
+    private List<CatalogImageResponse> images;
     private String categoryLabel;
     private BigDecimal price;
     private String currency;

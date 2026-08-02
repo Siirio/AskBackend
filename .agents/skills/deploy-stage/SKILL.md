@@ -32,7 +32,7 @@ Do not use the shared development server. Export the values as `ASK_VPS_STAGE_HO
 - Stage JAR: `/opt/ask/AskBackend/ask-stage-app.jar`
 - Verification mode: `AUTH_VERIFICATION_TEST_MODE=true` and `AUTH_VERIFICATION_STAGING_BYPASS=true`
 
-Invoking this skill authorizes committing and pushing intended changes to `dev`. It does not authorize merging or pushing `master`.
+Invoking this skill authorizes committing and pushing every local tracked and untracked project change in both repositories to `dev`. The only exclusions are secrets, ignored machine/runtime data, uploads, and generated build artifacts. It does not authorize merging or pushing `master`.
 
 ## Stop conditions
 
@@ -40,7 +40,7 @@ Stop without deploying when any condition is true:
 
 - either repository is not on `dev`;
 - intended tests or builds fail because of the current change;
-- `.env`, uploads, generated files, or unrelated user changes would be committed;
+- a local file contains secrets, runtime data, uploads, or generated build output and cannot be safely excluded from the commit;
 - `dev` is behind or has diverged from `origin/dev`;
 - the VPS identity or path differs from the connection contract;
 - required stage environment values are empty;
@@ -57,11 +57,12 @@ For each repository:
 
 1. Fetch `origin`.
 2. Require branch `dev` and `HEAD` based on `origin/dev`.
-3. Inspect `git status`, `git diff`, `git diff --check`, ignored `.env` state, and the staged file list.
-4. Exclude backend `.env`, `uploads/business-media/`, build output, and unrelated changes.
-5. Run the repository tests and production build.
-6. Commit with a short human message and push `dev`.
-7. Require local `HEAD` to equal `origin/dev`.
+3. Inspect every tracked and untracked file with `git status`, `git diff`, `git diff --check`, ignored `.env` state, and the staged file list.
+4. Treat all local source, documentation, tests, configuration, and deployment tooling as release scope. Exclude only secrets, ignored machine/runtime data, backend `.env`, `uploads/business-media/`, and generated build output.
+5. Run the repository tests and production build against the complete local release scope.
+6. Stage every remaining tracked and untracked project file, review the staged diff, and commit it with a short human message.
+7. Require `git status --short` to be empty, then push `dev`.
+8. Require local `HEAD` to equal `origin/dev`.
 
 The frontend push should trigger the Vercel staging deployment.
 

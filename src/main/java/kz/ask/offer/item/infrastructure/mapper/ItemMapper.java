@@ -10,10 +10,15 @@ import kz.ask.offer.item.api.dto.BusinessProductUpdateRequest;
 import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.offer.item.application.ProductOfferDto;
 import kz.ask.offer.item.domain.entity.Item;
+import kz.ask.offer.media.CatalogImageMutation;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ItemMapper {
+
+    private final CatalogImageMutation catalogImageMutation;
 
     public ProductOfferDto toProductOfferDto(Item entity) {
         return ProductOfferDto.builder()
@@ -24,6 +29,7 @@ public class ItemMapper {
                 .categoryLabel(entity.getCategoryLabel())
                 .name(entity.getName())
                 .description(entity.getDescription())
+                .imageFiles(entity.getImageFiles() == null ? java.util.List.of() : new java.util.ArrayList<>(entity.getImageFiles()))
                 .deepLink(entity.getDeepLink())
                 .tags(entity.getTags() == null ? null : new java.util.ArrayList<>(entity.getTags()))
                 .attributes(entity.getAttributes())
@@ -42,6 +48,7 @@ public class ItemMapper {
                 .categoryLabel(dto.getCategoryLabel())
                 .name(dto.getName())
                 .description(dto.getDescription())
+                .images(catalogImageMutation.toResponses(dto.getImageFiles()))
                 .deepLink(dto.getDeepLink())
                 .tags(dto.getTags())
                 .attributes(dto.getAttributes())

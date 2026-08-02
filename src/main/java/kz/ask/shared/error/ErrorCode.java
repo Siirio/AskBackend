@@ -74,6 +74,8 @@ public enum ErrorCode {
     MANAGED_IMPORT_ACTIVE_EXISTS("An active managed import already exists for this business"),
     MANAGED_IMPORT_FORBIDDEN("Managed import access is not allowed"),
     FILE_INVALID("Uploaded file is not allowed"),
+    CATALOG_IMAGE_LIMIT_EXCEEDED("A catalog entry can contain at most three images"),
+    CATALOG_IMAGE_ORDER_INVALID("Catalog image order is invalid"),
     BUSINESS_MEDIA_NOT_FOUND("Business media file not found"),
     ATTACHMENT_NOT_FOUND("Attachment not found"),
     CONVERSATION_CLOSED("Чат закрыт"),

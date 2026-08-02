@@ -11,10 +11,12 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.category.domain.entity.Category;
@@ -50,6 +52,12 @@ public class Item extends BaseUuidV7Entity {
     }
 
     private String description;
+
+    @ElementCollection
+    @CollectionTable(name = "item_image", joinColumns = @JoinColumn(name = "item_id"))
+    @OrderColumn(name = "display_order")
+    @Column(name = "stored_name", nullable = false)
+    private List<String> imageFiles = new ArrayList<>();
 
     @Column(length = 2048)
     private String deepLink;

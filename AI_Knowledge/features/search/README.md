@@ -36,7 +36,7 @@ There is no deterministic term matching, attribute scoring, weighted concepts, h
 
 ## Result presentation
 
-Each result is an Item or Service row with business logo/name, short Item/Service information, price when known, and a chat action. Opening the row presents the full Item/Service description plus the public Business profile: logo, cover, description, phone, email, Instagram, Telegram, and website. `resultId` is the canonical Item/Service aggregate ID.
+Each result is an Item or Service row with its primary catalog image, a compact business avatar/name, short Item/Service information, price when known, and a chat action. Desktop hover previews the full Item/Service image gallery and details in the right panel; mobile row tap opens the same details as a modal. Business-avatar and chat actions do not open result details. Match reasons remain response metadata but are not displayed. `resultId` is the canonical Item/Service aggregate ID.
 
 Results are sectioned into "exact" (no warnings) and "alternatives" (price or city mismatch). UniqueOffers may boost or decorate linked results but are never standalone search documents, scopes, or cards.
 

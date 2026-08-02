@@ -1,5 +1,7 @@
 # Service — Frontend UX Expectations
 
+SERVICE create and edit accept up to three real image files through selection, drag-and-drop, or clipboard paste. Owners reorder images by drag-and-drop; the first image is the primary search image. Missing images remain valid and render a neutral placeholder.
+
 ## Service result cards (customer-facing)
 - Compact row: Business logo, Service name and short relevant information, price when known, and chat action
 - Clicking the row opens full Service description plus the public Business profile and optional branch context

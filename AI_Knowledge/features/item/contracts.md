@@ -1,5 +1,9 @@
 # Item — REST API Contracts
 
+## Managed images
+
+`POST /api/v1/items/{itemId}/images` consumes multipart form data. Repeated `files` parts contain new PNG, JPEG, or WebP files. Repeated `order` values define the final gallery using retained stored identifiers or `new:{zeroBasedFileIndex}` tokens. The final gallery contains at most three images and the first image is primary. Responses expose ordered `images` entries with server-generated `id` and `url`; clients never submit external media URLs.
+
 Public customers discover Items through the unified search endpoint; this feature does not expose a
 separate public listing or detail API in the current backend contract.
 

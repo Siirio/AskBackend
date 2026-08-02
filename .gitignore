@@ -12,3 +12,4 @@ deploy/vps/.env
 .claude/machine-bootstrap.lock
 __pycache__/
 graphify-out/
+tools/deploy/.codex_*

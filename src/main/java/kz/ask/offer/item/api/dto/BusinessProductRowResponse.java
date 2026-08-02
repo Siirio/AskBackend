@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import kz.ask.offer.media.CatalogImageResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class BusinessProductRowResponse {
     private String categoryLabel;
     private String name;
     private String description;
+    private List<CatalogImageResponse> images;
     private String deepLink;
     private List<String> tags;
     private Map<String, Object> attributes;

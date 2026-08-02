@@ -279,6 +279,14 @@ CREATE TABLE product_tag (
     tag        VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE item_image (
+    item_id       UUID         NOT NULL REFERENCES item(id) ON DELETE CASCADE,
+    display_order INTEGER      NOT NULL,
+    stored_name   VARCHAR(255) NOT NULL,
+    PRIMARY KEY (item_id, display_order),
+    UNIQUE (item_id, stored_name)
+);
+
 -- ---------------------------------------------------------------------------
 -- Service
 -- ---------------------------------------------------------------------------
@@ -297,6 +305,14 @@ CREATE TABLE service_offering (
     schedule_text  VARCHAR(255),
     is_active      BOOLEAN     NOT NULL,
     attributes     JSONB
+);
+
+CREATE TABLE service_image (
+    service_id     UUID         NOT NULL REFERENCES service_offering(id) ON DELETE CASCADE,
+    display_order  INTEGER      NOT NULL,
+    stored_name    VARCHAR(255) NOT NULL,
+    PRIMARY KEY (service_id, display_order),
+    UNIQUE (service_id, stored_name)
 );
 
 -- ---------------------------------------------------------------------------

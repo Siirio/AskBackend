@@ -15,6 +15,10 @@ import kz.ask.business.profile.domain.BusinessProfileService;
 import kz.ask.business.profile.domain.dto.BusinessProfileDto;
 import kz.ask.business.uniqueoffer.domain.UniqueOfferService;
 import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
+import kz.ask.offer.item.infrastructure.repository.ProductRepository;
+import kz.ask.offer.media.CatalogImageMutation;
+import kz.ask.offer.media.CatalogImageResponse;
+import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.search.basic.api.dto.SearchBusinessProfileResponse;
 import kz.ask.search.basic.api.dto.SearchCardResponse;
 import kz.ask.search.basic.api.dto.SearchConstraintResponse;
@@ -57,6 +61,9 @@ public class StructuredSearchProcessor {
     private final BusinessProfileService businessProfileService;
     private final UniqueOfferService uniqueOfferService;
     private final MeilisearchIndexGateway meilisearchIndexGateway;
+    private final ProductRepository productRepository;
+    private final ServiceOfferingRepository serviceOfferingRepository;
+    private final CatalogImageMutation catalogImageMutation;
 
     public SearchResponse search(SearchRequest request) {
         int page = request.getPage() == null ? 0 : request.getPage();
@@ -88,6 +95,7 @@ public class StructuredSearchProcessor {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, BusinessProfileDto> profiles = businessProfileService.findByBusinessIds(businessIds);
+        Map<UUID, List<CatalogImageResponse>> images = loadImages(pageResults);
 
         return SearchResponse.builder()
                 .rawQuery(request.getRawQuery())
@@ -95,7 +103,7 @@ public class StructuredSearchProcessor {
                 .understoodQuery(interpretation.getNormalizedQuery() != null
                         ? interpretation.getNormalizedQuery() : request.getRawQuery())
                 .interpretedConstraints(toConstraints(plan))
-                .sections(toSections(pageResults, profiles, request.getLocale()))
+                .sections(toSections(pageResults, profiles, images, request.getLocale()))
                 .page(page)
                 .pageSize(pageSize)
                 .total(ranked.size())
@@ -300,6 +308,7 @@ public class StructuredSearchProcessor {
     private List<SearchSectionResponse> toSections(
             List<RankedDocument> results,
             Map<UUID, BusinessProfileDto> businessProfiles,
+            Map<UUID, List<CatalogImageResponse>> images,
             String language) {
         List<RankedDocument> exact = results.stream()
                 .filter(r -> r.warnings.isEmpty())
@@ -314,7 +323,7 @@ public class StructuredSearchProcessor {
                     .kind("EXACT")
                     .title(localized(language, "Совпадения", "Сәйкестіктер", "Matches"))
                     .relaxedConstraints(List.of())
-                    .cards(exact.stream().map(r -> toCard(r, businessProfiles, language)).toList())
+                    .cards(exact.stream().map(r -> toCard(r, businessProfiles, images, language)).toList())
                     .build());
         }
         if (!alternatives.isEmpty()) {
@@ -329,7 +338,7 @@ public class StructuredSearchProcessor {
                     .title(localized(language, "Альтернативы", "Балама нұсқалар", "Alternatives"))
                     .relaxedConstraints(relaxed)
                     .reason(alternativeReason(relaxed, language))
-                    .cards(alternatives.stream().map(r -> toCard(r, businessProfiles, language)).toList())
+                    .cards(alternatives.stream().map(r -> toCard(r, businessProfiles, images, language)).toList())
                     .build());
         }
         return sections;
@@ -358,6 +367,7 @@ public class StructuredSearchProcessor {
     }
 
     private SearchCardResponse toCard(RankedDocument ranked, Map<UUID, BusinessProfileDto> businessProfiles,
+                                       Map<UUID, List<CatalogImageResponse>> images,
                                        String language) {
         SearchDocumentDto doc = ranked.document;
         UUID businessId = doc.getBusinessId();
@@ -372,6 +382,7 @@ public class StructuredSearchProcessor {
                 .brandLogoUrl(brandProfile != null ? brandProfile.getLogoUrl() : null)
                 .title(doc.getTitle())
                 .summary(doc.getSummary())
+                .images(images.getOrDefault(doc.getAggregateId(), List.of()))
                 .categoryLabel(doc.getCategoryLabel())
                 .price(doc.getPrice())
                 .currency(doc.getCurrency())
@@ -392,6 +403,27 @@ public class StructuredSearchProcessor {
                 .branchAddress(doc.getBranchAddress())
                 .branchCity(doc.getCity())
                 .build();
+    }
+
+    private Map<UUID, List<CatalogImageResponse>> loadImages(List<RankedDocument> results) {
+        List<UUID> itemIds = results.stream()
+                .filter(result -> result.document.getDocumentType() == SearchDocumentType.ITEM)
+                .map(result -> result.document.getAggregateId())
+                .toList();
+        List<UUID> serviceIds = results.stream()
+                .filter(result -> result.document.getDocumentType() == SearchDocumentType.SERVICE)
+                .map(result -> result.document.getAggregateId())
+                .toList();
+        Map<UUID, List<CatalogImageResponse>> images = new HashMap<>();
+        if (!itemIds.isEmpty()) {
+            productRepository.findByIdIn(itemIds).forEach(item -> images.put(
+                    item.getId(), catalogImageMutation.toResponses(item.getImageFiles())));
+        }
+        if (!serviceIds.isEmpty()) {
+            serviceOfferingRepository.findByIdIn(serviceIds).forEach(service -> images.put(
+                    service.getId(), catalogImageMutation.toResponses(service.getImageFiles())));
+        }
+        return images;
     }
 
     private List<String> matchReasons(RankedDocument ranked, String language) {

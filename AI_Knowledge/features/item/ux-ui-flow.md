@@ -1,5 +1,7 @@
 # Items — Frontend UX Expectations
 
+ITEM create and edit accept up to three real image files through selection, drag-and-drop, or clipboard paste. Owners reorder images by drag-and-drop; the first image is the primary search image. Missing images remain valid and render a neutral placeholder.
+
 ## Item management (business cabinet)
 - Items tab: list view with name, category, price, status (enabled/disabled)
 - New Items appear first and remain visible after page reload.

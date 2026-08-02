@@ -2,6 +2,7 @@ package kz.ask.offer.service.api;
 
 import jakarta.validation.Valid;
 import java.util.UUID;
+import java.util.List;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
 import kz.ask.offer.service.api.dto.BusinessServiceCreateRequest;
 import kz.ask.offer.service.api.dto.BusinessServiceListResponse;
@@ -21,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/businesses/{businessId}/services")
@@ -55,6 +59,21 @@ public class BusinessServiceController {
                                                                      @PathVariable UUID serviceOfferingId,
                                                                      @Valid @RequestBody BusinessServiceUpdateRequest req) {
         return ResponseEntity.ok(processor.updateService(principal, businessId, serviceOfferingId, req));
+    }
+
+    @PostMapping(path = "/{serviceOfferingId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BusinessServiceRowResponse> syncImages(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @PathVariable UUID businessId,
+            @PathVariable UUID serviceOfferingId,
+            @RequestPart(name = "files", required = false) List<MultipartFile> files,
+            @RequestParam(name = "order", required = false) List<String> order) {
+        return ResponseEntity.ok(processor.syncImages(
+                principal,
+                businessId,
+                serviceOfferingId,
+                files == null ? List.of() : files,
+                order == null ? List.of() : order));
     }
 
     @DeleteMapping("/{serviceOfferingId}")

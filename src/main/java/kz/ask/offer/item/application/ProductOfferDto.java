@@ -26,6 +26,7 @@ public class ProductOfferDto {
     private String categoryLabel;
     private String name;
     private String description;
+    private List<String> imageFiles;
     private String deepLink;
     private List<String> tags;
     private Map<String, Object> attributes;

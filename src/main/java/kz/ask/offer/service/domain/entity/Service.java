@@ -4,15 +4,20 @@ import lombok.Getter;
 import lombok.Setter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.category.domain.entity.Category;
 import kz.ask.business.branch.domain.entity.BusinessBranch;
@@ -47,6 +52,12 @@ public class Service extends BaseUuidV7Entity {
     private String name;
 
     private String description;
+
+    @ElementCollection
+    @CollectionTable(name = "service_image", joinColumns = @JoinColumn(name = "service_id"))
+    @OrderColumn(name = "display_order")
+    @Column(name = "stored_name", nullable = false)
+    private List<String> imageFiles = new ArrayList<>();
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

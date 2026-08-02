@@ -152,6 +152,7 @@ public class ServiceServiceImpl implements ServiceService {
                 .categoryLabel(entity.getCategory().getName())
                 .name(entity.getName())
                 .description(entity.getDescription())
+                .imageFiles(entity.getImageFiles() == null ? java.util.List.of() : new java.util.ArrayList<>(entity.getImageFiles()))
                 .serviceMode(entity.getServiceMode())
                 .basePrice(entity.getBasePrice())
                 .scheduleText(entity.getScheduleText())

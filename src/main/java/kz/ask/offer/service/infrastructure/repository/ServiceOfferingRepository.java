@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -36,5 +37,6 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
     Page<Service> search(UUID businessId, UUID branchId, String categoryLabel, Boolean active,
                           String query, Pageable pageable);
 
+    @EntityGraph(attributePaths = "imageFiles")
     List<Service> findByIdIn(List<UUID> ids);
 }

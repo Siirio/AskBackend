@@ -4,6 +4,8 @@ Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
 2026-08-02 | Resolved the purchase-destination ownership question: an Item or Service may expose multiple labeled seller-published customer destinations, destinations belong to the entity rather than a branch, `Proceed to Purchase` presents them in a chooser and falls back to an editable Business-chat draft when none exist, and verification sources remain ineligible | ProductVision, item, service, search-facing purchase flow
 
+2026-08-02 | Added ordered managed image galleries for Items and Services with real multipart uploads, a three-image limit, transaction-aware file cleanup, cabinet responses, and search hydration so persisted media remains authoritative across reloads | item, service, business media, search, V1 baseline, AskFrontend catalog editors and result details
+
 2026-07-30 | Made super-admin bootstrap idempotent for existing identities so application restarts never rotate a live administrator password; bootstrap still creates a missing identity or membership | PlatformSuperAdminBootstrap, platform documentation, production deployment safety
 
 2026-07-30 | Exposed the deployed BUILD_SHA as actuator `release.commit` because Spring Boot's generated build-info contributor owns the `build` object and otherwise hides a custom `build.commit` value | production configuration, deployment runtime-SHA gate

@@ -3,6 +3,7 @@ package kz.ask.offer.service.application;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 import java.util.Map;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
@@ -25,6 +26,7 @@ public class ServiceOfferingDto {
     private String categoryLabel;
     private String name;
     private String description;
+    private List<String> imageFiles;
     private ServiceMode serviceMode;
     private BigDecimal basePrice;
     private String scheduleText;

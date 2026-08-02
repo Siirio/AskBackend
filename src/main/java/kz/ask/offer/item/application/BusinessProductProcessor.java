@@ -1,5 +1,6 @@
 package kz.ask.offer.item.application;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
@@ -25,6 +26,7 @@ import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
 import kz.ask.offer.item.infrastructure.mapper.ItemMapper;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
+import kz.ask.offer.media.CatalogImageMutation;
 import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.SearchOutboxService;
@@ -42,6 +44,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @RequiredArgsConstructor
@@ -63,6 +66,7 @@ public class BusinessProductProcessor {
     private final SearchDocumentService searchDocumentService;
     private final SearchProjectionComposer searchProjectionComposer;
     private final ItemMapper itemMapper;
+    private final CatalogImageMutation catalogImageMutation;
 
     @Transactional(readOnly = true)
     public BusinessProductListResponse listProducts(AskPrincipal principal, UUID businessId, UUID branchId,
@@ -150,6 +154,24 @@ public class BusinessProductProcessor {
     }
 
     @Transactional
+    public BusinessProductRowResponse syncImages(
+            AskPrincipal principal,
+            UUID itemId,
+            List<MultipartFile> files,
+            List<String> order) {
+        Item item = productRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        UUID businessId = item.getBusiness().getId();
+        UUID branchId = item.getBranch() == null ? null : item.getBranch().getId();
+        requireAnyAccess(principal.getUserId(), businessId, branchId);
+        List<String> currentFiles = List.copyOf(item.getImageFiles());
+        CatalogImageMutation.Result result = catalogImageMutation.apply(currentFiles, files, order);
+        item.getImageFiles().clear();
+        item.getImageFiles().addAll(result.storedNames());
+        return itemMapper.toBusinessProductRowResponse(itemMapper.toProductOfferDto(productRepository.save(item)));
+    }
+
+    @Transactional
     public void deleteProduct(AskPrincipal principal, UUID itemId) {
         Item item = productRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -157,6 +179,7 @@ public class BusinessProductProcessor {
         UUID branchId = item.getBranch() == null ? null : item.getBranch().getId();
         requireAnyAccess(principal.getUserId(), businessId, branchId);
         UUID productId = item.getId();
+        catalogImageMutation.deleteAfterCommit(List.copyOf(item.getImageFiles()));
         Long version = searchDocumentService.delete(SearchDocumentType.ITEM, productId);
         productRepository.delete(item);
         searchOutboxService.publish(SearchAggregateType.ITEM, productId,

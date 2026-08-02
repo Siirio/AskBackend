@@ -2,6 +2,7 @@ package kz.ask.offer.item.api;
 
 import jakarta.validation.Valid;
 import java.util.UUID;
+import java.util.List;
 import kz.ask.offer.item.api.dto.BusinessProductCreateRequest;
 import kz.ask.offer.item.api.dto.BusinessProductListResponse;
 import kz.ask.offer.item.api.dto.BusinessProductRowResponse;
@@ -20,6 +21,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -51,6 +55,19 @@ public class BusinessProductController {
                                                                       @PathVariable UUID itemId,
                                                                       @Valid @RequestBody BusinessProductUpdateRequest req) {
         return ResponseEntity.ok(processor.updateProduct(principal, itemId, req));
+    }
+
+    @PostMapping(path = "/api/v1/items/{itemId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BusinessProductRowResponse> syncImages(
+            @AuthenticationPrincipal AskPrincipal principal,
+            @PathVariable UUID itemId,
+            @RequestPart(name = "files", required = false) List<MultipartFile> files,
+            @RequestParam(name = "order", required = false) List<String> order) {
+        return ResponseEntity.ok(processor.syncImages(
+                principal,
+                itemId,
+                files == null ? List.of() : files,
+                order == null ? List.of() : order));
     }
 
     @DeleteMapping("/api/v1/items/{itemId}")

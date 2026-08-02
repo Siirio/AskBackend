@@ -15,3 +15,4 @@ Item CRUD, optional branch association, flat ITEM categories, and search-documen
 - Platform AI may propose attributes only during assigned managed import; approved Item facts remain canonical.
 - Item creation publishes immediately: auto-moderation synchronously assigns `APPROVED` unless a prohibited keyword assigns `REJECTED`.
 - Business Item lists are ordered newest first so a created Item remains visible after reload.
+- An Item may have up to three ASK-managed images; their persisted order is presentation order and the first image is primary.

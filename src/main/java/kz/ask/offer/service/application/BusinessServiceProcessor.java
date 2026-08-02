@@ -1,5 +1,6 @@
 package kz.ask.offer.service.application;
 
+import java.util.List;
 import java.util.UUID;
 import kz.ask.business.branch.domain.BusinessBranchService;
 import kz.ask.business.branch.domain.dto.BusinessBranchDto;
@@ -16,6 +17,9 @@ import kz.ask.offer.service.api.dto.BusinessServiceListResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceRowResponse;
 import kz.ask.offer.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.offer.service.domain.ServiceService;
+import kz.ask.offer.service.domain.entity.Service;
+import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
+import kz.ask.offer.media.CatalogImageMutation;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
@@ -33,6 +37,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @RequiredArgsConstructor
@@ -50,6 +55,8 @@ public class BusinessServiceProcessor {
     private final SearchProjectionComposer searchProjectionComposer;
     private final ManagedImportService managedImportService;
     private final ModerationProcessor moderationProcessor;
+    private final ServiceOfferingRepository serviceOfferingRepository;
+    private final CatalogImageMutation catalogImageMutation;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID businessId, UUID branchId,
@@ -114,9 +121,47 @@ public class BusinessServiceProcessor {
     }
 
     @Transactional
+    public BusinessServiceRowResponse syncImages(
+            AskPrincipal principal,
+            UUID businessId,
+            UUID serviceOfferingId,
+            List<MultipartFile> files,
+            List<String> order) {
+        Service service = serviceOfferingRepository.findById(serviceOfferingId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        if (!businessId.equals(service.getBusiness().getId())) {
+            throw new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        UUID branchId = service.getBranch() == null ? null : service.getBranch().getId();
+        requireAnyAccess(principal.getUserId(), businessId, branchId);
+        CatalogImageMutation.Result result = catalogImageMutation.apply(
+                List.copyOf(service.getImageFiles()), files, order);
+        service.getImageFiles().clear();
+        service.getImageFiles().addAll(result.storedNames());
+        Service saved = serviceOfferingRepository.save(service);
+        return toRowResponse(ServiceOfferingDto.builder()
+                .id(saved.getId())
+                .businessId(saved.getBusiness().getId())
+                .branchId(saved.getBranch() == null ? null : saved.getBranch().getId())
+                .categoryId(saved.getCategory().getId())
+                .categoryLabel(saved.getCategoryLabel())
+                .name(saved.getName())
+                .description(saved.getDescription())
+                .imageFiles(List.copyOf(saved.getImageFiles()))
+                .serviceMode(saved.getServiceMode())
+                .basePrice(saved.getBasePrice())
+                .scheduleText(saved.getScheduleText())
+                .attributes(saved.getAttributes())
+                .isActive(saved.getIsActive())
+                .updatedAt(saved.getUpdatedAt())
+                .build());
+    }
+
+    @Transactional
     public void deleteService(AskPrincipal principal, UUID businessId, UUID serviceOfferingId) {
         ServiceOfferingDto current = serviceService.findById(businessId, serviceOfferingId);
         requireAnyAccess(principal.getUserId(), businessId, current.getBranchId());
+        catalogImageMutation.deleteAfterCommit(current.getImageFiles() == null ? List.of() : current.getImageFiles());
         Long version = searchDocumentService.delete(SearchDocumentType.SERVICE, serviceOfferingId);
         serviceService.deleteService(businessId, serviceOfferingId);
         searchOutboxService.publish(SearchAggregateType.SERVICE, serviceOfferingId,
@@ -161,6 +206,7 @@ public class BusinessServiceProcessor {
                 .categoryLabel(dto.getCategoryLabel())
                 .name(dto.getName())
                 .description(dto.getDescription())
+                .images(catalogImageMutation.toResponses(dto.getImageFiles()))
                 .serviceMode(dto.getServiceMode())
                 .basePrice(dto.getBasePrice())
                 .scheduleText(dto.getScheduleText())

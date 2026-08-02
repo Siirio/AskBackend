@@ -32,7 +32,7 @@ Do not use the shared development server. Export the values as `ASK_VPS_STAGE_HO
 - Production JAR: `/opt/ask/AskBackend/ask-prod-app.jar`
 - Verification mode: `AUTH_VERIFICATION_TEST_MODE=false` and `AUTH_VERIFICATION_STAGING_BYPASS=false`
 
-Invoking this skill authorizes merging the already verified `dev` release into `master` and pushing both `master` branches. It does not authorize bypassing the staging gate.
+Invoking this skill authorizes merging the already verified, complete `dev` release into `master` and pushing both `master` branches. The staging release must already contain every local tracked and untracked project change except secrets, ignored machine/runtime data, uploads, and generated build artifacts. It does not authorize bypassing the staging gate.
 
 ## Mandatory staging gate
 
@@ -70,7 +70,7 @@ Never repair migrations, edit Flyway history, recreate production data, delete v
 For backend and frontend:
 
 1. Fetch `origin`.
-2. Require a clean `dev` whose SHA equals `origin/dev` and the verified staging SHA.
+2. Require a clean `dev` whose SHA equals `origin/dev` and the verified staging SHA. Any remaining tracked or untracked project file means staging was incomplete and production must stop.
 3. Update local `master` from `origin/master`.
 4. Merge `dev` into `master` with a normal merge commit when fast-forward is unavailable.
 5. Run the repository tests and production build on `master`.
