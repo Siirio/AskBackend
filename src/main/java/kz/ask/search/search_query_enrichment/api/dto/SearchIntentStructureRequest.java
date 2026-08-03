@@ -26,6 +26,5 @@ public class SearchIntentStructureRequest {
     private String language;
     private BigDecimal explicitMinPrice;
     private BigDecimal explicitMaxPrice;
-    private Boolean openNow;
     private Integer radiusMeters;
 }

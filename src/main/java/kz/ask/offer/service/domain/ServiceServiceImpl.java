@@ -13,6 +13,7 @@ import kz.ask.offer.service.api.dto.BusinessServiceUpdateRequest;
 import kz.ask.offer.service.application.ServiceOfferingDto;
 import kz.ask.offer.service.domain.entity.Service;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
+import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
@@ -29,6 +30,7 @@ public class ServiceServiceImpl implements ServiceService {
     private final BusinessRepository businessRepository;
     private final BusinessBranchRepository businessBranchRepository;
     private final CategoryService categoryService;
+    private final PurchaseDestinationMapper purchaseDestinationMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -126,6 +128,8 @@ public class ServiceServiceImpl implements ServiceService {
     private void applyCreateFields(Service offering, BusinessServiceCreateRequest req) {
         offering.setName(req.getName().trim());
         offering.setDescription(req.getDescription());
+        offering.getPurchaseDestinations().addAll(
+                purchaseDestinationMapper.toEntities(req.getPurchaseDestinations()));
         offering.setServiceMode(req.getServiceMode());
         offering.setBasePrice(req.getBasePrice());
         offering.setScheduleText(req.getScheduleText());
@@ -136,6 +140,11 @@ public class ServiceServiceImpl implements ServiceService {
     private void applyUpdateFields(Service offering, BusinessServiceUpdateRequest req) {
         if (req.getName() != null) offering.setName(req.getName().trim());
         if (req.getDescription() != null) offering.setDescription(req.getDescription());
+        if (req.getPurchaseDestinations() != null) {
+            offering.getPurchaseDestinations().clear();
+            offering.getPurchaseDestinations().addAll(
+                    purchaseDestinationMapper.toEntities(req.getPurchaseDestinations()));
+        }
         if (req.getServiceMode() != null) offering.setServiceMode(req.getServiceMode());
         if (req.getBasePrice() != null) offering.setBasePrice(req.getBasePrice());
         if (req.getScheduleText() != null) offering.setScheduleText(req.getScheduleText());
@@ -153,6 +162,7 @@ public class ServiceServiceImpl implements ServiceService {
                 .name(entity.getName())
                 .description(entity.getDescription())
                 .imageFiles(entity.getImageFiles() == null ? java.util.List.of() : new java.util.ArrayList<>(entity.getImageFiles()))
+                .purchaseDestinations(purchaseDestinationMapper.toDtos(entity.getPurchaseDestinations()))
                 .serviceMode(entity.getServiceMode())
                 .basePrice(entity.getBasePrice())
                 .scheduleText(entity.getScheduleText())

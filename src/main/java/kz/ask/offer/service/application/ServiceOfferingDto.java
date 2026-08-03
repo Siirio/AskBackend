@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import kz.ask.offer.service.domain.enums.ServiceMode;
+import kz.ask.offer.purchase.domain.PurchaseDestinationDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class ServiceOfferingDto {
     private String name;
     private String description;
     private List<String> imageFiles;
+    private List<PurchaseDestinationDto> purchaseDestinations;
     private ServiceMode serviceMode;
     private BigDecimal basePrice;
     private String scheduleText;

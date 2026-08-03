@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CityServiceImpl implements CityService {
 
+    private static final java.util.regex.Pattern RUSSIAN_CITY_PREFIX =
+            java.util.regex.Pattern.compile("(?iu)^\\s*г(?:ород)?\\.?\\s+(.+)$");
+    private static final java.util.regex.Pattern KAZAKH_CITY_SUFFIX =
+            java.util.regex.Pattern.compile("(?iu)^\\s*(.+?)\\s+(?:қ\\.?|қаласы)\\s*$");
+
     private final CityRepository cityRepository;
 
     @Override
@@ -25,8 +30,7 @@ public class CityServiceImpl implements CityService {
 
     @Override
     public CityDto findByName(String name) {
-        String trimmed = name == null ? "" : name.trim();
-        City city = cityRepository.findByNameIgnoreCase(trimmed)
+        City city = cityRepository.findByNameIgnoreCase(canonicalCityName(name))
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CITY_NOT_FOUND));
         return toDto(city);
     }
@@ -37,6 +41,19 @@ public class CityServiceImpl implements CityService {
                 .stream()
                 .map(this::toDto)
                 .toList();
+    }
+
+    private String canonicalCityName(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        java.util.regex.Matcher russian = RUSSIAN_CITY_PREFIX.matcher(trimmed);
+        if (russian.matches()) {
+            return russian.group(1).trim();
+        }
+        java.util.regex.Matcher kazakh = KAZAKH_CITY_SUFFIX.matcher(trimmed);
+        if (kazakh.matches()) {
+            return kazakh.group(1).trim();
+        }
+        return trimmed;
     }
 
     private CityDto toDto(City entity) {

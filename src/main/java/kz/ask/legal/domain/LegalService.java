@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.UUID;
 import kz.ask.legal.domain.enums.LegalAcceptanceChannel;
 import kz.ask.legal.domain.enums.LegalDocumentCode;
+import kz.ask.legal.domain.dto.LegalDocumentDto;
+import java.util.List;
 
 public interface LegalService {
 
@@ -13,5 +15,7 @@ public interface LegalService {
                                String locale,
                                LegalAcceptanceChannel channel);
 
-    Boolean hasAcceptedAnyDocuments(UUID userId, Collection<LegalDocumentCode> codes);
+    List<LegalDocumentDto> listActiveDocuments(String countryCode);
+
+    List<LegalDocumentCode> pendingDocuments(UUID userId, String countryCode);
 }

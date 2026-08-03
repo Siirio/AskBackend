@@ -23,7 +23,7 @@ public class SearchRequest {
     @NotNull
     private SearchScope mode;
 
-    @Pattern(regexp = "(?i)relevance|distance|price_asc|lowest_price")
+    @Pattern(regexp = "(?i)relevance|distance|price_asc|price_desc|unique_offers")
     private String sort;
 
     @Valid
@@ -34,7 +34,6 @@ public class SearchRequest {
     private String locale;
 
     @Min(0)
-    @Max(20)
     private Integer page;
 
     @Min(1)
@@ -47,5 +46,10 @@ public class SearchRequest {
     @AssertTrue
     public Boolean isRadiusLocationValid() {
         return explicitFilters == null || explicitFilters.getRadiusMeters() == null || userLocation != null;
+    }
+
+    @AssertTrue
+    public Boolean isDistanceLocationValid() {
+        return sort == null || !"distance".equalsIgnoreCase(sort) || userLocation != null;
     }
 }

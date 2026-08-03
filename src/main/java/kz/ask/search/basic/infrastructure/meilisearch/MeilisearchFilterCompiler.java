@@ -2,6 +2,7 @@ package kz.ask.search.basic.infrastructure.meilisearch;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import kz.ask.search.basic.application.processor.SearchPlan;
 import org.springframework.stereotype.Component;
 
@@ -20,11 +21,19 @@ public class MeilisearchFilterCompiler {
             filters.add("price <= " + plan.getMaxPrice().toPlainString());
         }
         addTextFilter(filters, "categoryLabel", plan.getUserSelectedCategory());
+        addTextFilter(filters, "city", plan.getCity());
+        addTextFilter(filters, "country", plan.getCountry());
+        addUuidFilter(filters, "businessId", plan.getBusinessIds());
         if (plan.getRadiusMeters() != null
                 && plan.getUserLatitude() != null
                 && plan.getUserLongitude() != null) {
             filters.add("_geoRadius(" + plan.getUserLatitude() + ", "
                     + plan.getUserLongitude() + ", " + plan.getRadiusMeters() + ")");
+        }
+        if (plan.getMapNorth() != null && plan.getMapSouth() != null
+                && plan.getMapEast() != null && plan.getMapWest() != null) {
+            filters.add("_geoBoundingBox([" + plan.getMapNorth() + ", " + plan.getMapWest()
+                    + "], [" + plan.getMapSouth() + ", " + plan.getMapEast() + "])");
         }
         return String.join(" AND ", filters);
     }
@@ -33,5 +42,16 @@ public class MeilisearchFilterCompiler {
         if (value != null && !value.isBlank()) {
             filters.add(field + " = '" + value.replace("'", "\\'") + "'");
         }
+    }
+
+    private void addUuidFilter(List<String> filters, String field, List<UUID> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        String joined = values.stream()
+                .distinct()
+                .map(value -> "'" + value + "'")
+                .collect(java.util.stream.Collectors.joining(", "));
+        filters.add(field + " IN [" + joined + "]");
     }
 }

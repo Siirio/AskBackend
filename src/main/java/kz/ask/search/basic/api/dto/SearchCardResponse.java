@@ -3,8 +3,8 @@ package kz.ask.search.basic.api.dto;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import kz.ask.business.branch.api.dto.BranchOpeningSummaryResponse;
 import kz.ask.offer.media.CatalogImageResponse;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,6 +21,7 @@ public class SearchCardResponse {
     private String title;
     private String summary;
     private List<CatalogImageResponse> images;
+    private List<PurchaseDestinationResponse> purchaseDestinations;
     private String categoryLabel;
     private BigDecimal price;
     private String currency;
@@ -36,5 +37,4 @@ public class SearchCardResponse {
     private String branchName;
     private String branchAddress;
     private String branchCity;
-    private BranchOpeningSummaryResponse openingSummary;
 }

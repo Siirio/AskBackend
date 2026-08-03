@@ -108,6 +108,18 @@ public class UniqueOfferServiceImpl implements UniqueOfferService {
         return toBoosts(offers, false);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findAllActiveItemIds() {
+        return uniqueOfferRepository.findAllActiveItemIds(UniqueOfferStatus.ACTIVE, Instant.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findAllActiveServiceIds() {
+        return uniqueOfferRepository.findAllActiveServiceIds(UniqueOfferStatus.ACTIVE, Instant.now());
+    }
+
     private Map<UUID, UniqueOfferBoostDto> toBoosts(List<UniqueOffer> offers, Boolean items) {
         Map<UUID, UniqueOfferBoostDto> boosts = new LinkedHashMap<>();
         offers.stream()

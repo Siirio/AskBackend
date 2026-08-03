@@ -2,7 +2,6 @@ package kz.ask.search.basic.application.processor;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -18,6 +17,8 @@ import kz.ask.business.uniqueoffer.domain.dto.UniqueOfferBoostDto;
 import kz.ask.offer.item.infrastructure.repository.ProductRepository;
 import kz.ask.offer.media.CatalogImageMutation;
 import kz.ask.offer.media.CatalogImageResponse;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationResponse;
+import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.search.basic.api.dto.SearchBusinessProfileResponse;
 import kz.ask.search.basic.api.dto.SearchCardResponse;
@@ -43,6 +44,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.Page;
 
 @Slf4j
 @Component
@@ -50,10 +52,6 @@ import org.springframework.stereotype.Component;
 public class StructuredSearchProcessor {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
-    private static final int MAX_CANDIDATES = 200;
-    private static final int ACTIVE_OFFER_BOOST = 25;
-    private static final int OVER_BUDGET_PENALTY = 20;
-    private static final int WRONG_CITY_PENALTY = 15;
     private static final String DEFAULT_BRAND_COLOR = "#0d9b7c";
 
     private final SearchIntentStructurer searchIntentStructurer;
@@ -64,38 +62,28 @@ public class StructuredSearchProcessor {
     private final ProductRepository productRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final CatalogImageMutation catalogImageMutation;
+    private final PurchaseDestinationMapper purchaseDestinationMapper;
 
     public SearchResponse search(SearchRequest request) {
         int page = request.getPage() == null ? 0 : request.getPage();
         int pageSize = request.getPageSize() == null ? DEFAULT_PAGE_SIZE : request.getPageSize();
-        int candidateLimit = Math.min(MAX_CANDIDATES, Math.max((page + 1) * pageSize * 3, pageSize * 3));
 
         SearchIntentStructureRequest aiRequest = toIntentRequest(request);
         SearchInterpretation interpretation = searchIntentStructurer.interpret(aiRequest);
         SearchPlan plan = buildSearchPlan(interpretation, request);
 
-        List<SearchHitDto> hits = meilisearchIndexGateway.search(plan, candidateLimit);
+        Page<SearchHitDto> hitPage = meilisearchIndexGateway.search(plan, page, pageSize);
+        List<SearchHitDto> hits = hitPage.getContent();
         List<SearchDocumentDto> documents = hydrateDocuments(plan, hits);
-        Map<UUID, Double> hitScores = hits.stream()
-                .collect(Collectors.toMap(
-                        SearchHitDto::getAggregateId,
-                        h -> h.getRankingScore() != null ? h.getRankingScore() : 0.0,
-                        (a, b) -> a));
+        List<RankedDocument> ranked = rank(documents, plan, request.getUserLocation());
 
-        List<RankedDocument> ranked = rank(documents, hitScores, plan, request.getUserLocation());
-        ranked = sort(ranked, plan.getSort());
-
-        int fromIndex = Math.min(page * pageSize, ranked.size());
-        int toIndex = Math.min(fromIndex + pageSize, ranked.size());
-        List<RankedDocument> pageResults = ranked.subList(fromIndex, toIndex);
-        boolean hasNext = ranked.size() > toIndex || ranked.size() >= candidateLimit;
-
-        Set<UUID> businessIds = pageResults.stream()
+        Set<UUID> businessIds = ranked.stream()
                 .map(r -> r.document.getBusinessId())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, BusinessProfileDto> profiles = businessProfileService.findByBusinessIds(businessIds);
-        Map<UUID, List<CatalogImageResponse>> images = loadImages(pageResults);
+        Map<UUID, List<CatalogImageResponse>> images = loadImages(ranked);
+        Map<UUID, List<PurchaseDestinationResponse>> purchaseDestinations = loadPurchaseDestinations(ranked);
 
         return SearchResponse.builder()
                 .rawQuery(request.getRawQuery())
@@ -103,11 +91,11 @@ public class StructuredSearchProcessor {
                 .understoodQuery(interpretation.getNormalizedQuery() != null
                         ? interpretation.getNormalizedQuery() : request.getRawQuery())
                 .interpretedConstraints(toConstraints(plan))
-                .sections(toSections(pageResults, profiles, images, request.getLocale()))
+                .sections(toSections(ranked, profiles, images, purchaseDestinations, request.getLocale()))
                 .page(page)
                 .pageSize(pageSize)
-                .total(ranked.size())
-                .hasNext(hasNext)
+                .total(Math.toIntExact(hitPage.getTotalElements()))
+                .hasNext(hitPage.hasNext())
                 .ambiguity(interpretation.getAmbiguity())
                 .suggestions(interpretation.getSuggestions())
                 .build();
@@ -127,8 +115,8 @@ public class StructuredSearchProcessor {
                 .toList();
     }
 
-    private List<RankedDocument> rank(List<SearchDocumentDto> documents, Map<UUID, Double> hitScores,
-                                       SearchPlan plan, SearchLocationRequest userLocation) {
+    private List<RankedDocument> rank(List<SearchDocumentDto> documents,
+                                      SearchPlan plan, SearchLocationRequest userLocation) {
         Map<UUID, UniqueOfferBoostDto> itemBoosts = uniqueOfferService.findActiveItemBoosts(
                 documents.stream()
                         .filter(d -> d.getDocumentType() == SearchDocumentType.ITEM)
@@ -145,94 +133,59 @@ public class StructuredSearchProcessor {
 
         return documents.stream()
                 .map(doc -> {
-                    double score = hitScores.getOrDefault(doc.getAggregateId(), 0.0) * 100.0;
                     List<String> warnings = new ArrayList<>();
 
-                    score -= pricePenalty(doc, plan, warnings);
-                    score -= cityPenalty(doc, plan, warnings);
+                    addPriceWarnings(doc, plan, warnings);
+                    addCityWarning(doc, plan, warnings);
 
                     UniqueOfferBoostDto boost = allBoosts.get(doc.getAggregateId());
                     String offerLabel = null;
                     if (boost != null && appliesToBranch(doc, boost)) {
-                        score += ACTIVE_OFFER_BOOST;
                         offerLabel = boost.getLabel();
                     }
 
                     Integer distanceMeters = null;
-                    String distanceText = null;
                     if (userLocation != null
                             && doc.getLatitude() != null && doc.getLongitude() != null) {
                         distanceMeters = DistanceCalculator.meters(
                                 userLocation.getLat(), userLocation.getLng(),
                                 doc.getLatitude().doubleValue(), doc.getLongitude().doubleValue());
-                        distanceText = formatDistance(distanceMeters);
                     }
 
                     return RankedDocument.builder()
                             .document(doc)
-                            .score(Math.max(score, 0))
                             .warnings(warnings)
                             .distanceMeters(distanceMeters)
-                            .distanceText(distanceText)
                             .activeOfferLabel(offerLabel)
                             .build();
                 })
-                .filter(r -> r.score > 0)
-                .sorted(Comparator.comparing(RankedDocument::getScore).reversed())
                 .toList();
     }
 
-    private int pricePenalty(SearchDocumentDto doc, SearchPlan plan, List<String> warnings) {
+    private void addPriceWarnings(SearchDocumentDto doc, SearchPlan plan, List<String> warnings) {
         if (doc.getPrice() == null) {
-            return 0;
+            return;
         }
-        int penalty = 0;
         if (plan.getMaxPrice() != null && doc.getPrice().compareTo(plan.getMaxPrice()) > 0) {
             warnings.add("OVER_BUDGET");
-            penalty += OVER_BUDGET_PENALTY;
         }
         if (plan.getMinPrice() != null && doc.getPrice().compareTo(plan.getMinPrice()) < 0) {
             warnings.add("UNDER_BUDGET");
-            penalty += OVER_BUDGET_PENALTY;
         }
-        if (plan.getInferredMaxPrice() != null && doc.getPrice().compareTo(plan.getInferredMaxPrice()) > 0) {
-            penalty += OVER_BUDGET_PENALTY / 2;
-        }
-        if (plan.getInferredMinPrice() != null && doc.getPrice().compareTo(plan.getInferredMinPrice()) < 0) {
-            penalty += OVER_BUDGET_PENALTY / 2;
-        }
-        return penalty;
     }
 
-    private int cityPenalty(SearchDocumentDto doc, SearchPlan plan, List<String> warnings) {
+    private void addCityWarning(SearchDocumentDto doc, SearchPlan plan, List<String> warnings) {
         String docCity = normalize(doc.getCity());
         boolean hasHardCity = plan.getCity() != null && !plan.getCity().isBlank();
-        boolean hasSoftCity = plan.getInferredCity() != null && !plan.getInferredCity().isBlank();
-        if (!hasHardCity && !hasSoftCity) {
-            return 0;
+        if (!hasHardCity) {
+            return;
         }
         if (docCity.isBlank()) {
-            return 0;
+            return;
         }
         if (hasHardCity && !docCity.contains(normalize(plan.getCity()))) {
             warnings.add("WRONG_CITY");
-            return WRONG_CITY_PENALTY;
         }
-        if (hasSoftCity && !docCity.contains(normalize(plan.getInferredCity()))) {
-            return WRONG_CITY_PENALTY / 2;
-        }
-        return 0;
-    }
-
-    private List<RankedDocument> sort(List<RankedDocument> documents, String sort) {
-        Comparator<RankedDocument> base = switch (normalizeSort(sort)) {
-            case "distance" -> Comparator.comparing(
-                    RankedDocument::getDistanceMeters, Comparator.nullsLast(Comparator.naturalOrder()));
-            case "price_asc" -> Comparator.comparing(
-                    r -> r.document.getPrice(), Comparator.nullsLast(Comparator.naturalOrder()));
-            default -> Comparator.comparing(RankedDocument::getScore).reversed();
-        };
-        return documents.stream().sorted(base).toList();
     }
 
     private SearchPlan buildSearchPlan(SearchInterpretation interpretation, SearchRequest request) {
@@ -248,8 +201,17 @@ public class StructuredSearchProcessor {
                 .sort(normalizeSort(request.getSort()))
                 .minPrice(request.getExplicitFilters() == null ? null : request.getExplicitFilters().getMinPrice())
                 .maxPrice(request.getExplicitFilters() == null ? null : request.getExplicitFilters().getMaxPrice())
-                .openNow(request.getExplicitFilters() == null ? null : request.getExplicitFilters().getOpenNow())
                 .radiusMeters(request.getExplicitFilters() == null ? null : request.getExplicitFilters().getRadiusMeters())
+                .businessIds(request.getExplicitFilters() == null ? null : request.getExplicitFilters().getBusinessIds())
+                .mapNorth(request.getExplicitFilters() == null || request.getExplicitFilters().getMapArea() == null
+                        ? null : request.getExplicitFilters().getMapArea().getNorth())
+                .mapSouth(request.getExplicitFilters() == null || request.getExplicitFilters().getMapArea() == null
+                        ? null : request.getExplicitFilters().getMapArea().getSouth())
+                .mapEast(request.getExplicitFilters() == null || request.getExplicitFilters().getMapArea() == null
+                        ? null : request.getExplicitFilters().getMapArea().getEast())
+                .mapWest(request.getExplicitFilters() == null || request.getExplicitFilters().getMapArea() == null
+                        ? null : request.getExplicitFilters().getMapArea().getWest())
+                .activeOfferAggregateIds(activeOfferIds(itemType, request.getSort()))
                 .userLatitude(request.getUserLocation() == null ? null : request.getUserLocation().getLat())
                 .userLongitude(request.getUserLocation() == null ? null : request.getUserLocation().getLng())
                 .inferredMinPrice(interpretation.getInferredMinPrice())
@@ -277,8 +239,6 @@ public class StructuredSearchProcessor {
                 ? null : request.getExplicitFilters().getMinPrice());
         aiRequest.setExplicitMaxPrice(request.getExplicitFilters() == null
                 ? null : request.getExplicitFilters().getMaxPrice());
-        aiRequest.setOpenNow(request.getExplicitFilters() == null
-                ? null : request.getExplicitFilters().getOpenNow());
         aiRequest.setRadiusMeters(request.getExplicitFilters() == null
                 ? null : request.getExplicitFilters().getRadiusMeters());
         return aiRequest;
@@ -291,6 +251,10 @@ public class StructuredSearchProcessor {
         addConstraint(constraints, "city", plan.getCity(), "EXPLICIT");
         addConstraint(constraints, "min_price", plan.getMinPrice(), "EXPLICIT");
         addConstraint(constraints, "max_price", plan.getMaxPrice(), "EXPLICIT");
+        addConstraint(constraints, "country", plan.getCountry(), "EXPLICIT");
+        addConstraint(constraints, "radius_meters", plan.getRadiusMeters(), "EXPLICIT");
+        addConstraint(constraints, "business_ids", plan.getBusinessIds(), "EXPLICIT");
+        addConstraint(constraints, "map_area", mapAreaConstraint(plan), "EXPLICIT");
         addConstraint(constraints, "inferred_city", plan.getInferredCity(), "QUERY");
         addConstraint(constraints, "inferred_min_price", plan.getInferredMinPrice(), "QUERY");
         addConstraint(constraints, "inferred_max_price", plan.getInferredMaxPrice(), "QUERY");
@@ -309,6 +273,7 @@ public class StructuredSearchProcessor {
             List<RankedDocument> results,
             Map<UUID, BusinessProfileDto> businessProfiles,
             Map<UUID, List<CatalogImageResponse>> images,
+            Map<UUID, List<PurchaseDestinationResponse>> purchaseDestinations,
             String language) {
         List<RankedDocument> exact = results.stream()
                 .filter(r -> r.warnings.isEmpty())
@@ -323,7 +288,8 @@ public class StructuredSearchProcessor {
                     .kind("EXACT")
                     .title(localized(language, "Совпадения", "Сәйкестіктер", "Matches"))
                     .relaxedConstraints(List.of())
-                    .cards(exact.stream().map(r -> toCard(r, businessProfiles, images, language)).toList())
+                    .cards(exact.stream().map(r -> toCard(
+                            r, businessProfiles, images, purchaseDestinations, language)).toList())
                     .build());
         }
         if (!alternatives.isEmpty()) {
@@ -338,7 +304,8 @@ public class StructuredSearchProcessor {
                     .title(localized(language, "Альтернативы", "Балама нұсқалар", "Alternatives"))
                     .relaxedConstraints(relaxed)
                     .reason(alternativeReason(relaxed, language))
-                    .cards(alternatives.stream().map(r -> toCard(r, businessProfiles, images, language)).toList())
+                    .cards(alternatives.stream().map(r -> toCard(
+                            r, businessProfiles, images, purchaseDestinations, language)).toList())
                     .build());
         }
         return sections;
@@ -368,6 +335,7 @@ public class StructuredSearchProcessor {
 
     private SearchCardResponse toCard(RankedDocument ranked, Map<UUID, BusinessProfileDto> businessProfiles,
                                        Map<UUID, List<CatalogImageResponse>> images,
+                                       Map<UUID, List<PurchaseDestinationResponse>> purchaseDestinations,
                                        String language) {
         SearchDocumentDto doc = ranked.document;
         UUID businessId = doc.getBusinessId();
@@ -383,6 +351,7 @@ public class StructuredSearchProcessor {
                 .title(doc.getTitle())
                 .summary(doc.getSummary())
                 .images(images.getOrDefault(doc.getAggregateId(), List.of()))
+                .purchaseDestinations(purchaseDestinations.getOrDefault(doc.getAggregateId(), List.of()))
                 .categoryLabel(doc.getCategoryLabel())
                 .price(doc.getPrice())
                 .currency(doc.getCurrency())
@@ -394,7 +363,7 @@ public class StructuredSearchProcessor {
                                 "Availability has not been confirmed by the business")
                         : null)
                 .matchReasons(matchReasons(ranked, language))
-                .badges(resolveBadges(brandProfile, doc, ranked.activeOfferLabel))
+                .badges(resolveBadges(brandProfile, doc))
                 .distanceMeters(ranked.distanceMeters)
                 .latitude(doc.getLatitude())
                 .longitude(doc.getLongitude())
@@ -426,6 +395,28 @@ public class StructuredSearchProcessor {
         return images;
     }
 
+    private Map<UUID, List<PurchaseDestinationResponse>> loadPurchaseDestinations(
+            List<RankedDocument> results) {
+        List<UUID> itemIds = results.stream()
+                .filter(result -> result.document.getDocumentType() == SearchDocumentType.ITEM)
+                .map(result -> result.document.getAggregateId())
+                .toList();
+        List<UUID> serviceIds = results.stream()
+                .filter(result -> result.document.getDocumentType() == SearchDocumentType.SERVICE)
+                .map(result -> result.document.getAggregateId())
+                .toList();
+        Map<UUID, List<PurchaseDestinationResponse>> destinations = new HashMap<>();
+        if (!itemIds.isEmpty()) {
+            productRepository.findByIdIn(itemIds).forEach(item -> destinations.put(
+                    item.getId(), purchaseDestinationMapper.entitiesToResponses(item.getPurchaseDestinations())));
+        }
+        if (!serviceIds.isEmpty()) {
+            serviceOfferingRepository.findByIdIn(serviceIds).forEach(service -> destinations.put(
+                    service.getId(), purchaseDestinationMapper.entitiesToResponses(service.getPurchaseDestinations())));
+        }
+        return destinations;
+    }
+
     private List<String> matchReasons(RankedDocument ranked, String language) {
         List<String> reasons = new ArrayList<>();
         reasons.add(localized(language, "Соответствует запросу",
@@ -442,19 +433,16 @@ public class StructuredSearchProcessor {
         return reasons.stream().limit(3).toList();
     }
 
-    private List<String> resolveBadges(BusinessProfileDto profile, SearchDocumentDto doc, String activeOfferLabel) {
+    private List<String> resolveBadges(BusinessProfileDto profile, SearchDocumentDto doc) {
         List<String> badges = new ArrayList<>();
-        if (activeOfferLabel != null && !activeOfferLabel.isBlank()) {
-            badges.add(activeOfferLabel);
-        }
         if (profile != null && hasOfficialLink(profile)) {
-            badges.add("official channel");
+            badges.add("OFFICIAL_CHANNEL");
         }
         if (doc.getSummary() != null && !doc.getSummary().isBlank()) {
-            badges.add("complete card");
+            badges.add("COMPLETE_CARD");
         }
         if (doc.getBranchAddress() != null && !doc.getBranchAddress().isBlank()) {
-            badges.add("pickup");
+            badges.add("PICKUP");
         }
         return badges;
     }
@@ -503,25 +491,38 @@ public class StructuredSearchProcessor {
         return document.getBranchId() != null && boost.getBranchIds().contains(document.getBranchId());
     }
 
-    private String formatDistance(Integer meters) {
-        if (meters == null) {
-            return null;
-        }
-        if (meters < 1000) {
-            return meters + " м";
-        }
-        double km = meters / 1000.0;
-        return String.format(Locale.ROOT, "%.1f км", km);
-    }
-
     private String normalizeSort(String sort) {
         if ("distance".equalsIgnoreCase(sort)) {
             return "distance";
         }
-        if ("price_asc".equalsIgnoreCase(sort) || "lowest_price".equalsIgnoreCase(sort)) {
+        if ("price_asc".equalsIgnoreCase(sort)) {
             return "price_asc";
         }
+        if ("price_desc".equalsIgnoreCase(sort)) {
+            return "price_desc";
+        }
+        if ("unique_offers".equalsIgnoreCase(sort)) {
+            return "unique_offers";
+        }
         return "relevance";
+    }
+
+    private List<UUID> activeOfferIds(SearchDocumentType itemType, String sort) {
+        if (!"unique_offers".equals(normalizeSort(sort))) {
+            return List.of();
+        }
+        return itemType == SearchDocumentType.ITEM
+                ? uniqueOfferService.findAllActiveItemIds()
+                : uniqueOfferService.findAllActiveServiceIds();
+    }
+
+    private String mapAreaConstraint(SearchPlan plan) {
+        if (plan.getMapNorth() == null || plan.getMapSouth() == null
+                || plan.getMapEast() == null || plan.getMapWest() == null) {
+            return null;
+        }
+        return plan.getMapNorth() + "," + plan.getMapSouth() + ","
+                + plan.getMapEast() + "," + plan.getMapWest();
     }
 
     private String localized(String language, String russian, String kazakh, String english) {
@@ -552,10 +553,8 @@ public class StructuredSearchProcessor {
     @Builder
     private static class RankedDocument {
         private SearchDocumentDto document;
-        private double score;
         private List<String> warnings;
         private Integer distanceMeters;
-        private String distanceText;
         private String activeOfferLabel;
     }
 }

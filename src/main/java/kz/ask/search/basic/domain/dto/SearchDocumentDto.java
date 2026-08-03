@@ -32,7 +32,6 @@ public class SearchDocumentDto {
     private BigDecimal longitude;
     private String city;
     private String country;
-    private Boolean openNow;
     private List<String> tokens;
     private String embeddingText;
     private Map<String, Object> verifiedAttributes;

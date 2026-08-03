@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
+import kz.ask.offer.purchase.domain.PurchaseDestinationDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,7 +28,7 @@ public class ProductOfferDto {
     private String name;
     private String description;
     private List<String> imageFiles;
-    private String deepLink;
+    private List<PurchaseDestinationDto> purchaseDestinations;
     private List<String> tags;
     private Map<String, Object> attributes;
     private BigDecimal price;

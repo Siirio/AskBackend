@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.Valid;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +28,7 @@ public class BusinessProductUpdateRequest {
 
     private String description;
 
-    private String deepLink;
+    private List<@Valid PurchaseDestinationRequest> purchaseDestinations;
 
     private List<String> tags;
 

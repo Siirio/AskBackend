@@ -13,6 +13,7 @@ import kz.ask.identity.api.dto.AuthSessionResponse;
 import kz.ask.identity.domain.dto.AppUserDto;
 import kz.ask.platform.domain.PlatformMembershipService;
 import kz.ask.platform.domain.dto.PlatformMembershipDto;
+import kz.ask.legal.domain.LegalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,10 +21,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SessionCapabilitiesProcessor {
 
+    private static final String LEGAL_COUNTRY_CODE = "KZ";
+
     private final BusinessMemberService businessMemberService;
 
     private final PlatformMembershipService platformMembershipService;
     private final BusinessInvitationService businessInvitationService;
+    private final LegalService legalService;
 
     public void apply(AuthSessionResponse.AuthSessionResponseBuilder builder, AppUserDto user) {
         List<AuthBusinessMembershipResponse> businessMemberships =
@@ -48,7 +52,8 @@ public class SessionCapabilitiesProcessor {
                                 .toList(),
                         platformMembership))
                 .pendingInvitationsCount(Math.toIntExact(
-                        businessInvitationService.countPendingByEmail(user.getEmail())));
+                        businessInvitationService.countPendingByEmail(user.getEmail())))
+                .pendingLegalDocuments(legalService.pendingDocuments(user.getId(), LEGAL_COUNTRY_CODE));
     }
 
     public List<String> resolveAllRoles(AppUserDto user) {

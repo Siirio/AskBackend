@@ -1,6 +1,8 @@
 package kz.ask.legal.api.dto;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.Set;
 import kz.ask.legal.domain.enums.LegalDocumentCode;
 import lombok.Getter;
@@ -13,7 +15,11 @@ public class AcceptLegalDocumentsRequest {
     @NotEmpty
     private Set<LegalDocumentCode> documentCodes;
 
-    private String countryCode = "KZ";
+    @NotBlank
+    @Size(min = 2, max = 2)
+    private String countryCode;
 
-    private String locale = "ru";
+    @NotBlank
+    @Size(max = 16)
+    private String locale;
 }

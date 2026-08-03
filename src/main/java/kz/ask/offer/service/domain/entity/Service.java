@@ -22,6 +22,7 @@ import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.category.domain.entity.Category;
 import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.offer.service.domain.enums.ServiceMode;
+import kz.ask.offer.purchase.domain.PurchaseDestination;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -58,6 +59,11 @@ public class Service extends BaseUuidV7Entity {
     @OrderColumn(name = "display_order")
     @Column(name = "stored_name", nullable = false)
     private List<String> imageFiles = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "service_purchase_destination", joinColumns = @JoinColumn(name = "service_id"))
+    @OrderColumn(name = "display_order")
+    private List<PurchaseDestination> purchaseDestinations = new ArrayList<>();
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

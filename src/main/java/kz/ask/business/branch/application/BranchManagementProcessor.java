@@ -20,6 +20,7 @@ import kz.ask.shared.error.ErrorCode;
 import kz.ask.shared.error.ForbiddenException;
 import kz.ask.shared.error.NotFoundException;
 import kz.ask.shared.error.ValidationException;
+import kz.ask.shared.domain.CityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +34,15 @@ public class BranchManagementProcessor {
     private final BusinessBranchService businessBranchService;
     private final BranchOpeningHoursPolicy branchOpeningHoursPolicy;
     private final ManagedImportService managedImportService;
+    private final CityService cityService;
 
     @Transactional
     public BranchResponse createBranch(AskPrincipal principal, UUID businessId, CreateBranchRequest req) {
         verifyManagerAccess(principal.getUserId(), businessId);
         verifyBranchCreationAllowed(businessId);
         BusinessBranchDto dto = businessBranchService.create(
-                businessId, req.getCityId(), req.getName(), req.getAddress(), req.getAddressDetails(),
+                businessId, resolveCityId(req.getCityId(), req.getCityName()),
+                req.getName(), req.getAddress(), req.getAddressDetails(),
                 req.getLatitude(), req.getLongitude(), req.getTimeZoneId(),
                 req.getWeeklyHours(), req.getSpecialHours(), req.getPickupAvailable());
         return toResponse(dto);
@@ -62,7 +65,8 @@ public class BranchManagementProcessor {
         }
         verifyManagerAccess(principal.getUserId(), branch.getBusinessId());
         BusinessBranchDto dto = businessBranchService.update(
-                branchId, req.getName(), req.getAddress(), req.getAddressDetails(), req.getCityId(),
+                branchId, req.getName(), req.getAddress(), req.getAddressDetails(),
+                resolveCityId(req.getCityId(), req.getCityName()),
                 req.getLatitude(), req.getLongitude(), req.getTimeZoneId(),
                 req.getWeeklyHours(), req.getSpecialHours(), req.getPickupAvailable());
         return toResponse(dto);
@@ -122,5 +126,15 @@ public class BranchManagementProcessor {
                 .nextOpensAt(summary.getNextOpensAt())
                 .nextClosesAt(summary.getNextClosesAt())
                 .build();
+    }
+
+    private UUID resolveCityId(UUID cityId, String cityName) {
+        if (cityId != null) {
+            return cityId;
+        }
+        if (cityName == null || cityName.isBlank()) {
+            return null;
+        }
+        return cityService.findByName(cityName).getId();
     }
 }

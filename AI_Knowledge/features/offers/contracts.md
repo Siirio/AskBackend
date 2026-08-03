@@ -22,5 +22,5 @@ Create and update JSON requests do not accept `coverUrl`. The cover is sent as a
 ## Search Integration
 - Active, date-valid Unique Offers boost only their linked Items or Services.
 - A branch-restricted offer applies only when the result uses one of its linked branches.
-- The card receives `-30%`, `-5000 KZT`, or the offer name as a badge.
-- The search score receives a +25 contextual boost; the offer never becomes a standalone result or search scope.
+- Search exposes `hasActiveOffer`; active-offer-first sorting is available through `sort=unique_offers`. Offer names and discounts are not mixed into the stable badge-token list.
+- The offer never becomes a standalone result or search scope.

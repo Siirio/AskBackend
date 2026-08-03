@@ -266,7 +266,6 @@ CREATE TABLE item (
     category_id       UUID        NOT NULL,
     name              VARCHAR(255) NOT NULL,
     description       VARCHAR(255),
-    deep_link         VARCHAR(2048),
     price             NUMERIC,
     is_active         BOOLEAN     NOT NULL,
     moderation_status VARCHAR(32) NOT NULL,
@@ -287,6 +286,14 @@ CREATE TABLE item_image (
     UNIQUE (item_id, stored_name)
 );
 
+CREATE TABLE item_purchase_destination (
+    item_id       UUID         NOT NULL REFERENCES item(id) ON DELETE CASCADE,
+    display_order INTEGER      NOT NULL,
+    label         VARCHAR(255) NOT NULL,
+    url           VARCHAR(2048) NOT NULL,
+    PRIMARY KEY (item_id, display_order)
+);
+
 -- ---------------------------------------------------------------------------
 -- Service
 -- ---------------------------------------------------------------------------
@@ -305,6 +312,14 @@ CREATE TABLE service_offering (
     schedule_text  VARCHAR(255),
     is_active      BOOLEAN     NOT NULL,
     attributes     JSONB
+);
+
+CREATE TABLE service_purchase_destination (
+    service_id    UUID         NOT NULL REFERENCES service_offering(id) ON DELETE CASCADE,
+    display_order INTEGER      NOT NULL,
+    label         VARCHAR(255) NOT NULL,
+    url           VARCHAR(2048) NOT NULL,
+    PRIMARY KEY (service_id, display_order)
 );
 
 CREATE TABLE service_image (
@@ -433,12 +448,25 @@ CREATE TABLE moderation_action (
 -- Legal
 -- ---------------------------------------------------------------------------
 
+CREATE TABLE legal_document (
+    id            UUID         NOT NULL PRIMARY KEY,
+    created_at    TIMESTAMPTZ  NOT NULL,
+    updated_at    TIMESTAMPTZ  NOT NULL,
+    code          VARCHAR(64)  NOT NULL,
+    version       VARCHAR(64)  NOT NULL,
+    country_code  VARCHAR(2)   NOT NULL,
+    public_url    VARCHAR(512) NOT NULL,
+    effective_at  TIMESTAMPTZ  NOT NULL,
+    is_active     BOOLEAN      NOT NULL
+);
+
 CREATE TABLE legal_acceptance (
     id                  UUID        NOT NULL PRIMARY KEY,
     created_at          TIMESTAMPTZ NOT NULL,
     updated_at          TIMESTAMPTZ NOT NULL,
     user_id             UUID        NOT NULL REFERENCES app_user(id),
     document_code       VARCHAR(64) NOT NULL,
+    document_version    VARCHAR(64) NOT NULL,
     country_code        VARCHAR(8)  NOT NULL,
     locale              VARCHAR(8)  NOT NULL,
     acceptance_channel  VARCHAR(64) NOT NULL,
@@ -636,6 +664,12 @@ CREATE INDEX idx_moderation_action_target ON moderation_action (target_type, tar
 CREATE INDEX idx_business_invitation_action_invitation ON business_invitation_action (invitation_id);
 
 CREATE INDEX idx_legal_acceptance_user ON legal_acceptance (user_id, accepted_at DESC);
+CREATE UNIQUE INDEX uq_legal_document_active
+    ON legal_document (code, country_code) WHERE is_active;
+CREATE UNIQUE INDEX uq_legal_document_version
+    ON legal_document (code, version, country_code);
+CREATE UNIQUE INDEX uq_legal_acceptance_version
+    ON legal_acceptance (user_id, document_code, document_version, country_code, locale);
 
 CREATE INDEX idx_significant_event_business_created ON significant_event (business_id, created_at);
 CREATE INDEX idx_significant_event_type_created ON significant_event (event_type, created_at);

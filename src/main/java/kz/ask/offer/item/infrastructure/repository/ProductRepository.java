@@ -46,6 +46,6 @@ public interface ProductRepository extends JpaRepository<Item, UUID> {
 
     Page<Item> findByBusinessIdAndIsActive(UUID businessId, Boolean isActive, Pageable pageable);
 
-    @EntityGraph(attributePaths = "imageFiles")
+    @EntityGraph(attributePaths = {"imageFiles", "purchaseDestinations"})
     List<Item> findByIdIn(List<UUID> ids);
 }

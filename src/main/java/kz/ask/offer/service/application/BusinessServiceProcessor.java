@@ -20,6 +20,7 @@ import kz.ask.offer.service.domain.ServiceService;
 import kz.ask.offer.service.domain.entity.Service;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.offer.media.CatalogImageMutation;
+import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import kz.ask.platform.domain.enums.ModerationTargetType;
 import kz.ask.search.basic.application.SearchProjectionComposer;
 import kz.ask.search.basic.domain.SearchDocumentService;
@@ -57,6 +58,7 @@ public class BusinessServiceProcessor {
     private final ModerationProcessor moderationProcessor;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final CatalogImageMutation catalogImageMutation;
+    private final PurchaseDestinationMapper purchaseDestinationMapper;
 
     @Transactional(readOnly = true)
     public BusinessServiceListResponse listServices(AskPrincipal principal, UUID businessId, UUID branchId,
@@ -148,6 +150,7 @@ public class BusinessServiceProcessor {
                 .name(saved.getName())
                 .description(saved.getDescription())
                 .imageFiles(List.copyOf(saved.getImageFiles()))
+                .purchaseDestinations(purchaseDestinationMapper.toDtos(saved.getPurchaseDestinations()))
                 .serviceMode(saved.getServiceMode())
                 .basePrice(saved.getBasePrice())
                 .scheduleText(saved.getScheduleText())
@@ -207,6 +210,7 @@ public class BusinessServiceProcessor {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .images(catalogImageMutation.toResponses(dto.getImageFiles()))
+                .purchaseDestinations(purchaseDestinationMapper.toResponses(dto.getPurchaseDestinations()))
                 .serviceMode(dto.getServiceMode())
                 .basePrice(dto.getBasePrice())
                 .scheduleText(dto.getScheduleText())

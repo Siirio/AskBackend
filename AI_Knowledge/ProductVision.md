@@ -9,7 +9,8 @@ ASK is a local search platform for Items and Services across businesses. It is a
 - **Platform Admins** — moderate businesses, approve public business candidates from external discovery
 
 ## Core constraints
-- Search sorts by `intent_match` — never price ascending. Price is a filter factor, not the ranking king.
+- Search defaults to `relevance`. Price, distance, and active-Unique-Offers ordering are available only after explicit customer selection.
+- Catalogue retrieval is bounded page by bounded page and may continue until every eligible result has been returned; internal ranking windows must not truncate infinite scroll.
 - No buy-box logic. Never collapse different brands into one SKU comparison.
 - No public rating scores. Visible signals are badges (data freshness, confirmation speed, card quality). Internal ranking signals are separate.
 - All actions must be traceable to an authenticated user.

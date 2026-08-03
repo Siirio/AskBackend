@@ -22,6 +22,7 @@ import kz.ask.business.core.domain.entity.Business;
 import kz.ask.business.category.domain.entity.Category;
 import kz.ask.business.branch.domain.entity.BusinessBranch;
 import kz.ask.offer.item.domain.enums.ProductModerationStatus;
+import kz.ask.offer.purchase.domain.PurchaseDestination;
 import kz.ask.shared.domain.entity.BaseUuidV7Entity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -59,8 +60,10 @@ public class Item extends BaseUuidV7Entity {
     @Column(name = "stored_name", nullable = false)
     private List<String> imageFiles = new ArrayList<>();
 
-    @Column(length = 2048)
-    private String deepLink;
+    @ElementCollection
+    @CollectionTable(name = "item_purchase_destination", joinColumns = @JoinColumn(name = "item_id"))
+    @OrderColumn(name = "display_order")
+    private List<PurchaseDestination> purchaseDestinations = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "product_tag", joinColumns = @JoinColumn(name = "product_id"))

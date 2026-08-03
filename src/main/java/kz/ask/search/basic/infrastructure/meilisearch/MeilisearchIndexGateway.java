@@ -5,6 +5,7 @@ import java.util.UUID;
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
 import kz.ask.search.basic.domain.dto.SearchHitDto;
+import org.springframework.data.domain.Page;
 
 public interface MeilisearchIndexGateway {
 
@@ -22,5 +23,5 @@ public interface MeilisearchIndexGateway {
 
     void discardIndex(String targetIndex);
 
-    List<SearchHitDto> search(SearchPlan plan, int limit);
+    Page<SearchHitDto> search(SearchPlan plan, int page, int pageSize);
 }

@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
+import jakarta.validation.Valid;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationRequest;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +33,8 @@ public class BusinessServiceCreateRequest {
 
     @Size(max = 2000)
     private String description;
+
+    private List<@Valid PurchaseDestinationRequest> purchaseDestinations;
 
     @NotNull
     private ServiceMode serviceMode;

@@ -5,12 +5,12 @@ Format: `LOCKED | {what} | {why} | {scope}`
 Breaking requires: (1) explicit user approval, (2) proof surrounding extension is insufficient.
 
 ## Search Locks
-LOCKED | Default search sort is intent_match, never price_asc | ASK is an intent layer, not a marketplace. Price ascending commoditizes brands | StructuredSearchProcessor, SearchV2Response
+LOCKED | Default search sort is relevance; price sorting occurs only after explicit customer selection | ASK remains an intent layer while the customer controls optional catalogue ordering | SearchRequest, StructuredSearchProcessor, SearchResponse
 LOCKED | No buy-box logic collapsing different brands into one SKU comparison | Each brand owns its presentation. SKU comparison = marketplace behavior | All search result rendering
 LOCKED | Search mode is exactly ITEM or SERVICE and is selected by the user | Customer controls the result domain; AI cannot change it | SearchRequest, StructuredSearchProcessor
 LOCKED | Generative AI never chooses businesses or invents facts; an approved non-generative relevance model may score already eligible candidates while hard filters, eligibility, and final policy remain deterministic | Catalog enrichment may only fill missing descriptions and add text-supported tags/attributes; operational truth and policy are never delegated to AI | search ranking, PlatformAiEnrichmentProcessor, catalog entities
 LOCKED | Search returns only Item or Service rows enriched with public Business profile and optional branch context | Business is presentation/context, not a standalone result; search never creates requests, outreach, notifications, or chats | search domain, SearchCardResponse
-LOCKED | Meilisearch is retrieval engine, PostgreSQL is source of truth + hydration | Replaces in-memory scoring with typo-tolerant, synonym-aware search. Fallback to PG if Meilisearch unavailable | StructuredSearchProcessor, MeilisearchService
+LOCKED | Meilisearch is the sole retrieval engine; PostgreSQL is source of truth and hydration only | Search ordering and hard filters must be global and stable across pages | StructuredSearchProcessor, MeilisearchIndexGateway
 LOCKED | UniqueOffers only boost or decorate linked Item/Service results and never appear as standalone search results | Offers are brand signals, not another search corpus | UniqueOffer, unique_offer_product/service/branch tables
 
 ## Data Locks

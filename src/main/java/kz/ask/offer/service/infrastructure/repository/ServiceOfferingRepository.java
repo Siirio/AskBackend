@@ -37,6 +37,6 @@ public interface ServiceOfferingRepository extends JpaRepository<Service, UUID> 
     Page<Service> search(UUID businessId, UUID branchId, String categoryLabel, Boolean active,
                           String query, Pageable pageable);
 
-    @EntityGraph(attributePaths = "imageFiles")
+    @EntityGraph(attributePaths = {"imageFiles", "purchaseDestinations"})
     List<Service> findByIdIn(List<UUID> ids);
 }

@@ -23,5 +23,18 @@ features/{name}/
 2. Add Changelog entry
 3. Update Feature Index
 
-## Tracked features
-Run a codebase scan to discover existing features from `src/main/java/kz/ask/` packages.
+## Current feature index
+
+| Knowledge folder | Java package(s) |
+| --- | --- |
+| business | `business` including branch, category, invitation, member, onboarding, profile, verification |
+| identity | `identity` |
+| item | `offer.item`, `offer.media`, `offer.purchase` |
+| legal | `legal` |
+| messaging | `chat` |
+| offers | `business.uniqueoffer` |
+| platform | `platform`, `moderation`, `audit`, `ai` |
+| search | `search`, `catalog` |
+| service | `offer.service`, `offer.media`, `offer.purchase` |
+
+`importing` and `managedimport` are current packages whose contracts are recorded with the consuming item/service/business flows. Removed features live only under `_archived`; `request` was archived on 2026-08-03 because its Java package and endpoints no longer exist.

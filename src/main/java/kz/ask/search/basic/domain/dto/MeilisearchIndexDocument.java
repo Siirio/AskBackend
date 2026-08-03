@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -21,6 +22,8 @@ public class MeilisearchIndexDocument {
     private String categoryLabel;
     private String businessName;
     private String branchName;
+    private UUID businessId;
+    private UUID branchId;
     private List<String> tokens;
     private BigDecimal price;
     private String currency;

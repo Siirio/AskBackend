@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 import kz.ask.offer.media.CatalogImageResponse;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationResponse;
 import java.util.Map;
 import kz.ask.offer.service.domain.enums.ServiceMode;
 import lombok.AllArgsConstructor;
@@ -27,6 +28,7 @@ public class BusinessServiceRowResponse {
     private String name;
     private String description;
     private List<CatalogImageResponse> images;
+    private List<PurchaseDestinationResponse> purchaseDestinations;
     private ServiceMode serviceMode;
     private BigDecimal basePrice;
     private String scheduleText;

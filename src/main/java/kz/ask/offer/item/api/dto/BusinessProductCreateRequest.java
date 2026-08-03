@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.Valid;
+import kz.ask.offer.purchase.api.dto.PurchaseDestinationRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,8 +33,7 @@ public class BusinessProductCreateRequest {
     @Size(max = 2000)
     private String description;
 
-    @Size(max = 2048)
-    private String deepLink;
+    private List<@Valid PurchaseDestinationRequest> purchaseDestinations;
 
     private List<String> tags;
 

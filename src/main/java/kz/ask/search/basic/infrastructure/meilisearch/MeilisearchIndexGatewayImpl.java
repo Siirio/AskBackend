@@ -9,6 +9,8 @@ import com.meilisearch.sdk.exceptions.MeilisearchException;
 import com.meilisearch.sdk.model.Embedder;
 import com.meilisearch.sdk.model.EmbedderSource;
 import com.meilisearch.sdk.model.Hybrid;
+import com.meilisearch.sdk.model.Pagination;
+import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Searchable;
 import com.meilisearch.sdk.model.SwapIndexesParams;
 import com.meilisearch.sdk.model.TaskInfo;
@@ -27,15 +29,20 @@ import kz.ask.shared.error.ExternalServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @Slf4j
 @Service
 public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
 
-    private static final Integer DEFAULT_SEARCH_LIMIT = 200;
     private static final Double DEFAULT_SEMANTIC_RATIO = 0.5;
     private static final String FIELD_PRICE = "price";
     private static final String FIELD_DOCUMENT_TYPE = "documentType";
+    private static final String FIELD_AGGREGATE_ID = "aggregateId";
+    private static final String FIELD_BUSINESS_ID = "businessId";
+    private static final String FIELD_BRANCH_ID = "branchId";
 
     private final Client client;
     private final ObjectMapper objectMapper;
@@ -146,29 +153,76 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
     }
 
     @Override
-    public List<SearchHitDto> search(SearchPlan plan, int limit) {
+    public Page<SearchHitDto> search(SearchPlan plan, int page, int pageSize) {
         try {
             Index index = ensureIndex();
-            String filter = filterCompiler.compile(plan);
-            SearchRequest request = buildSearchRequest(plan.getRawQuery(), plan, limit, filter);
-            Searchable result = index.search(request);
-            return result.getHits().stream()
-                    .map(hit -> SearchHitDto.builder()
-                            .aggregateId(parseId(hit.get("id")))
-                            .rankingScore(parseScore(hit.get("_rankingScore")))
-                            .build())
-                    .filter(hit -> hit.getAggregateId() != null)
-                    .toList();
+            long offset = (long) page * pageSize;
+            if (offset > Integer.MAX_VALUE) {
+                return new PageImpl<>(List.of(), PageRequest.of(page, pageSize), Integer.MAX_VALUE);
+            }
+            if ("unique_offers".equals(plan.getSort())
+                    && plan.getActiveOfferAggregateIds() != null
+                    && !plan.getActiveOfferAggregateIds().isEmpty()) {
+                return searchUniqueOffersFirst(index, plan, page, pageSize, (int) offset);
+            }
+            SearchResult result = executeSearch(index, plan, (int) offset, pageSize, filterCompiler.compile(plan));
+            return new PageImpl<>(toHits(result), PageRequest.of(page, pageSize), result.getEstimatedTotalHits());
         } catch (MeilisearchException e) {
             log.error("Meilisearch search failed: {}", e.getMessage());
             throw new ExternalServiceException(ErrorCode.MEILISEARCH_SEARCH_FAILED);
         }
     }
 
-    private SearchRequest buildSearchRequest(String query, SearchPlan plan, int limit, String filter) {
+    private Page<SearchHitDto> searchUniqueOffersFirst(
+            Index index, SearchPlan plan, int page, int pageSize, int offset) throws MeilisearchException {
+        String baseFilter = filterCompiler.compile(plan);
+        String activeIds = plan.getActiveOfferAggregateIds().stream()
+                .distinct()
+                .map(id -> "'" + id + "'")
+                .collect(java.util.stream.Collectors.joining(", "));
+        String activeFilter = combineFilters(baseFilter, FIELD_AGGREGATE_ID + " IN [" + activeIds + "]");
+        String inactiveFilter = combineFilters(baseFilter, FIELD_AGGREGATE_ID + " NOT IN [" + activeIds + "]");
+
+        SearchResult active = executeSearch(index, plan, offset, pageSize, activeFilter);
+        int activeTotal = active.getEstimatedTotalHits();
+        List<SearchHitDto> hits = new java.util.ArrayList<>();
+        if (offset < activeTotal) {
+            hits.addAll(toHits(active));
+        }
+
+        int remaining = pageSize - hits.size();
+        int inactiveOffset = Math.max(0, offset - activeTotal);
+        SearchResult inactive = executeSearch(index, plan, inactiveOffset, Math.max(remaining, 1), inactiveFilter);
+        if (remaining > 0) {
+            hits.addAll(toHits(inactive).stream().limit(remaining).toList());
+        }
+        long total = (long) activeTotal + inactive.getEstimatedTotalHits();
+        return new PageImpl<>(hits, PageRequest.of(page, pageSize), total);
+    }
+
+    private SearchResult executeSearch(
+            Index index, SearchPlan plan, int offset, int limit, String filter) throws MeilisearchException {
+        Searchable searchable = index.search(buildSearchRequest(plan.getRawQuery(), plan, offset, limit, filter));
+        return (SearchResult) searchable;
+    }
+
+    private List<SearchHitDto> toHits(SearchResult result) {
+        return result.getHits().stream()
+                .map(hit -> SearchHitDto.builder()
+                        .aggregateId(parseId(hit.get("id")))
+                        .build())
+                .filter(hit -> hit.getAggregateId() != null)
+                .toList();
+    }
+
+    private String combineFilters(String baseFilter, String additionalFilter) {
+        return baseFilter.isBlank() ? additionalFilter : "(" + baseFilter + ") AND " + additionalFilter;
+    }
+
+    private SearchRequest buildSearchRequest(String query, SearchPlan plan, int offset, int limit, String filter) {
         SearchRequest request = new SearchRequest(query)
-                .setLimit(Math.min(limit, DEFAULT_SEARCH_LIMIT))
-                .setShowRankingScore(true);
+                .setOffset(offset)
+                .setLimit(limit);
 
         if (!filter.isBlank()) {
             request.setFilter(new String[]{filter});
@@ -176,6 +230,12 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
 
         if ("price_asc".equals(plan.getSort())) {
             request.setSort(new String[]{FIELD_PRICE + ":asc"});
+        } else if ("price_desc".equals(plan.getSort())) {
+            request.setSort(new String[]{FIELD_PRICE + ":desc"});
+        } else if ("distance".equals(plan.getSort())
+                && plan.getUserLatitude() != null && plan.getUserLongitude() != null) {
+            request.setSort(new String[]{"_geoPoint(" + plan.getUserLatitude() + ", "
+                    + plan.getUserLongitude() + "):asc"});
         }
 
         if (semanticEnabled && semanticIndexes.contains(indexName)) {
@@ -197,20 +257,6 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         } catch (IllegalArgumentException e) {
             return null;
         }
-    }
-
-    private Double parseScore(Object value) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        if (value instanceof String string) {
-            try {
-                return Double.parseDouble(string);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
     }
 
     private Index ensureIndex() throws MeilisearchException {
@@ -246,11 +292,13 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         waitForTask(index, index.updateFilterableAttributesSettings(new String[]{
                 FIELD_DOCUMENT_TYPE, FIELD_PRICE, "city",
                 "country", "categoryLabel",
-                "aggregateId", "currency", "availabilityStatus"
+                FIELD_AGGREGATE_ID, FIELD_BUSINESS_ID, FIELD_BRANCH_ID,
+                "currency", "availabilityStatus"
         }));
         waitForTask(index, index.updateSortableAttributesSettings(new String[]{
                 FIELD_PRICE
         }));
+        waitForTask(index, index.updatePaginationSettings(new Pagination(Integer.MAX_VALUE)));
         configureSemanticSettings(index);
         configuredIndexes.add(index.getUid());
         log.info("Meilisearch index '{}' settings configured", index.getUid());
@@ -301,6 +349,8 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         map.put("categoryLabel", nullToEmpty(doc.getCategoryLabel()));
         map.put("businessName", nullToEmpty(doc.getBusinessName()));
         map.put("branchName", nullToEmpty(doc.getBranchName()));
+        map.put(FIELD_BUSINESS_ID, doc.getBusinessId() == null ? null : doc.getBusinessId().toString());
+        map.put(FIELD_BRANCH_ID, doc.getBranchId() == null ? null : doc.getBranchId().toString());
         map.put("embeddingText", nullToEmpty(doc.getEmbeddingText()));
         map.put("tokens", doc.getTokens() == null ? List.of() : doc.getTokens());
         map.put("price", doc.getPrice() != null ? doc.getPrice().doubleValue() : null);
@@ -312,6 +362,11 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         map.put("availabilityStatus", nullToEmpty(doc.getAvailabilityStatus()));
         map.put("latitude", doc.getLatitude() != null ? doc.getLatitude().doubleValue() : null);
         map.put("longitude", doc.getLongitude() != null ? doc.getLongitude().doubleValue() : null);
+        if (doc.getLatitude() != null && doc.getLongitude() != null) {
+            map.put("_geo", Map.of(
+                    "lat", doc.getLatitude().doubleValue(),
+                    "lng", doc.getLongitude().doubleValue()));
+        }
         return map;
     }
 

@@ -9,5 +9,4 @@ import lombok.Getter;
 public class SearchHitDto {
 
     private UUID aggregateId;
-    private Double rankingScore;
 }

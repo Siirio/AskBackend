@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.util.List;
+import kz.ask.legal.api.dto.LegalDocumentResponse;
 
 @RestController
 @RequestMapping("/api/v1/legal")
@@ -19,6 +23,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class LegalController {
 
     private final LegalService legalService;
+
+    @GetMapping("/documents")
+    public ResponseEntity<List<LegalDocumentResponse>> documents(
+            @RequestParam String countryCode,
+            @RequestParam String locale) {
+        return ResponseEntity.ok(legalService.listActiveDocuments(countryCode).stream()
+                .map(document -> LegalDocumentResponse.builder()
+                        .code(document.getCode())
+                        .version(document.getVersion())
+                        .countryCode(document.getCountryCode())
+                        .locale(locale)
+                        .publicUrl(document.getPublicUrl())
+                        .effectiveAt(document.getEffectiveAt())
+                        .build())
+                .toList());
+    }
 
     @PostMapping("/acceptances")
     public ResponseEntity<Void> accept(

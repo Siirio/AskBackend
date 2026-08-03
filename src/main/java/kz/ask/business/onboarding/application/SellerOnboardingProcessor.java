@@ -13,6 +13,7 @@ import kz.ask.business.verification.domain.BusinessVerificationService;
 import kz.ask.business.verification.domain.dto.BusinessVerificationDto;
 import kz.ask.business.verification.domain.enums.VerificationStatus;
 import kz.ask.identity.infrastructure.security.AskPrincipal;
+import kz.ask.shared.domain.CityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class SellerOnboardingProcessor {
     private final BusinessService businessService;
     private final BusinessBranchService businessBranchService;
     private final BusinessVerificationService businessVerificationService;
+    private final CityService cityService;
 
     @Transactional
     public SellerOnboardingResponse onboard(AskPrincipal principal, SellerOnboardingRequest request) {
@@ -51,9 +53,19 @@ public class SellerOnboardingProcessor {
 
     private void createBranch(UUID businessId, CreateBranchRequest branch) {
         businessBranchService.create(
-                businessId, branch.getCityId(), branch.getName(), branch.getAddress(),
+                businessId, resolveCityId(branch), branch.getName(), branch.getAddress(),
                 branch.getAddressDetails(), branch.getLatitude(), branch.getLongitude(),
                 branch.getTimeZoneId(), branch.getWeeklyHours(), branch.getSpecialHours(), true);
+    }
+
+    private UUID resolveCityId(CreateBranchRequest branch) {
+        if (branch.getCityId() != null) {
+            return branch.getCityId();
+        }
+        if (branch.getCityName() == null || branch.getCityName().isBlank()) {
+            return null;
+        }
+        return cityService.findByName(branch.getCityName()).getId();
     }
 
     private BusinessVerificationDto verification(SellerOnboardingRequest request) {

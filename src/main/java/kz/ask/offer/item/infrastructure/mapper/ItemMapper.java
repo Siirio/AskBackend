@@ -11,6 +11,7 @@ import kz.ask.moderation.api.dto.ProductModerationItemResponse;
 import kz.ask.offer.item.application.ProductOfferDto;
 import kz.ask.offer.item.domain.entity.Item;
 import kz.ask.offer.media.CatalogImageMutation;
+import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class ItemMapper {
 
     private final CatalogImageMutation catalogImageMutation;
+    private final PurchaseDestinationMapper purchaseDestinationMapper;
 
     public ProductOfferDto toProductOfferDto(Item entity) {
         return ProductOfferDto.builder()
@@ -30,7 +32,7 @@ public class ItemMapper {
                 .name(entity.getName())
                 .description(entity.getDescription())
                 .imageFiles(entity.getImageFiles() == null ? java.util.List.of() : new java.util.ArrayList<>(entity.getImageFiles()))
-                .deepLink(entity.getDeepLink())
+                .purchaseDestinations(purchaseDestinationMapper.toDtos(entity.getPurchaseDestinations()))
                 .tags(entity.getTags() == null ? null : new java.util.ArrayList<>(entity.getTags()))
                 .attributes(entity.getAttributes())
                 .price(entity.getPrice())
@@ -49,7 +51,7 @@ public class ItemMapper {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .images(catalogImageMutation.toResponses(dto.getImageFiles()))
-                .deepLink(dto.getDeepLink())
+                .purchaseDestinations(purchaseDestinationMapper.toResponses(dto.getPurchaseDestinations()))
                 .tags(dto.getTags())
                 .attributes(dto.getAttributes())
                 .price(dto.getPrice())
@@ -65,7 +67,8 @@ public class ItemMapper {
         entity.setCategory(category);
         entity.setName(req.getName().trim());
         entity.setDescription(req.getDescription());
-        entity.setDeepLink(req.getDeepLink());
+        entity.getPurchaseDestinations().addAll(
+                purchaseDestinationMapper.toEntities(req.getPurchaseDestinations()));
         entity.setTags(req.getTags());
         entity.setAttributes(req.getAttributes());
         entity.setPrice(req.getPrice());
@@ -76,7 +79,11 @@ public class ItemMapper {
                                    BusinessBranch branch, Category category) {
         if (req.getName() != null) entity.setName(req.getName().trim());
         if (req.getDescription() != null) entity.setDescription(req.getDescription());
-        if (req.getDeepLink() != null) entity.setDeepLink(req.getDeepLink());
+        if (req.getPurchaseDestinations() != null) {
+            entity.getPurchaseDestinations().clear();
+            entity.getPurchaseDestinations().addAll(
+                    purchaseDestinationMapper.toEntities(req.getPurchaseDestinations()));
+        }
         if (req.getTags() != null) {
             if (entity.getTags() == null) {
                 entity.setTags(new java.util.ArrayList<>(req.getTags()));

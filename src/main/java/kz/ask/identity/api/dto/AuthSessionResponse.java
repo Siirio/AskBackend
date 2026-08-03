@@ -3,6 +3,7 @@ package kz.ask.identity.api.dto;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import kz.ask.legal.domain.enums.LegalDocumentCode;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,4 +31,5 @@ public class AuthSessionResponse {
     private List<AuthBusinessMembershipResponse> businessMemberships;
     private AuthPlatformMembershipResponse platformMembership;
     private Integer pendingInvitationsCount;
+    private List<LegalDocumentCode> pendingLegalDocuments;
 }

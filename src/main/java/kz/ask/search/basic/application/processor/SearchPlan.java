@@ -2,6 +2,7 @@ package kz.ask.search.basic.application.processor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,8 +19,13 @@ public class SearchPlan {
     private String sort;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
-    private Boolean openNow;
     private Integer radiusMeters;
+    private List<UUID> businessIds;
+    private Double mapNorth;
+    private Double mapSouth;
+    private Double mapEast;
+    private Double mapWest;
+    private List<UUID> activeOfferAggregateIds;
     private Double userLatitude;
     private Double userLongitude;
     private BigDecimal inferredMinPrice;

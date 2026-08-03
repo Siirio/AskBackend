@@ -20,7 +20,7 @@ separate public listing or detail API in the current backend contract.
 
 - An Item belongs to a Business.
 - It stores one `ITEM` category identity, description, labeled purchase destinations, tags, attributes, price, isActive, and moderationStatus.
-- Target purchase-destination contract: an ordered list of `{ label, url }` entries owned by the Item. The current singular `deepLink` field must be replaced or migrated before this target contract is exposed; it must not be multiplied by branch.
+- `purchaseDestinations` is the current ordered list of `{ label, url }` entries owned by the Item; URLs must use HTTP(S). It is accepted by create/update and returned by business rows and public search. It is never multiplied by branch.
 - Purchase destinations are public links deliberately supplied for customers. Business-verification or moderation sources are never eligible purchase destinations.
 - A branch association is optional and contains only location-specific facts; creating an Item never creates a branch.
 - Item PATCH preserves the current branch when `branchId` is omitted or null. The current contract has no branch-clear operation; a non-null branch is verified against the owning Business.

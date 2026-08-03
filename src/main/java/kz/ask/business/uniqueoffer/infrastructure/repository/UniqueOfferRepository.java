@@ -55,4 +55,26 @@ public interface UniqueOfferRepository extends JpaRepository<UniqueOffer, UUID> 
             List<UUID> serviceIds,
             UniqueOfferStatus status,
             Instant now);
+
+    @Query("""
+            SELECT DISTINCT itemId
+            FROM UniqueOffer offer
+            JOIN offer.itemIds itemId
+            WHERE offer.isActive = true
+              AND offer.status = :status
+              AND (offer.startDate IS NULL OR offer.startDate <= :now)
+              AND (offer.endDate IS NULL OR offer.endDate >= :now)
+            """)
+    List<UUID> findAllActiveItemIds(UniqueOfferStatus status, Instant now);
+
+    @Query("""
+            SELECT DISTINCT serviceId
+            FROM UniqueOffer offer
+            JOIN offer.serviceIds serviceId
+            WHERE offer.isActive = true
+              AND offer.status = :status
+              AND (offer.startDate IS NULL OR offer.startDate <= :now)
+              AND (offer.endDate IS NULL OR offer.endDate >= :now)
+            """)
+    List<UUID> findAllActiveServiceIds(UniqueOfferStatus status, Instant now);
 }

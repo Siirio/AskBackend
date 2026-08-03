@@ -20,7 +20,7 @@ a separate public listing or detail API in the current backend contract.
 
 - A Service belongs to a Business.
 - It stores one `SERVICE` category identity, description, labeled purchase destinations, and canonical attributes.
-- Target purchase-destination contract: an ordered list of `{ label, url }` entries owned by the Service. Each entry is deliberately published for customers; Business-verification or moderation sources are not eligible.
+- `purchaseDestinations` is the current ordered list of `{ label, url }` entries owned by the Service; URLs must use HTTP(S). It is accepted by create/update and returned by business rows and public search. Business-verification or moderation sources are not eligible.
 - Purchase destinations are never attached to a branch. A branch remains optional location, price, schedule, and visibility context.
 - A branch association is optional and contains only location-specific facts such as price, schedule, and visibility.
 - Active Services are searchable immediately after creation; there is no moderation approval gate.

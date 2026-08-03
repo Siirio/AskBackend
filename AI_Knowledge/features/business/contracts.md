@@ -107,7 +107,7 @@ with `@`, or an international WhatsApp phone number.
 - BusinessMemberDto: id, businessId, businessName, userId, email, displayName, role
 - BusinessMemberListResponse: members (List&lt;BusinessMemberDto&gt;)
 - Branch create/update accepts `timeZoneId` (IANA), `weeklyHours` (DayOfWeek + LocalTime opensAt/closesAt), and `specialHours` (LocalDate + closed/opensAt/closesAt overrides). OWNER or MANAGER may set schedule.
-- Branch create/update receives latitude and longitude internally from map selection or a supported map-link resolver. The frontend never asks the user to enter or displays the numeric coordinates. Persistence stays provider-independent.
+- Branch create/update accepts either canonical `cityId` or a type-marked `cityName` from the address picker, plus latitude/longitude. The server removes only explicit city markers (`г.` / `город` / `қ.` / `қаласы`) before matching its city table; rural markers are never stripped, so a village cannot silently resolve to a same-named city.
 
 ## Categories
 

@@ -24,4 +24,8 @@ public interface UniqueOfferService {
     Map<UUID, UniqueOfferBoostDto> findActiveItemBoosts(List<UUID> itemIds);
 
     Map<UUID, UniqueOfferBoostDto> findActiveServiceBoosts(List<UUID> serviceIds);
+
+    List<UUID> findAllActiveItemIds();
+
+    List<UUID> findAllActiveServiceIds();
 }

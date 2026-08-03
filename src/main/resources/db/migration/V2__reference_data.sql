@@ -32,6 +32,22 @@ INSERT INTO city (id, created_at, updated_at, name, country_code) VALUES
   ('00000000-0000-0000-0000-0000000000d7', now(), now(), 'Конаев',             'KZ');
 
 -- ---------------------------------------------------------------------------
+-- Active legal documents
+-- ---------------------------------------------------------------------------
+
+INSERT INTO legal_document (
+    id, created_at, updated_at, code, version, country_code, public_url, effective_at, is_active
+) VALUES
+  ('00000000-0000-0000-0000-0000000000e1', now(), now(), 'USER_TERMS',
+   '2026-07-18', 'KZ', '/legal/user-terms', '2026-07-18T00:00:00Z', true),
+  ('00000000-0000-0000-0000-0000000000e2', now(), now(), 'PRIVACY_POLICY',
+   '2026-07-18', 'KZ', '/legal/privacy', '2026-07-18T00:00:00Z', true),
+  ('00000000-0000-0000-0000-0000000000e3', now(), now(), 'SELLER_TERMS',
+   '2026-07-18', 'KZ', '/legal/seller-terms', '2026-07-18T00:00:00Z', true),
+  ('00000000-0000-0000-0000-0000000000e4', now(), now(), 'PERSONAL_DATA_CONSENT',
+   '2026-07-18', 'KZ', '/legal/personal-data-consent', '2026-07-18T00:00:00Z', true);
+
+-- ---------------------------------------------------------------------------
 -- Initial categories
 -- ---------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@ package kz.ask.business.branch.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,8 @@ public class CreateBranchRequest {
     private String address;
     private String addressDetails;
     private UUID cityId;
+    @Size(max = 255)
+    private String cityName;
     @NotNull
     private BigDecimal latitude;
     @NotNull
