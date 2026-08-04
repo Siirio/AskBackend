@@ -2,7 +2,9 @@ package kz.ask.search.basic.application.processor;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -22,6 +24,7 @@ import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
 import kz.ask.search.basic.api.dto.SearchBusinessProfileResponse;
 import kz.ask.search.basic.api.dto.SearchCardResponse;
+import kz.ask.search.basic.api.dto.SearchCompanyFacetResponse;
 import kz.ask.search.basic.api.dto.SearchConstraintResponse;
 import kz.ask.search.basic.api.dto.SearchLocationRequest;
 import kz.ask.search.basic.api.dto.SearchRequest;
@@ -76,11 +79,13 @@ public class StructuredSearchProcessor {
         List<SearchHitDto> hits = hitPage.getContent();
         List<SearchDocumentDto> documents = hydrateDocuments(plan, hits);
         List<RankedDocument> ranked = rank(documents, plan, request.getUserLocation());
+        Map<UUID, Integer> companyFacetCounts = meilisearchIndexGateway.searchBusinessFacets(plan);
 
-        Set<UUID> businessIds = ranked.stream()
+        Set<UUID> businessIds = new HashSet<>(companyFacetCounts.keySet());
+        ranked.stream()
                 .map(r -> r.document.getBusinessId())
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                .forEach(businessIds::add);
         Map<UUID, BusinessProfileDto> profiles = businessProfileService.findByBusinessIds(businessIds);
         Map<UUID, List<CatalogImageResponse>> images = loadImages(ranked);
         Map<UUID, List<PurchaseDestinationResponse>> purchaseDestinations = loadPurchaseDestinations(ranked);
@@ -92,6 +97,7 @@ public class StructuredSearchProcessor {
                         ? interpretation.getNormalizedQuery() : request.getRawQuery())
                 .interpretedConstraints(toConstraints(plan))
                 .sections(toSections(ranked, profiles, images, purchaseDestinations, request.getLocale()))
+                .companyFacets(toCompanyFacets(companyFacetCounts, profiles))
                 .page(page)
                 .pageSize(pageSize)
                 .total(Math.toIntExact(hitPage.getTotalElements()))
@@ -372,6 +378,27 @@ public class StructuredSearchProcessor {
                 .branchAddress(doc.getBranchAddress())
                 .branchCity(doc.getCity())
                 .build();
+    }
+
+    private List<SearchCompanyFacetResponse> toCompanyFacets(
+            Map<UUID, Integer> counts, Map<UUID, BusinessProfileDto> profiles) {
+        List<SearchCompanyFacetResponse> facets = counts.entrySet().stream()
+                .map(entry -> {
+                    BusinessProfileDto profile = profiles.get(entry.getKey());
+                    if (profile == null || profile.getBusinessName() == null) {
+                        return null;
+                    }
+                    return SearchCompanyFacetResponse.builder()
+                            .businessId(entry.getKey())
+                            .businessName(profile.getBusinessName())
+                            .resultCount(entry.getValue())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(ArrayList::new));
+        facets.sort(Comparator.comparing(SearchCompanyFacetResponse::getResultCount).reversed()
+                .thenComparing(SearchCompanyFacetResponse::getBusinessName, String.CASE_INSENSITIVE_ORDER));
+        return facets;
     }
 
     private Map<UUID, List<CatalogImageResponse>> loadImages(List<RankedDocument> results) {

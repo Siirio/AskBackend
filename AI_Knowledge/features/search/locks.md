@@ -13,6 +13,7 @@ LOCKED | Delivery confirmation requeues the newest desired action/version after 
 LOCKED | Explicit filters are hard; interpreted query signals are soft | AI/text inference may be wrong | SearchPlan, StructuredSearchProcessor
 LOCKED | Distance affects rank only for explicit distance sorting | Coordinates alone are not location intent | StructuredSearchProcessor
 LOCKED | Search filters and sorts execute server-side across the full eligible catalogue before pagination | A loaded-page refinement produces incomplete and misleading results | SearchRequest, SearchPlan, MeilisearchIndexGatewayImpl, ResultsPage
+LOCKED | Company filter options and counts come from server facets over the full current query with all filters except businessIds | Loaded-card options are incomplete and selected companies must not collapse the multi-select | SearchResponse, MeilisearchIndexGatewayImpl, StructuredSearchProcessor, ResultsPage
 LOCKED | Search returns bounded pages and permits traversal until the catalogue is exhausted | Infinite scroll must not stop at an internal candidate cap or download the catalogue in one batch | SearchRequest, MeilisearchIndexGatewayImpl, ResultsPage
 LOCKED | Match reasons may remain response metadata but are not displayed | Customer result presentation does not expose “why this matched” | SearchCardResponse, ResultCard, ResultsPage
 LOCKED | Public resultId equals aggregateId | SearchDocument UUID is internal projection identity | SearchCardResponse

@@ -11,6 +11,7 @@ public class SearchResponse {
     private String mode;
     private String understoodQuery;
     private List<SearchSectionResponse> sections;
+    private List<SearchCompanyFacetResponse> companyFacets;
     private List<SearchConstraintResponse> interpretedConstraints;
     private Integer page;
     private Integer pageSize;

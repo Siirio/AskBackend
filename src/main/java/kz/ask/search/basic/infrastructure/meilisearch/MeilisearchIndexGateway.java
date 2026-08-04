@@ -1,6 +1,7 @@
 package kz.ask.search.basic.infrastructure.meilisearch;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import kz.ask.search.basic.application.processor.SearchPlan;
 import kz.ask.search.basic.domain.dto.MeilisearchIndexDocument;
@@ -24,4 +25,6 @@ public interface MeilisearchIndexGateway {
     void discardIndex(String targetIndex);
 
     Page<SearchHitDto> search(SearchPlan plan, int page, int pageSize);
+
+    Map<UUID, Integer> searchBusinessFacets(SearchPlan plan);
 }

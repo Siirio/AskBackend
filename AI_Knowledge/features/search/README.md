@@ -4,6 +4,8 @@ ASK searches either `ITEM` or `SERVICE`; the customer selects the mode and AI ca
 
 Meilisearch performs hybrid keyword/semantic retrieval. Explicit filters and requested sorting are applied in Meilisearch across the full eligible catalogue before pagination. The API returns one bounded page at a time; clients request page 0, 1, 2 and so on until `hasNext=false`. There is no fixed 200-result candidate window and Meilisearch pagination is configured to permit the entire indexed result set.
 
+Each response also returns company facets for the current query and all active filters except `businessIds`. Facet counts cover the full matching result set rather than the loaded page, so the frontend can render a stable searchable company multi-select without deriving options from cards.
+
 Supported global sorts are relevance, distance, ascending price, descending price, and active Unique Offers first. Unique Offers decorate linked Item/Service results and never become standalone cards.
 
 Each card contains the Item/Service identity, business presentation, optional branch context, up to three ordered images, and ordered purchase destinations. Match reasons remain response metadata and are not displayed in the customer UI. Search-card `openingSummary` was removed because it was never populated; branch-management responses retain their computed opening summary.

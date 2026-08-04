@@ -173,6 +173,22 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         }
     }
 
+    @Override
+    public Map<UUID, Integer> searchBusinessFacets(SearchPlan plan) {
+        try {
+            Index index = ensureIndex();
+            SearchPlan facetPlan = plan.toBuilder().businessIds(null).build();
+            SearchRequest request = buildSearchRequest(
+                    facetPlan.getRawQuery(), facetPlan, 0, 0, filterCompiler.compile(facetPlan));
+            request.setFacets(new String[]{FIELD_BUSINESS_ID});
+            SearchResult result = (SearchResult) index.search(request);
+            return toBusinessFacets(result.getFacetDistribution());
+        } catch (MeilisearchException e) {
+            log.error("Meilisearch business facet search failed: {}", e.getMessage());
+            throw new ExternalServiceException(ErrorCode.MEILISEARCH_SEARCH_FAILED);
+        }
+    }
+
     private Page<SearchHitDto> searchUniqueOffersFirst(
             Index index, SearchPlan plan, int page, int pageSize, int offset) throws MeilisearchException {
         String baseFilter = filterCompiler.compile(plan);
@@ -213,6 +229,24 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
                         .build())
                 .filter(hit -> hit.getAggregateId() != null)
                 .toList();
+    }
+
+    private Map<UUID, Integer> toBusinessFacets(Object facetDistribution) {
+        if (!(facetDistribution instanceof Map<?, ?> distributions)) {
+            return Map.of();
+        }
+        Object businessDistribution = distributions.get(FIELD_BUSINESS_ID);
+        if (!(businessDistribution instanceof Map<?, ?> businessCounts)) {
+            return Map.of();
+        }
+        Map<UUID, Integer> facets = new HashMap<>();
+        businessCounts.forEach((value, count) -> {
+            UUID businessId = parseId(value);
+            if (businessId != null && count instanceof Number number && number.intValue() > 0) {
+                facets.put(businessId, number.intValue());
+            }
+        });
+        return facets;
     }
 
     private String combineFilters(String baseFilter, String additionalFilter) {

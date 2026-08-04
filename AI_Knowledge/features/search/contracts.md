@@ -31,6 +31,6 @@
 - City, radius, and map area are mutually exclusive. Radius and distance sort require `userLocation`.
 - `openNow` is not accepted because search does not index a trustworthy current opening state.
 
-The response exposes bounded `sections`, `page`, `pageSize`, global `total`, and `hasNext`. Cards contain canonical `resultId`, `businessId`, `resultType`, business presentation, images, ordered `purchaseDestinations: [{label,url}]`, price, availability metadata, stable badge tokens, coordinates/distance, optional match reasons, and `hasActiveOffer`. Match reasons are metadata only and must not be displayed.
+The response exposes bounded `sections`, `page`, `pageSize`, global `total`, `hasNext`, and `companyFacets: [{businessId,businessName,resultCount}]`. Company facets are calculated across the full current query with every active filter except `businessIds`, allowing multi-select options to remain available while companies are selected. Cards contain canonical `resultId`, `businessId`, `resultType`, business presentation, images, ordered `purchaseDestinations: [{label,url}]`, price, availability metadata, stable badge tokens, coordinates/distance, optional match reasons, and `hasActiveOffer`. Match reasons are metadata only and must not be displayed.
 
 Public search has no standalone Item/Service detail endpoint. Shareable `/app/product/{id}` remains unsupported; the loaded search card can drive the detail modal.
