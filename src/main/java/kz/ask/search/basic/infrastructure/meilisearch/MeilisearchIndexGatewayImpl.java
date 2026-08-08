@@ -165,7 +165,8 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
                     && !plan.getActiveOfferAggregateIds().isEmpty()) {
                 return searchUniqueOffersFirst(index, plan, page, pageSize, (int) offset);
             }
-            SearchResult result = executeSearch(index, plan, (int) offset, pageSize, filterCompiler.compile(plan));
+            String searchQuery = buildSearchQuery(plan);
+            SearchResult result = executeSearch(index, plan, (int) offset, pageSize, filterCompiler.compile(plan), searchQuery);
             return new PageImpl<>(toHits(result), PageRequest.of(page, pageSize), result.getEstimatedTotalHits());
         } catch (MeilisearchException e) {
             log.error("Meilisearch search failed: {}", e.getMessage());
@@ -178,8 +179,9 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         try {
             Index index = ensureIndex();
             SearchPlan facetPlan = plan.toBuilder().businessIds(null).build();
+            String searchQuery = buildSearchQuery(facetPlan);
             SearchRequest request = buildSearchRequest(
-                    facetPlan.getRawQuery(), facetPlan, 0, 0, filterCompiler.compile(facetPlan));
+                    searchQuery, facetPlan, 0, 0, filterCompiler.compile(facetPlan));
             request.setFacets(new String[]{FIELD_BUSINESS_ID});
             SearchResult result = (SearchResult) index.search(request);
             return toBusinessFacets(result.getFacetDistribution());
@@ -192,6 +194,7 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
     private Page<SearchHitDto> searchUniqueOffersFirst(
             Index index, SearchPlan plan, int page, int pageSize, int offset) throws MeilisearchException {
         String baseFilter = filterCompiler.compile(plan);
+        String searchQuery = buildSearchQuery(plan);
         String activeIds = plan.getActiveOfferAggregateIds().stream()
                 .distinct()
                 .map(id -> "'" + id + "'")
@@ -199,7 +202,7 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
         String activeFilter = combineFilters(baseFilter, FIELD_AGGREGATE_ID + " IN [" + activeIds + "]");
         String inactiveFilter = combineFilters(baseFilter, FIELD_AGGREGATE_ID + " NOT IN [" + activeIds + "]");
 
-        SearchResult active = executeSearch(index, plan, offset, pageSize, activeFilter);
+        SearchResult active = executeSearch(index, plan, offset, pageSize, activeFilter, searchQuery);
         int activeTotal = active.getEstimatedTotalHits();
         List<SearchHitDto> hits = new java.util.ArrayList<>();
         if (offset < activeTotal) {
@@ -208,7 +211,7 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
 
         int remaining = pageSize - hits.size();
         int inactiveOffset = Math.max(0, offset - activeTotal);
-        SearchResult inactive = executeSearch(index, plan, inactiveOffset, Math.max(remaining, 1), inactiveFilter);
+        SearchResult inactive = executeSearch(index, plan, inactiveOffset, Math.max(remaining, 1), inactiveFilter, searchQuery);
         if (remaining > 0) {
             hits.addAll(toHits(inactive).stream().limit(remaining).toList());
         }
@@ -218,8 +221,29 @@ public class MeilisearchIndexGatewayImpl implements MeilisearchIndexGateway {
 
     private SearchResult executeSearch(
             Index index, SearchPlan plan, int offset, int limit, String filter) throws MeilisearchException {
-        Searchable searchable = index.search(buildSearchRequest(plan.getRawQuery(), plan, offset, limit, filter));
+        return executeSearch(index, plan, offset, limit, filter, buildSearchQuery(plan));
+    }
+
+    private SearchResult executeSearch(
+            Index index, SearchPlan plan, int offset, int limit, String filter,
+            String searchQuery) throws MeilisearchException {
+        Searchable searchable = index.search(buildSearchRequest(searchQuery, plan, offset, limit, filter));
         return (SearchResult) searchable;
+    }
+
+    private String buildSearchQuery(SearchPlan plan) {
+        String normalized = plan.getNormalizedQuery();
+        List<String> terms = plan.getSearchTerms();
+        if (normalized != null && !normalized.isBlank()) {
+            if (terms != null && !terms.isEmpty()) {
+                return normalized + " " + String.join(" ", terms);
+            }
+            return normalized;
+        }
+        if (terms != null && !terms.isEmpty()) {
+            return String.join(" ", terms);
+        }
+        return plan.getRawQuery();
     }
 
     private List<SearchHitDto> toHits(SearchResult result) {

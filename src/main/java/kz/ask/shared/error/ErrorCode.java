@@ -90,7 +90,10 @@ public enum ErrorCode {
     CANNOT_DELETE_SELF("Невозможно удалить собственный аккаунт администратора"),
     CANNOT_DELETE_LAST_SUPER_ADMIN("Невозможно удалить последнего активного суперадминистратора"),
     BUSINESS_VERIFICATION_NOT_FOUND("Верификация бизнеса не найдена"),
-    BRANCH_NOT_ALLOWED_ONLINE_ONLY("Нельзя создать филиал для онлайн-бизнеса");
+    BRANCH_NOT_ALLOWED_ONLINE_ONLY("Нельзя создать филиал для онлайн-бизнеса"),
+    COMPARE_INVALID_COUNT("Для сравнения укажите от 2 до 5 вариантов"),
+    COMPARE_DUPLICATE_IDS("Сравниваемые варианты не должны повторяться"),
+    COMPARE_RESULT_NOT_FOUND("Один или несколько вариантов недоступны для сравнения");
 
     private final String template;
 

@@ -2,10 +2,12 @@ package kz.ask.search.basic.application.processor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Singular;
 
 @Getter
 @Builder(toBuilder = true)
@@ -33,4 +35,26 @@ public class SearchPlan {
     private String inferredCity;
     private String ambiguity;
     private List<String> clarificationSuggestions;
+
+    private String normalizedQuery;
+
+    @Singular("mustHaveItem")
+    private List<InterpretedCriterion> mustHave;
+
+    @Singular
+    private List<InterpretedCriterion> preferences;
+
+    @Singular
+    private List<InterpretedCriterion> exclusions;
+
+    @Singular
+    private List<InterpretedUseCase> useCases;
+
+    private Map<String, Object> normalizedAttributes;
+
+    private String customText;
+    private boolean userProvidedCriteria;
+
+    @Singular
+    private List<String> searchTerms;
 }

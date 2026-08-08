@@ -45,6 +45,11 @@ public final class SearchTextNormalizer {
 
     public static List<String> tokenize(String name, String description, String category,
                                         List<String> tags, String businessName) {
+        return tokenize(name, description, category, tags, businessName, "");
+    }
+
+    public static List<String> tokenize(String name, String description, String category,
+                                        List<String> tags, String businessName, String attributeText) {
         List<String> tokens = new ArrayList<>();
         tokens.addAll(tokenize(name));
         tokens.addAll(tokenize(description));
@@ -55,6 +60,7 @@ public final class SearchTextNormalizer {
             }
         }
         tokens.addAll(tokenize(businessName));
+        tokens.addAll(tokenize(attributeText));
         return tokens.stream().distinct().toList();
     }
 }

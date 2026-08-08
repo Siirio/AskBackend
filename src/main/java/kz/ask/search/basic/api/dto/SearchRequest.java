@@ -43,6 +43,9 @@ public class SearchRequest {
     @Valid
     private SearchFilterRequest explicitFilters;
 
+    @Valid
+    private DecisionContextRequest decisionContext;
+
     @AssertTrue
     public Boolean isRadiusLocationValid() {
         return explicitFilters == null || explicitFilters.getRadiusMeters() == null || userLocation != null;

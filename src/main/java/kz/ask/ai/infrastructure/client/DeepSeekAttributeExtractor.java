@@ -24,29 +24,18 @@ import org.springframework.web.client.RestClientException;
 
 @Component
 @RequiredArgsConstructor
-public class DeepSeekAttributeExtractor {
+public class DeepSeekAttributeExtractor extends BaseDeepSeekClient {
 
-    private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
     private static final Integer REQUEST_BATCH_SIZE = 20;
 
     private final RestClient deepSeekRestClient;
     private final ObjectMapper objectMapper;
-
-    @Value("${ask.ai.search.api-key:}")
-    private String apiKey;
-
-    @Value("${ask.ai.search.model:deepseek-v4-flash}")
-    private String model;
 
     @Value("${ask.search.ai-enrichment.max-tokens:4000}")
     private Integer maxTokens;
 
     @Value("classpath:prompts/attribute-extraction.md")
     private Resource promptResource;
-
-    public Boolean isAvailable() {
-        return StringUtils.hasText(apiKey);
-    }
 
     public String modelVersion() {
         return model;
@@ -88,7 +77,7 @@ public class DeepSeekAttributeExtractor {
         return Map.of(
                 "model", model,
                 "messages", List.of(
-                        Map.of("role", "system", "content", readPrompt()),
+                        Map.of("role", "system", "content", readPrompt(promptResource)),
                         Map.of("role", "user", "content", objectMapper.writeValueAsString(inputItems))
                 ),
                 "response_format", Map.of("type", "json_object"),
@@ -96,14 +85,6 @@ public class DeepSeekAttributeExtractor {
                 "stream", false,
                 "max_tokens", maxTokens
         );
-    }
-
-    private String readPrompt() {
-        try {
-            return promptResource.getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
-        } catch (java.io.IOException failure) {
-            throw new ExternalServiceException(ErrorCode.AI_INTENT_STRUCTURE_FAILED);
-        }
     }
 
     private List<ExtractionResult> parseResults(JsonNode response) throws JsonProcessingException {

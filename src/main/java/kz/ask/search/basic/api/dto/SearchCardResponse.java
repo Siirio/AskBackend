@@ -37,4 +37,10 @@ public class SearchCardResponse {
     private String branchName;
     private String branchAddress;
     private String branchCity;
+    private String decisionLabel;
+    private List<CriterionAssessmentResponse> criterionAssessments;
+    private List<String> advantages;
+    private List<String> tradeoffs;
+    private List<String> unknowns;
+    private List<CriterionEvidenceResponse> comparisonFacts;
 }

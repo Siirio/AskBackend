@@ -33,6 +33,7 @@ public class SearchProjectionComposer {
         String safeBusinessName = requireText(businessName);
         List<String> safeTags = distinct(tags);
         Map<String, Object> safeAttributes = attributes != null ? attributes : Collections.emptyMap();
+        String attributeText = buildAttributeText(safeAttributes);
 
         return SearchDocumentDto.builder()
                 .documentType(SearchDocumentType.ITEM)
@@ -50,9 +51,9 @@ public class SearchProjectionComposer {
                 .latitude(latitude)
                 .longitude(longitude)
                 .tokens(SearchTextNormalizer.tokenize(
-                        safeName, safeDescription, categoryLabel, safeTags, safeBusinessName))
+                        safeName, safeDescription, categoryLabel, safeTags, safeBusinessName, attributeText))
                 .embeddingText(buildEmbeddingText(
-                        safeName, safeDescription, categoryLabel, safeTags, safeBusinessName))
+                        safeName, safeDescription, categoryLabel, safeTags, safeBusinessName, attributeText))
                 .verifiedAttributes(safeAttributes)
                 .source(SOURCE_ITEMS_SERVICES)
                 .availabilityStatus(SearchAvailabilityStatus.UNKNOWN)
@@ -71,6 +72,7 @@ public class SearchProjectionComposer {
         String safeDescription = description != null ? description : "";
         String safeBusinessName = requireText(businessName);
         Map<String, Object> safeAttributes = attributes != null ? attributes : Collections.emptyMap();
+        String attributeText = buildAttributeText(safeAttributes);
 
         return SearchDocumentDto.builder()
                 .documentType(SearchDocumentType.SERVICE)
@@ -88,9 +90,9 @@ public class SearchProjectionComposer {
                 .latitude(latitude)
                 .longitude(longitude)
                 .tokens(SearchTextNormalizer.tokenize(
-                        safeName, safeDescription, categoryLabel, List.of(), safeBusinessName))
+                        safeName, safeDescription, categoryLabel, List.of(), safeBusinessName, attributeText))
                 .embeddingText(buildEmbeddingText(
-                        safeName, safeDescription, categoryLabel, List.of(), safeBusinessName))
+                        safeName, safeDescription, categoryLabel, List.of(), safeBusinessName, attributeText))
                 .verifiedAttributes(safeAttributes)
                 .source(SOURCE_ITEMS_SERVICES)
                 .availabilityStatus(SearchAvailabilityStatus.UNKNOWN)
@@ -101,14 +103,44 @@ public class SearchProjectionComposer {
 
     private String buildEmbeddingText(String title, String description, String category,
                                        List<String> tags, String businessName) {
+        return buildEmbeddingText(title, description, category, tags, businessName, "");
+    }
+
+    private String buildEmbeddingText(String title, String description, String category,
+                                       List<String> tags, String businessName, String attributeText) {
         return String.join(". ",
                         title,
                         description != null ? description : "",
                         category != null ? category : "",
                         tags.isEmpty() ? "" : String.join(", ", tags),
-                        businessName)
+                        businessName,
+                        attributeText)
                 .replaceAll("\\.\\s*\\.", ".")
                 .trim();
+    }
+
+    private String buildAttributeText(Map<String, Object> attributes) {
+        if (attributes == null || attributes.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+            Object value = entry.getValue();
+            if (value == null) {
+                continue;
+            }
+            String key = entry.getKey();
+            if (value instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item != null) {
+                        sb.append(key).append(" ").append(item).append(". ");
+                    }
+                }
+            } else {
+                sb.append(key).append(" ").append(value).append(". ");
+            }
+        }
+        return sb.toString().trim();
     }
 
     private String requireText(String value) {

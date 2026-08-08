@@ -22,6 +22,11 @@ import kz.ask.offer.media.CatalogImageResponse;
 import kz.ask.offer.purchase.api.dto.PurchaseDestinationResponse;
 import kz.ask.offer.purchase.infrastructure.mapper.PurchaseDestinationMapper;
 import kz.ask.offer.service.infrastructure.repository.ServiceOfferingRepository;
+import kz.ask.search.basic.api.dto.CriterionAssessmentResponse;
+import kz.ask.search.basic.api.dto.CriterionEvidenceResponse;
+import kz.ask.search.basic.api.dto.DecisionContextResponse;
+import kz.ask.search.basic.api.dto.DecisionCriterionResponse;
+import kz.ask.search.basic.api.dto.DecisionUseCaseResponse;
 import kz.ask.search.basic.api.dto.SearchBusinessProfileResponse;
 import kz.ask.search.basic.api.dto.SearchCardResponse;
 import kz.ask.search.basic.api.dto.SearchCompanyFacetResponse;
@@ -30,6 +35,9 @@ import kz.ask.search.basic.api.dto.SearchLocationRequest;
 import kz.ask.search.basic.api.dto.SearchRequest;
 import kz.ask.search.basic.api.dto.SearchResponse;
 import kz.ask.search.basic.api.dto.SearchSectionResponse;
+import kz.ask.search.basic.application.decision.DecisionContext;
+import kz.ask.search.basic.application.decision.DecisionCriterion;
+import kz.ask.search.basic.application.decision.DecisionUseCase;
 import kz.ask.search.basic.domain.SearchDocumentService;
 import kz.ask.search.basic.domain.dto.SearchDocumentDto;
 import kz.ask.search.basic.domain.dto.SearchHitDto;
@@ -37,6 +45,8 @@ import kz.ask.search.basic.domain.enums.SearchAvailabilityStatus;
 import kz.ask.search.basic.domain.enums.SearchDocumentType;
 import kz.ask.search.basic.domain.enums.SearchScope;
 import kz.ask.search.basic.infrastructure.meilisearch.MeilisearchIndexGateway;
+import kz.ask.search.decision.application.CandidateEvaluation;
+import kz.ask.search.decision.infrastructure.DeepSeekDecisionEvaluator;
 import kz.ask.search.search_query_enrichment.api.dto.SearchIntentStructureRequest;
 import kz.ask.search.search_query_enrichment.domain.SearchIntentStructurer;
 import kz.ask.shared.error.ErrorCode;
@@ -66,6 +76,7 @@ public class StructuredSearchProcessor {
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final CatalogImageMutation catalogImageMutation;
     private final PurchaseDestinationMapper purchaseDestinationMapper;
+    private final DeepSeekDecisionEvaluator decisionEvaluator;
 
     public SearchResponse search(SearchRequest request) {
         int page = request.getPage() == null ? 0 : request.getPage();
@@ -79,6 +90,10 @@ public class StructuredSearchProcessor {
         List<SearchHitDto> hits = hitPage.getContent();
         List<SearchDocumentDto> documents = hydrateDocuments(plan, hits);
         List<RankedDocument> ranked = rank(documents, plan, request.getUserLocation());
+        Map<UUID, CandidateEvaluation> evaluations = evaluateCandidates(plan, documents);
+        for (RankedDocument r : ranked) {
+            r.evaluation = evaluations.get(r.document.getAggregateId());
+        }
         Map<UUID, Integer> companyFacetCounts = meilisearchIndexGateway.searchBusinessFacets(plan);
 
         Set<UUID> businessIds = new HashSet<>(companyFacetCounts.keySet());
@@ -96,7 +111,7 @@ public class StructuredSearchProcessor {
                 .understoodQuery(interpretation.getNormalizedQuery() != null
                         ? interpretation.getNormalizedQuery() : request.getRawQuery())
                 .interpretedConstraints(toConstraints(plan))
-                .sections(toSections(ranked, profiles, images, purchaseDestinations, request.getLocale()))
+                .sections(toSections(ranked, evaluations, profiles, images, purchaseDestinations, request.getLocale()))
                 .companyFacets(toCompanyFacets(companyFacetCounts, profiles))
                 .page(page)
                 .pageSize(pageSize)
@@ -104,6 +119,7 @@ public class StructuredSearchProcessor {
                 .hasNext(hitPage.hasNext())
                 .ambiguity(interpretation.getAmbiguity())
                 .suggestions(interpretation.getSuggestions())
+                .decisionContext(buildDecisionContextResponse(plan))
                 .build();
     }
 
@@ -225,6 +241,15 @@ public class StructuredSearchProcessor {
                 .inferredCity(interpretation.getInferredCity())
                 .ambiguity(interpretation.getAmbiguity())
                 .clarificationSuggestions(interpretation.getSuggestions())
+                .normalizedQuery(interpretation.getNormalizedQuery())
+                .mustHave(mergeMustHave(interpretation, request))
+                .preferences(mergePreferences(interpretation, request))
+                .exclusions(mergeExclusions(interpretation, request))
+                .useCases(mergeUseCases(interpretation, request))
+                .normalizedAttributes(interpretation.getNormalizedAttributes())
+                .searchTerms(interpretation.getSearchKeywords() != null ? interpretation.getSearchKeywords() : List.of())
+                .customText(request.getDecisionContext() != null ? request.getDecisionContext().getCustomText() : null)
+                .userProvidedCriteria(hasUserCriteria(request))
                 .build();
     }
 
@@ -276,6 +301,76 @@ public class StructuredSearchProcessor {
     }
 
     private List<SearchSectionResponse> toSections(
+            List<RankedDocument> results,
+            Map<UUID, CandidateEvaluation> evaluations,
+            Map<UUID, BusinessProfileDto> businessProfiles,
+            Map<UUID, List<CatalogImageResponse>> images,
+            Map<UUID, List<PurchaseDestinationResponse>> purchaseDestinations,
+            String language) {
+        if (evaluations.isEmpty()) {
+            return fallbackSections(results, businessProfiles, images, purchaseDestinations, language);
+        }
+        List<RankedDocument> recommendedCandidates = results.stream()
+                .filter(r -> r.evaluation != null && r.evaluation.getDecisionLabel() != null)
+                .toList();
+        List<RankedDocument> recommended = recommendedCandidates.size() > 1
+                ? recommendedCandidates.subList(0, 1)
+                : recommendedCandidates;
+        BigDecimal recommendedPrice = recommended.isEmpty() ? null
+                : recommended.get(0).document.getPrice();
+        List<RankedDocument> priceTradeoff = results.stream()
+                .filter(r -> !recommended.contains(r))
+                .filter(r -> r.evaluation != null && hasNoHardFails(r.evaluation)
+                        && recommendedPrice != null && r.document.getPrice() != null
+                        && r.document.getPrice().compareTo(recommendedPrice) < 0)
+                .toList();
+        Set<RankedDocument> placed = new HashSet<>();
+        placed.addAll(recommended);
+        placed.addAll(priceTradeoff);
+        List<RankedDocument> alternatives = results.stream()
+                .filter(r -> !placed.contains(r))
+                .toList();
+
+        List<SearchSectionResponse> sections = new ArrayList<>();
+        if (!recommended.isEmpty()) {
+            sections.add(SearchSectionResponse.builder()
+                    .type("recommended")
+                    .kind("RECOMMENDED")
+                    .title(localized(language, "Рекомендуем", "Ұсынамыз", "Recommended"))
+                    .relaxedConstraints(List.of())
+                    .cards(recommended.stream().map(r -> toCard(
+                            r, businessProfiles, images, purchaseDestinations, language)).toList())
+                    .build());
+        }
+        if (!priceTradeoff.isEmpty()) {
+            sections.add(SearchSectionResponse.builder()
+                    .type("price_tradeoff")
+                    .kind("PRICE_TRADEOFF")
+                    .title(localized(language, "Если важнее цена", "Баға маңыздырақ болса", "If price matters more"))
+                    .relaxedConstraints(List.of())
+                    .cards(priceTradeoff.stream().map(r -> toCard(
+                            r, businessProfiles, images, purchaseDestinations, language)).toList())
+                    .build());
+        }
+        if (!alternatives.isEmpty()) {
+            sections.add(SearchSectionResponse.builder()
+                    .type("alternatives")
+                    .kind("ALTERNATIVE")
+                    .title(localized(language, "Альтернативы", "Балама нұсқалар", "Alternatives"))
+                    .relaxedConstraints(List.of())
+                    .cards(alternatives.stream().map(r -> toCard(
+                            r, businessProfiles, images, purchaseDestinations, language)).toList())
+                    .build());
+        }
+        return sections;
+    }
+
+    private boolean hasNoHardFails(CandidateEvaluation eval) {
+        return eval.getCriterionAssessments().stream()
+                .noneMatch(a -> "FAIL".equals(a.getStatus()));
+    }
+
+    private List<SearchSectionResponse> fallbackSections(
             List<RankedDocument> results,
             Map<UUID, BusinessProfileDto> businessProfiles,
             Map<UUID, List<CatalogImageResponse>> images,
@@ -377,6 +472,37 @@ public class StructuredSearchProcessor {
                 .branchName(doc.getBranchName())
                 .branchAddress(doc.getBranchAddress())
                 .branchCity(doc.getCity())
+                .decisionLabel(ranked.evaluation != null ? ranked.evaluation.getDecisionLabel() : null)
+                .criterionAssessments(ranked.evaluation != null
+                        ? ranked.evaluation.getCriterionAssessments().stream()
+                                .map(a -> CriterionAssessmentResponse.builder()
+                                        .criterionKey(a.getCriterionKey())
+                                        .label(a.getLabel())
+                                        .status(a.getStatus())
+                                        .displayValue(a.getDisplayValue())
+                                        .consequence(a.getConsequence())
+                                        .evidence(a.getEvidence().stream()
+                                                .map(e -> CriterionEvidenceResponse.builder()
+                                                        .source(e.getSource())
+                                                        .key(e.getKey())
+                                                        .value(e.getValue())
+                                                        .build())
+                                                .toList())
+                                        .build())
+                                .toList()
+                        : null)
+                .advantages(ranked.evaluation != null ? ranked.evaluation.getAdvantages() : null)
+                .tradeoffs(ranked.evaluation != null ? ranked.evaluation.getTradeoffs() : null)
+                .unknowns(ranked.evaluation != null ? ranked.evaluation.getUnknowns() : null)
+                .comparisonFacts(ranked.evaluation != null
+                        ? ranked.evaluation.getComparisonFacts().stream()
+                                .map(e -> CriterionEvidenceResponse.builder()
+                                        .source(e.getSource())
+                                        .key(e.getKey())
+                                        .value(e.getValue())
+                                        .build())
+                                .toList()
+                        : null)
                 .build();
     }
 
@@ -518,6 +644,70 @@ public class StructuredSearchProcessor {
         return document.getBranchId() != null && boost.getBranchIds().contains(document.getBranchId());
     }
 
+    private List<InterpretedCriterion> mergeMustHave(SearchInterpretation interpretation, SearchRequest request) {
+        if (hasUserCriteria(request)) {
+            return toInterpretedCriteria(request.getDecisionContext().getHardConstraints());
+        }
+        return interpretation.getMustHave() != null ? interpretation.getMustHave() : List.of();
+    }
+
+    private List<InterpretedCriterion> mergePreferences(SearchInterpretation interpretation, SearchRequest request) {
+        if (hasUserCriteria(request)) {
+            return toInterpretedCriteria(request.getDecisionContext().getPreferences());
+        }
+        return interpretation.getNiceToHave() != null ? interpretation.getNiceToHave() : List.of();
+    }
+
+    private List<InterpretedCriterion> mergeExclusions(SearchInterpretation interpretation, SearchRequest request) {
+        if (hasUserCriteria(request)) {
+            return toInterpretedCriteria(request.getDecisionContext().getExclusions());
+        }
+        return interpretation.getNotWanted() != null ? interpretation.getNotWanted() : List.of();
+    }
+
+    private List<InterpretedUseCase> mergeUseCases(SearchInterpretation interpretation, SearchRequest request) {
+        if (hasUserCriteria(request)) {
+            var useCaseReqs = request.getDecisionContext().getUseCases();
+            if (useCaseReqs == null) {
+                return List.of();
+            }
+            return useCaseReqs.stream()
+                    .map(u -> InterpretedUseCase.builder()
+                            .key(u.getKey())
+                            .label(u.getLabel())
+                            .build())
+                    .toList();
+        }
+        return interpretation.getUseCases() != null ? interpretation.getUseCases() : List.of();
+    }
+
+    private boolean hasUserCriteria(SearchRequest request) {
+        var dc = request.getDecisionContext();
+        if (dc == null) {
+            return false;
+        }
+        return (dc.getHardConstraints() != null && !dc.getHardConstraints().isEmpty())
+                || (dc.getPreferences() != null && !dc.getPreferences().isEmpty())
+                || (dc.getExclusions() != null && !dc.getExclusions().isEmpty())
+                || (dc.getUseCases() != null && !dc.getUseCases().isEmpty());
+    }
+
+    private List<InterpretedCriterion> toInterpretedCriteria(
+            List<kz.ask.search.basic.api.dto.DecisionCriterionRequest> requests) {
+        if (requests == null) {
+            return List.of();
+        }
+        return requests.stream()
+                .map(r -> InterpretedCriterion.builder()
+                        .key(r.getKey())
+                        .label(r.getLabel())
+                        .operator(r.getOperator() != null ? r.getOperator() : "EQ")
+                        .values(r.getValues() != null ? r.getValues() : List.of())
+                        .unit(r.getUnit())
+                        .build())
+                .toList();
+    }
+
     private String normalizeSort(String sort) {
         if ("distance".equalsIgnoreCase(sort)) {
             return "distance";
@@ -552,6 +742,73 @@ public class StructuredSearchProcessor {
                 + plan.getMapEast() + "," + plan.getMapWest();
     }
 
+    private Map<UUID, CandidateEvaluation> evaluateCandidates(SearchPlan plan, List<SearchDocumentDto> documents) {
+        DecisionContext context = buildDecisionContextFromPlan(plan);
+        if (context == null) {
+            return Map.of();
+        }
+        List<CandidateEvaluation> evaluations = decisionEvaluator.evaluate(context, documents);
+        Map<UUID, CandidateEvaluation> byId = new HashMap<>();
+        for (CandidateEvaluation eval : evaluations) {
+            byId.put(eval.getResultId(), eval);
+        }
+        return byId;
+    }
+
+    private DecisionContext buildDecisionContextFromPlan(SearchPlan plan) {
+        if (plan.getMustHave().isEmpty() && plan.getPreferences().isEmpty()
+                && plan.getExclusions().isEmpty() && plan.getUseCases().isEmpty()
+                && plan.getCustomText() == null) {
+            return null;
+        }
+        List<DecisionCriterion> aiMustHave = plan.getMustHave().stream()
+                .map(c -> DecisionCriterion.builder()
+                        .key(c.getKey())
+                        .label(c.getLabel())
+                        .operator(c.getOperator())
+                        .values(c.getValues())
+                        .unit(c.getUnit())
+                        .source("QUERY")
+                        .build())
+                .toList();
+        List<DecisionCriterion> aiPreferences = plan.getPreferences().stream()
+                .map(c -> DecisionCriterion.builder()
+                        .key(c.getKey())
+                        .label(c.getLabel())
+                        .operator(c.getOperator())
+                        .values(c.getValues())
+                        .unit(c.getUnit())
+                        .source("QUERY")
+                        .build())
+                .toList();
+        List<DecisionCriterion> mergedPreferences = new ArrayList<>(aiPreferences);
+        if (!plan.isUserProvidedCriteria()) {
+            mergedPreferences.addAll(aiMustHave);
+        }
+        return DecisionContext.builder()
+                .hardConstraints(plan.isUserProvidedCriteria() ? aiMustHave : List.of())
+                .preferences(mergedPreferences)
+                .exclusions(plan.getExclusions().stream()
+                        .map(c -> DecisionCriterion.builder()
+                                .key(c.getKey())
+                                .label(c.getLabel())
+                                .operator(c.getOperator())
+                                .values(c.getValues())
+                                .unit(c.getUnit())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .useCases(plan.getUseCases().stream()
+                        .map(u -> DecisionUseCase.builder()
+                                .key(u.getKey())
+                                .label(u.getLabel())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .customText(plan.getCustomText())
+                .build();
+    }
+
     private String localized(String language, String russian, String kazakh, String english) {
         String normalizedLanguage = normalize(language);
         if (normalizedLanguage.startsWith("ru")) {
@@ -576,6 +833,54 @@ public class StructuredSearchProcessor {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
+    private DecisionContextResponse buildDecisionContextResponse(SearchPlan plan) {
+        if (plan.getMustHave().isEmpty() && plan.getPreferences().isEmpty()
+                && plan.getExclusions().isEmpty() && plan.getUseCases().isEmpty()
+                && plan.getCustomText() == null) {
+            return null;
+        }
+        return DecisionContextResponse.builder()
+                .hardConstraints(plan.getMustHave().stream()
+                        .map(c -> DecisionCriterionResponse.builder()
+                                .key(c.getKey())
+                                .label(c.getLabel())
+                                .operator(c.getOperator())
+                                .values(c.getValues())
+                                .unit(c.getUnit())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .preferences(plan.getPreferences().stream()
+                        .map(c -> DecisionCriterionResponse.builder()
+                                .key(c.getKey())
+                                .label(c.getLabel())
+                                .operator(c.getOperator())
+                                .values(c.getValues())
+                                .unit(c.getUnit())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .exclusions(plan.getExclusions().stream()
+                        .map(c -> DecisionCriterionResponse.builder()
+                                .key(c.getKey())
+                                .label(c.getLabel())
+                                .operator(c.getOperator())
+                                .values(c.getValues())
+                                .unit(c.getUnit())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .useCases(plan.getUseCases().stream()
+                        .map(u -> DecisionUseCaseResponse.builder()
+                                .key(u.getKey())
+                                .label(u.getLabel())
+                                .source("QUERY")
+                                .build())
+                        .toList())
+                .customText(plan.getCustomText())
+                .build();
+    }
+
     @Getter
     @Builder
     private static class RankedDocument {
@@ -583,5 +888,6 @@ public class StructuredSearchProcessor {
         private List<String> warnings;
         private Integer distanceMeters;
         private String activeOfferLabel;
+        private CandidateEvaluation evaluation;
     }
 }

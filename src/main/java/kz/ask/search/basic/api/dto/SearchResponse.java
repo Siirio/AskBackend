@@ -19,4 +19,5 @@ public class SearchResponse {
     private Boolean hasNext;
     private String ambiguity;
     private List<String> suggestions;
+    private DecisionContextResponse decisionContext;
 }
